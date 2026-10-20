@@ -1,0 +1,1 @@
+The API endpoint is configured at build time via `--dart-define=API_BASE_URL`; without it the default `http://10.0.2.2:8080` targets an Android emulator host, so running on a physical device requires passing the correct backend address through that define.

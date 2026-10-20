@@ -1,0 +1,1 @@
+Flutter mobile app for the Pe na Areia sustainable beach delivery MVP, letting customers pin a location on a map, pick a nearby reference point, and submit an order.

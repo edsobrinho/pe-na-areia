@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.penaareia.service.CloudinaryStorageServiceTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-17T20:07:00" hostname="DESKTOP-MU0MIQ9" time="0.491">
+  <properties/>
+  <testcase name="respostaSemSecureUrlLanca502()" classname="com.penaareia.service.CloudinaryStorageServiceTest" time="0.459"/>
+  <testcase name="formatoNaoSuportadoLanca400SemChamarProvedor()" classname="com.penaareia.service.CloudinaryStorageServiceTest" time="0.003"/>
+  <testcase name="arquivoAcimaDe5MbLanca413SemChamarProvedor()" classname="com.penaareia.service.CloudinaryStorageServiceTest" time="0.004"/>
+  <testcase name="arquivoVazioLanca400SemChamarProvedor()" classname="com.penaareia.service.CloudinaryStorageServiceTest" time="0.004"/>
+  <testcase name="falhaDeIoDoProvedorLanca502()" classname="com.penaareia.service.CloudinaryStorageServiceTest" time="0.003"/>
+  <testcase name="enviaPngValidoERetornaSecureUrl()" classname="com.penaareia.service.CloudinaryStorageServiceTest" time="0.007"/>
+  <testcase name="semCredenciaisLanca503SemChamarProvedor()" classname="com.penaareia.service.CloudinaryStorageServiceTest" time="0.002"/>
+  <testcase name="arquivoAusenteLanca400()" classname="com.penaareia.service.CloudinaryStorageServiceTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

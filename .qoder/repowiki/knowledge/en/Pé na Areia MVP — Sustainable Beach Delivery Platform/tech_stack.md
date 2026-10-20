@@ -1,0 +1,1 @@
+Java 17 + Spring Boot + Spring Data MongoDB (Atlas) for the backend; Flutter for Android/iOS; both layers consume free-tier cloud services (MongoDB Atlas M0, Google Maps).

@@ -1,0 +1,2 @@
+- Geographic coordinates throughout the backend use GeoJSON format `[longitude, latitude]`.
+- Environment-sensitive configuration (MongoDB connection string, JWT secret, API base URL) is supplied via environment variables or Dart defines rather than hard-coded.

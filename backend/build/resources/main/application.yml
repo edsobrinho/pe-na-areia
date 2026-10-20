@@ -1,0 +1,56 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: pe-na-areia-backend
+
+  # Java 21: usa virtual threads para o processamento bloqueante suportado pelo Spring.
+  threads:
+    virtual:
+      enabled: true
+
+  # Upload de fotos: limite de 5MB por arquivo (POST /uploads/location-photo)
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+  # A URI local e substituida pelo endereco do servico MongoDB no Docker Compose.
+  # Para outros ambientes, configure MONGODB_URI e MONGODB_DATABASE.
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/pe_na_areia}
+      database: ${MONGODB_DATABASE:pe_na_areia}
+      auto-index-creation: true
+
+jwt:
+  # Nunca versione o secret real - defina via variavel de ambiente em producao
+  secret: ${JWT_SECRET:troque-este-segredo-antes-de-ir-para-producao}
+  expiration-ms: 86400000 # 24h
+
+springdoc:
+  swagger-ui:
+    path: /docs
+  api-docs:
+    path: /api-docs
+
+cloudinary:
+  # Credenciais do upload de fotos (POST /uploads/location-photo).
+  # Defina as variaveis de ambiente CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY
+  # e CLOUDINARY_API_SECRET - nunca versione credenciais reais.
+  # Sem credenciais, o endpoint responde 503 (servico de upload indisponivel).
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+
+app:
+  delivery:
+    # Raio máximo (em metros) para aceitar a confirmação de entrega do entregador
+    confirmation-radius-meters: 60
+
+penaareia:
+    jwt:
+      # Use JWT_SECRET com pelo menos 32 caracteres em producao.
+      secret: ${JWT_SECRET:troque-este-segredo-antes-de-ir-para-producao}
+      expiration-ms: ${JWT_EXPIRATION_MS:86400000}

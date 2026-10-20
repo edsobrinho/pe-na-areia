@@ -1,0 +1,28 @@
+-------------------------------------------------------------------------------
+Test set: com.penaareia.service.ReferencePointServiceTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 3, Skipped: 0, Time elapsed: 0.030 s <<< FAILURE! -- in com.penaareia.service.ReferencePointServiceTest
+com.penaareia.service.ReferencePointServiceTest.listarAtivosDelegaParaRepositorio -- Time elapsed: 0.013 s <<< ERROR!
+java.lang.NullPointerException: Cannot invoke "org.springframework.data.mongodb.core.MongoTemplate.find(org.springframework.data.mongodb.core.query.Query, java.lang.Class)" because "<local2>.mongoTemplate" is null
+	at com.penaareia.service.ReferencePointService.listarAtivos(ReferencePointService.java:25)
+	at com.penaareia.service.ReferencePointServiceTest.listarAtivosDelegaParaRepositorio(ReferencePointServiceTest.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+
+com.penaareia.service.ReferencePointServiceTest.sugerirProximosSemResultadosRetornaListaVazia -- Time elapsed: 0.003 s <<< ERROR!
+java.lang.NullPointerException: Cannot invoke "org.springframework.data.mongodb.core.MongoTemplate.geoNear(org.springframework.data.mongodb.core.query.NearQuery, java.lang.Class)" because "<local8>.mongoTemplate" is null
+	at com.penaareia.service.ReferencePointService.sugerirProximos(ReferencePointService.java:41)
+	at com.penaareia.service.ReferencePointServiceTest.sugerirProximosSemResultadosRetornaListaVazia(ReferencePointServiceTest.java:75)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+
+com.penaareia.service.ReferencePointServiceTest.sugerirProximosExcluiPostosInativos -- Time elapsed: 0.008 s <<< ERROR!
+java.lang.NullPointerException: Cannot invoke "org.springframework.data.mongodb.core.MongoTemplate.geoNear(org.springframework.data.mongodb.core.query.NearQuery, java.lang.Class)" because "<local8>.mongoTemplate" is null
+	at com.penaareia.service.ReferencePointService.sugerirProximos(ReferencePointService.java:41)
+	at com.penaareia.service.ReferencePointServiceTest.sugerirProximosExcluiPostosInativos(ReferencePointServiceTest.java:60)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+

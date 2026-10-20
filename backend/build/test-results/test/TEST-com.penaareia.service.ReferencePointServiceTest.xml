@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.penaareia.service.ReferencePointServiceTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-17T20:07:01" hostname="DESKTOP-MU0MIQ9" time="0.455">
+  <properties/>
+  <testcase name="listarAtivosConsultaMongoComFiltroAtivo()" classname="com.penaareia.service.ReferencePointServiceTest" time="0.442"/>
+  <testcase name="sugerirProximosSemResultadosRetornaListaVazia()" classname="com.penaareia.service.ReferencePointServiceTest" time="0.005"/>
+  <testcase name="sugerirProximosExcluiPostosInativos()" classname="com.penaareia.service.ReferencePointServiceTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

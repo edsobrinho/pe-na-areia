@@ -1,0 +1,1 @@
+Two-layer MVP pairing a Spring Boot MongoDB backend with a Flutter mobile app for sustainable beach delivery using geolocation pins and official reference points.

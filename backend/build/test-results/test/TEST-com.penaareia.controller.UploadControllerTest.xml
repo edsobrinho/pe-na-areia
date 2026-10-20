@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.penaareia.controller.UploadControllerTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-17T20:07:00" hostname="DESKTOP-MU0MIQ9" time="0.078">
+  <properties/>
+  <testcase name="formatoInvalidoRetorna400Padronizado()" classname="com.penaareia.controller.UploadControllerTest" time="0.021"/>
+  <testcase name="cloudinaryNaoConfiguradoRetorna503()" classname="com.penaareia.controller.UploadControllerTest" time="0.01"/>
+  <testcase name="uploadSemArquivoRetorna400Padronizado()" classname="com.penaareia.controller.UploadControllerTest" time="0.007"/>
+  <testcase name="erroDeNegocioRetornaEnvelopePadronizado()" classname="com.penaareia.controller.UploadControllerTest" time="0.008"/>
+  <testcase name="uploadRetorna200ComSecureUrl()" classname="com.penaareia.controller.UploadControllerTest" time="0.01"/>
+  <testcase name="arquivoAcimaDe5MbRetorna413Padronizado()" classname="com.penaareia.controller.UploadControllerTest" time="0.013"/>
+  <system-out><![CDATA[2026-10-17T17:06:59.833-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.penaareia.controller.UploadControllerTest]: UploadControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-10-17T17:06:59.852-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.penaareia.PeNaAreiaApplication for test class com.penaareia.controller.UploadControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-10-17T17:06:59.899-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] c.p.controller.UploadControllerTest      : Starting UploadControllerTest using Java 21.0.5 with PID 39552 (started by User in C:\_development\workspace\pe-na-areia\backend)
+2026-10-17T17:06:59.899-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] c.p.controller.UploadControllerTest      : No active profile set, falling back to 1 default profile: "default"
+2026-10-17T17:07:00.491-03:00  WARN 39552 --- [pe-na-areia-backend] [    Test worker] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 0a9552ce-7a4c-4fc7-a26a-bc1bf210f18c
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-10-17T17:07:00.496-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-10-17T17:07:00.518-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-10-17T17:07:00.519-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-10-17T17:07:00.520-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-10-17T17:07:00.529-03:00  INFO 39552 --- [pe-na-areia-backend] [    Test worker] c.p.controller.UploadControllerTest      : Started UploadControllerTest in 0.673 seconds (process running for 10.457)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

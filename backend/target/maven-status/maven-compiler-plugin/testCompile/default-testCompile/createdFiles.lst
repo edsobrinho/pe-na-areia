@@ -1,0 +1,10 @@
+com\penaareia\controller\ReferencePointControllerTest.class
+com\penaareia\service\CloudinaryStorageServiceTest.class
+com\penaareia\service\ReferencePointServiceTest.class
+com\penaareia\service\OrderServiceTest.class
+com\penaareia\controller\UploadControllerTest.class
+com\penaareia\support\Fixtures.class
+com\penaareia\service\OrderWorkflowServiceTest.class
+com\penaareia\service\KioskServiceTest.class
+com\penaareia\controller\OrderControllerTest.class
+com\penaareia\controller\KioskControllerTest.class

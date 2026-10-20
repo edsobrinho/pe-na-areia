@@ -1,0 +1,1 @@
+Spring Boot REST backend exposing kiosks, reference points and orders backed by MongoDB Atlas, with JWT-ready security and Swagger documentation.

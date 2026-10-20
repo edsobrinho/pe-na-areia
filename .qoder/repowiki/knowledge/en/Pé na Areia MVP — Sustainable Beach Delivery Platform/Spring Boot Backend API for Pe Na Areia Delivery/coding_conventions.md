@@ -1,0 +1,4 @@
+- Controllers are declared as `@RestController` with `@RequestMapping` base paths, injected via Lombok `@RequiredArgsConstructor` constructor injection, and documented with SpringDoc `@Tag` and `@Operation` annotations.
+- MongoDB entities use Lombok `@Data`/`@NoArgsConstructor`/`@AllArgsConstructor` plus Spring Data annotations (`@Document`, `@Id`, `@GeoSpatialIndexed`) rather than hand-written getters/setters.
+- Configuration values (Mongo URI, JWT secret, app-specific constants like `confirmation-radius-meters`) are externalized through `application.yml` placeholders resolved from environment variables.
+- Service-layer failures are surfaced via a dedicated `ResourceNotFoundException` thrown from services rather than raw exceptions bubbling to controllers.

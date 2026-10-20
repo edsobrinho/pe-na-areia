@@ -1,0 +1,4 @@
+// Chave do Google Maps para iOS (build setting consumida pelo Info.plist via
+// GMSApiKey). Preencha localmente com a sua chave; o repositorio deve manter
+// este valor vazio. Sem chave configurada o mapa fica vazio, mas o app roda.
+GMS_API_KEY =

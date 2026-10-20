@@ -1,0 +1,1 @@
+Spring Boot 3.3.4 (Java 17), Spring Data MongoDB (MongoDB Atlas M0 free tier), Spring Security + jjwt 0.12.6 for JWT, springdoc-openapi 2.6.0 for `/docs` Swagger UI, Lombok for boilerplate reduction, Flapdoodle embedded MongoDB for tests.

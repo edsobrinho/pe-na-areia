@@ -1,0 +1,1 @@
+Flutter SDK >=3.3.0 with Material 3; `google_maps_flutter` for the interactive map, `geolocator` for device GPS, `image_picker` for optional camera capture, `http` for REST calls, `firebase_core` + `firebase_messaging` declared for future push notifications, and `flutter_lints` for static analysis.

@@ -1,0 +1,7 @@
+Single-package Flutter app (pubspec.yaml) targeting Android, iOS, Web, Linux, macOS, Windows via the standard Flutter multi-platform layout. The Dart source under `lib/` follows a thin layered split:
+- `main.dart` bootstraps `MaterialApp` with Material 3, seeding the theme from `theme/app_colors.dart` (`ocean`/`sand`/`mango` palette) and sets `LocationSelectionScreen` as home.
+- `screens/location_selection_screen.dart` is the only UI screen: a draggable Google Map plus a bottom sheet where users select a nearby reference-point chip, type a description, optionally attach a camera photo, and return an `OrderLocation` model to the caller.
+- `services/api_service.dart` wraps `http` calls against a backend whose base URL is injected via `--dart-define=API_BASE_URL` (defaulting to `10.0.2.2:8080` for Android emulators); it decodes JSON into domain models and throws on non-expected status codes.
+- `services/location_service.dart` isolates `geolocator` permission + GPS checks behind a single `getCurrentPosition()` method.
+- `models/` holds plain data classes (`Kiosk`, `MenuItem`, `ReferencePoint`, `OrderLocation`) each exposing a `fromJson` factory; no persistence or state-management layer is present yet (provider is declared but unused).
+Dependency direction is strictly screens → services → models; platform code lives in the generated `android/`, `ios/`, `linux/`, `macos/`, `windows/`, `web/` trees and is not edited by this module's logic.

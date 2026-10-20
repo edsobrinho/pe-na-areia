@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.penaareia.service.OrderServiceTest" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-17T20:07:01" hostname="DESKTOP-MU0MIQ9" time="0.354">
+  <properties/>
+  <testcase name="itemForaDoCardapioLanca404SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.256"/>
+  <testcase name="postoInexistenteLanca404SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="pinMaisDeQuinhentosMetrosDoPostoEhRejeitado()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="buscarPorIdExistenteRetornaPedido()" classname="com.penaareia.service.OrderServiceTest" time="0.003"/>
+  <testcase name="pedidoSemItensLanca400SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.003"/>
+  <testcase name="quantidadeNulaLanca400SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.006"/>
+  <testcase name="criaPedidoValidoCalculaTotalNoServidor()" classname="com.penaareia.service.OrderServiceTest" time="0.013"/>
+  <testcase name="itemNuloLanca400SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="quiosqueInexistenteLanca404SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.002"/>
+  <testcase name="buscarPorIdInexistenteLanca404()" classname="com.penaareia.service.OrderServiceTest" time="0.003"/>
+  <testcase name="usuarioInexistenteLanca404SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="pedidoSemPinLanca400SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="quiosqueInativoLanca422SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.003"/>
+  <testcase name="postoInativoLanca422SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="itemIndisponivelLanca422SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="pinClienteViraGeoJsonPointComLongitudeLatitude()" classname="com.penaareia.service.OrderServiceTest" time="0.008"/>
+  <testcase name="usuarioInativoLanca422SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="quantidadeZeroLanca400SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <testcase name="quantidadeNegativaLanca400SemSalvar()" classname="com.penaareia.service.OrderServiceTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

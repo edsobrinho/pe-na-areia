@@ -1,0 +1,10 @@
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\controller\KioskControllerTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\controller\OrderControllerTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\controller\ReferencePointControllerTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\controller\UploadControllerTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\service\CloudinaryStorageServiceTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\service\KioskServiceTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\service\OrderServiceTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\service\OrderWorkflowServiceTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\service\ReferencePointServiceTest.java
+C:\_development\workspace\pe-na-areia\backend\src\test\java\com\penaareia\support\Fixtures.java

@@ -1,0 +1,4 @@
+- Domain models expose a `fromJson(Map<String, dynamic>)` factory constructor that casts fields and supplies defaults for nullable values.
+- Network requests are funneled through a single `ApiService` class that centralizes the `baseUrl` constant and validates responses via a private `_checkOk` helper throwing `Exception` on unexpected status codes.
+- UI colors are never hard-coded literals; they are referenced through the static constants in `theme/app_colors.dart` (`AppColors.ocean*`, `AppColors.sand*`, `AppColors.mango500`).
+- Asynchronous side effects (GPS fetch, API calls) are wrapped in try/catch inside the screen state and surface errors through a local `_erro` string field rendered conditionally in the widget tree.

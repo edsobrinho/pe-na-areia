@@ -1,0 +1,1 @@
+Requires environment variables `MONGODB_URI` (MongoDB Atlas connection string), `MONGODB_DATABASE` (default `pe_na_areia`), and `JWT_SECRET` (default placeholder). Run with `mvn spring-boot:run` or `./mvnw spring-boot:run`; Swagger UI is available at `/docs` after startup.

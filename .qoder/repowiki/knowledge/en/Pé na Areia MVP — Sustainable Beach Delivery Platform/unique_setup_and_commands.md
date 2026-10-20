@@ -1,0 +1,1 @@
+Run the backend with `MONGODB_URI` and `JWT_SECRET` exported then `./mvnw spring-boot:run`; run the Flutter app with `flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080` (adjust IP for iOS or physical devices); a Google Maps API key must be added to `android/app/src/main/AndroidManifest.xml` and `ios/Runner/AppDelegate.swift`.
