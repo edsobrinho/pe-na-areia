@@ -3,23 +3,28 @@ package com.penaareia.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.penaareia.config.JacksonConfig;
 import com.penaareia.dto.CreateOrderRequest;
+import com.penaareia.security.JwtService;
 import com.penaareia.service.BusinessRuleException;
 import com.penaareia.service.OrderService;
 import com.penaareia.service.OrderWorkflowService;
 import com.penaareia.service.ResourceNotFoundException;
-import com.penaareia.security.JwtService;
 import com.penaareia.support.Fixtures;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import static org.hamcrest.Matchers.nullValue;
@@ -65,6 +70,35 @@ class OrderControllerTest {
         return org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .post(path)
                 .with(csrf());
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void pedidosDisponiveisUsaPaginaPadraoLimitada() throws Exception {
+        when(workflowService.listarDisponiveis(any(Pageable.class))).thenReturn(List.of());
+
+        mockMvc.perform(get("/orders/available"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(workflowService).listarDisponiveis(pageable.capture());
+        assertThat(pageable.getValue().getPageNumber()).isZero();
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(50);
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void pedidosDisponiveisLimitaTamanhoSolicitado() throws Exception {
+        when(workflowService.listarDisponiveis(any(Pageable.class))).thenReturn(List.of());
+
+        mockMvc.perform(get("/orders/available").param("page", "2").param("size", "500"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(workflowService).listarDisponiveis(pageable.capture());
+        assertThat(pageable.getValue().getPageNumber()).isEqualTo(2);
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(100);
     }
 
     // --- 201 e contrato de resposta ---

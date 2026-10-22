@@ -51,11 +51,9 @@ class ReferencePointServiceTest {
     }
 
     @Test
-    void sugerirProximosExcluiPostosInativos() {
+    void sugerirProximosRetornaResultadosDoMongo() {
         ReferencePoint ativo = Fixtures.postoAtivo();
-        ReferencePoint inativo = Fixtures.postoInativo();
         GeoResults<ReferencePoint> resultados = new GeoResults<>(List.of(
-                new GeoResult<>(inativo, new Distance(0.3, Metrics.KILOMETERS)),
                 new GeoResult<>(ativo, new Distance(0.8, Metrics.KILOMETERS))));
         when(mongoTemplate.geoNear(any(NearQuery.class), eq(ReferencePoint.class))).thenReturn(resultados);
 

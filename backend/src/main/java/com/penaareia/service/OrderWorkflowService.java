@@ -7,6 +7,7 @@ import com.penaareia.model.OrderStatus;
 import com.penaareia.repository.CourierRepository;
 import com.penaareia.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
@@ -117,13 +118,13 @@ public class OrderWorkflowService {
         return orderRepository.save(order);
     }
 
-    public java.util.List<Order> listarDisponiveis() {
-        return orderRepository.findByStatus(OrderStatus.EM_PREPARO);
+    public java.util.List<Order> listarDisponiveis(Pageable pageable) {
+        return orderRepository.findByStatus(OrderStatus.EM_PREPARO, pageable);
     }
 
-    public java.util.List<Order> listarEmRota(String courierId) {
+    public java.util.List<Order> listarEmRota(String courierId, Pageable pageable) {
         return orderRepository.findByCourierIdAndStatusIn(
-                courierId, Set.of(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL));
+                courierId, Set.of(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL), pageable);
     }
 
     private Order findOrder(String orderId) {

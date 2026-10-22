@@ -6,8 +6,10 @@ import org.springframework.data.geo.GeoResult;
 import org.springframework.data.geo.GeoResults;
 import org.springframework.data.geo.Metrics;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.NearQuery;
 import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.NearQuery;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,8 +25,7 @@ public class ReferencePointService {
 
     public List<ReferencePoint> listarAtivos() {
         return mongoTemplate.find(
-                org.springframework.data.mongodb.core.query.Query.query(
-                        org.springframework.data.mongodb.core.query.Criteria.where("ativo").is(true)),
+                Query.query(Criteria.where("ativo").is(true)),
                 ReferencePoint.class);
     }
 
@@ -37,12 +38,12 @@ public class ReferencePointService {
         GeoJsonPoint ponto = new GeoJsonPoint(longitude, latitude);
         NearQuery nearQuery = NearQuery.near(ponto)
                 .spherical(true)
-                .maxDistance(new Distance(raioKm, Metrics.KILOMETERS));
+                .maxDistance(new Distance(raioKm, Metrics.KILOMETERS))
+                .query(Query.query(Criteria.where("ativo").is(true)));
         GeoResults<ReferencePoint> resultados = mongoTemplate.geoNear(nearQuery, ReferencePoint.class);
 
         return resultados.getContent().stream()
                 .map(GeoResult::getContent)
-                .filter(ReferencePoint::isAtivo)
                 .toList();
     }
 }

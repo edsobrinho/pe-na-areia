@@ -5,8 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
-import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
-import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
@@ -17,6 +17,14 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "orders")
+@CompoundIndexes({
+        @CompoundIndex(name = "status_created_desc_idx",
+                def = "{'status': 1, 'timeline.criadoEm': -1}"),
+        @CompoundIndex(name = "courier_status_created_desc_idx",
+                def = "{'courierId': 1, 'status': 1, 'timeline.criadoEm': -1}"),
+        @CompoundIndex(name = "user_created_desc_idx",
+                def = "{'userId': 1, 'timeline.criadoEm': -1}")
+})
 public class Order {
 
     @Id
@@ -34,7 +42,6 @@ public class Order {
     private boolean pago = false;
 
     // --- Localizacao do pedido (o nucleo do diferencial do app) ---
-    @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
     private GeoJsonPoint pinCliente;
 
     private String pontoReferenciaId;

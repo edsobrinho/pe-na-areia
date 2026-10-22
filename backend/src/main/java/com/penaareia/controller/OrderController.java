@@ -17,6 +17,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -35,18 +38,24 @@ public class OrderController {
 
     @GetMapping("/available")
     @Operation(summary = "Lista pedidos prontos que podem ser aceitos por um entregador")
-    public List<OrderResponse> listarDisponiveis(Authentication authentication) {
+    public List<OrderResponse> listarDisponiveis(
+            Authentication authentication,
+            @PageableDefault(size = 50, sort = "timeline.criadoEm", direction = Sort.Direction.DESC)
+            Pageable pageable) {
         requireRole(authentication, "ROLE_COURIER");
-        return workflowService.listarDisponiveis().stream()
+        return workflowService.listarDisponiveis(pageable).stream()
                 .map(OrderResponse::fromEntity)
                 .toList();
     }
 
     @GetMapping("/courier/active")
     @Operation(summary = "Lista entregas em rota do entregador autenticado")
-    public List<OrderResponse> listarEmRota(Authentication authentication) {
+    public List<OrderResponse> listarEmRota(
+            Authentication authentication,
+            @PageableDefault(size = 50, sort = "timeline.criadoEm", direction = Sort.Direction.DESC)
+            Pageable pageable) {
         requireRole(authentication, "ROLE_COURIER");
-        return workflowService.listarEmRota(authentication.getName()).stream()
+        return workflowService.listarEmRota(authentication.getName(), pageable).stream()
                 .map(OrderResponse::fromEntity)
                 .toList();
     }

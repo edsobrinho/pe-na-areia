@@ -23,6 +23,10 @@ spring:
       uri: ${MONGODB_URI:mongodb://localhost:27017/pe_na_areia}
       database: ${MONGODB_DATABASE:pe_na_areia}
       auto-index-creation: true
+    web:
+      pageable:
+        default-page-size: 50
+        max-page-size: 100
 
 jwt:
   # Nunca versione o secret real - defina via variavel de ambiente em producao

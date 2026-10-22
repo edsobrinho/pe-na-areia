@@ -152,8 +152,8 @@ ou em um dispositivo físico, use o endereço acessível do servidor.
 | GET | `/reference-points` | Público | Lista os postos ativos |
 | GET | `/reference-points/nearby?lat=&lng=&raioKm=` | Público | Sugere postos próximos |
 | GET | `/kiosks` | Público | Lista quiosques, cardápios e itens |
-| GET | `/orders/available` | COURIER | Lista pedidos prontos para entrega |
-| GET | `/orders/courier/active` | COURIER | Lista entregas em rota do entregador |
+| GET | `/orders/available?page=0&size=50` | COURIER | Lista pedidos prontos para entrega (página mais recente primeiro; tamanho máximo 100) |
+| GET | `/orders/courier/active?page=0&size=50` | COURIER | Lista entregas em rota do entregador (página mais recente primeiro; tamanho máximo 100) |
 | POST | `/orders` | CLIENT | Cria pedido com preço calculado pelo servidor |
 | GET | `/orders/{id}` | Dono ou entregador atribuído | Consulta o pedido |
 | PATCH | `/orders/{id}/status` | Dono ou COURIER atribuído | Avança o status conforme as regras |
