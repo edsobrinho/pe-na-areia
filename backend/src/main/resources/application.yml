@@ -20,13 +20,9 @@ spring:
   # Para outros ambientes, configure MONGODB_URI e MONGODB_DATABASE.
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/pe_na_areia}
+      uri: ${MONGODB_URI:mongodb://localhost:27017/pe_na_areia?replicaSet=rs0&directConnection=true}
       database: ${MONGODB_DATABASE:pe_na_areia}
       auto-index-creation: true
-    web:
-      pageable:
-        default-page-size: 50
-        max-page-size: 100
 
 jwt:
   # Nunca versione o secret real - defina via variavel de ambiente em producao

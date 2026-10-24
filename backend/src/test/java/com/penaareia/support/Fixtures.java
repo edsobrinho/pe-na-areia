@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Dados de teste compartilhados pelos testes de servico e controller.
- * Mantem os ids e valores em um unico lugar para que total, GeoJSON e
+ * Dados de teste compartilhados pelos testes de serviço e controller.
+ * Mantém os ‘ids’ e valores num único lugar para que total, GeoJSON e
  * contrato de resposta possam ser conferidos de forma consistente.
  */
 public final class Fixtures {
@@ -61,7 +61,7 @@ public final class Fixtures {
         kiosk.setAtivo(true);
         kiosk.setCardapio(new ArrayList<>(List.of(
                 new Kiosk.MenuItem(MENU_ITEM_DISPONIVEL, "Agua de coco", "Coco verde gelado", PRECO_DISPONIVEL, true),
-                new Kiosk.MenuItem(MENU_ITEM_BARATO, "Pao de queijo", "Porcao com 4 unidades", PRECO_BARATO, true),
+                new Kiosk.MenuItem(MENU_ITEM_BARATO, "Pao de queijo", "Porção com 4 unidades", PRECO_BARATO, true),
                 new Kiosk.MenuItem(MENU_ITEM_INDISPONIVEL, "Refrigerante", "Lata 350ml", new BigDecimal("4.00"), false)
         )));
         return kiosk;
@@ -90,7 +90,7 @@ public final class Fixtures {
         return ponto;
     }
 
-    /** Pedido valido: 2x Agua de coco (12.50) + 1x Pao de queijo (7.25) = 32.25. */
+    /** Pedido valido: 2x Água de coco (12.50) + 1x Pão de queijo (7.25) = 32.25. */
     public static CreateOrderRequest requestValido() {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setUserId(USER_ID);

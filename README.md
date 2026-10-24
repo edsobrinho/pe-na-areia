@@ -92,11 +92,20 @@ Na raiz do projeto, inicie o MongoDB e a API:
 docker compose -f infrastructure/docker-compose.yml up --build
 ```
 
-A API fica disponivel em `http://localhost:8080` e o MongoDB em
-`mongodb://localhost:27017/pe_na_areia`. Os dados do banco persistem no volume
-Docker `pe-na-areia-mongodb-data`. Para encerrar os servicos, use
+O MongoDB local é iniciado como replica set de nó único (`rs0`) para suportar
+transações entre pedidos e entregadores. A API fica disponivel em
+`http://localhost:8080` e o MongoDB em
+`mongodb://localhost:27017/pe_na_areia?replicaSet=rs0`. Os dados persistem no
+volume Docker `pe-na-areia-mongodb-data`. Para encerrar os servicos, use
 `docker compose -f infrastructure/docker-compose.yml down`; para apagar tambem
 os dados locais do banco, acrescente `-v`.
+
+Para outros ambientes, configure `MONGODB_URI` para um replica set ou cluster
+compatível com transações.
+Em bancos já existentes, crie os novos índices de paginação com `_id` e remova,
+após confirmar que os novos foram criados, os índices antigos
+`status_created_desc_idx` e `courier_status_created_desc_idx` da coleção
+`orders`.
 
 O segredo JWT padrao do Compose e apenas para desenvolvimento local; defina a
 variavel `JWT_SECRET` com pelo menos 32 caracteres antes de usar outro ambiente.
@@ -113,8 +122,11 @@ Set-Location backend
 .\gradlew.bat bootRun
 ```
 
-O backend local usa `mongodb://localhost:27017/pe_na_areia` por padrao; para
-outro banco, configure `MONGODB_URI` e opcionalmente `MONGODB_DATABASE`.
+O backend local usa
+`mongodb://localhost:27017/pe_na_areia?replicaSet=rs0&directConnection=true` por
+padrão; `directConnection=true` evita usar o nome interno do membro do Compose
+quando a API roda diretamente no host. Para outro banco, configure `MONGODB_URI`
+e opcionalmente `MONGODB_DATABASE`.
 
 Para rodar os testes:
 
@@ -150,10 +162,10 @@ ou em um dispositivo físico, use o endereço acessível do servidor.
 | POST | `/auth/register` | Público | Cadastra CLIENT ou COURIER e retorna JWT |
 | POST | `/auth/login` | Público | Autentica e retorna JWT |
 | GET | `/reference-points` | Público | Lista os postos ativos |
-| GET | `/reference-points/nearby?lat=&lng=&raioKm=` | Público | Sugere postos próximos |
+| GET | `/reference-points/nearby?lat=&lng=&raioKm=` | Público | Sugere postos próximos (lat -90..90, lng -180..180, raio 0.1..5 km) |
 | GET | `/kiosks` | Público | Lista quiosques, cardápios e itens |
-| GET | `/orders/available?page=0&size=50` | COURIER | Lista pedidos prontos para entrega (página mais recente primeiro; tamanho máximo 100) |
-| GET | `/orders/courier/active?page=0&size=50` | COURIER | Lista entregas em rota do entregador (página mais recente primeiro; tamanho máximo 100) |
+| GET | `/orders/available?size=50&cursor=` | COURIER | Lista pedidos prontos; usa `X-Next-Cursor` para buscar a próxima página (máximo 100) |
+| GET | `/orders/courier/active?size=50&cursor=` | COURIER | Lista entregas em rota; usa `X-Next-Cursor` para buscar a próxima página (máximo 100) |
 | POST | `/orders` | CLIENT | Cria pedido com preço calculado pelo servidor |
 | GET | `/orders/{id}` | Dono ou entregador atribuído | Consulta o pedido |
 | PATCH | `/orders/{id}/status` | Dono ou COURIER atribuído | Avança o status conforme as regras |

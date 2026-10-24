@@ -1,22 +1,40 @@
 package com.penaareia.service;
 
 import com.penaareia.dto.ConfirmDeliveryRequest;
+import com.penaareia.dto.OrderCursor;
+import com.penaareia.dto.OrderCursorSlice;
 import com.penaareia.model.Courier;
 import com.penaareia.model.Order;
 import com.penaareia.model.OrderStatus;
 import com.penaareia.repository.CourierRepository;
 import com.penaareia.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
-import java.util.Set;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class OrderWorkflowService {
+
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final Sort ORDER_PAGE_SORT = Sort.by(
+            Sort.Order.desc("timeline.criadoEm"),
+            Sort.Order.desc("id"));
 
     private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
             OrderStatus.CRIADO, Set.of(OrderStatus.PAGO, OrderStatus.CANCELADO),
@@ -30,16 +48,20 @@ public class OrderWorkflowService {
 
     private final OrderRepository orderRepository;
     private final CourierRepository courierRepository;
+    private final MongoTemplate mongoTemplate;
     private final double deliveryRadiusMeters;
 
     public OrderWorkflowService(OrderRepository orderRepository,
                                 CourierRepository courierRepository,
+                                MongoTemplate mongoTemplate,
                                 @Value("${app.delivery.confirmation-radius-meters:60}") double deliveryRadiusMeters) {
         this.orderRepository = orderRepository;
         this.courierRepository = courierRepository;
+        this.mongoTemplate = mongoTemplate;
         this.deliveryRadiusMeters = deliveryRadiusMeters;
     }
 
+    @Transactional
     public Order atualizarStatus(String orderId,
                                  OrderStatus newStatus,
                                  String callerId,
@@ -60,16 +82,34 @@ public class OrderWorkflowService {
                 throw new BusinessRuleException("Este pedido já foi aceito por outro entregador.");
             }
             if (newStatus == OrderStatus.A_CAMINHO) {
-                Courier courier = courierRepository.findById(callerId)
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Entregador não encontrado: " + callerId));
-                if (courier.getStatus() != Courier.CourierStatus.DISPONIVEL) {
+                Instant now = Instant.now();
+                Order claimedOrder = mongoTemplate.findAndModify(
+                        Query.query(Criteria.where("id").is(orderId)
+                                .and("status").is(OrderStatus.EM_PREPARO)
+                                .and("courierId").is(null)),
+                        new Update()
+                                .set("courierId", callerId)
+                                .set("status", OrderStatus.A_CAMINHO)
+                                .set("timeline.aCaminhoEm", now),
+                        FindAndModifyOptions.options().returnNew(true),
+                        Order.class);
+                if (claimedOrder == null) {
+                    throw new BusinessRuleException(
+                            "Este pedido já foi aceito por outro entregador.");
+                }
+                long courierUpdated = mongoTemplate.updateFirst(
+                        Query.query(Criteria.where("id").is(callerId)
+                                .and("status").is(Courier.CourierStatus.DISPONIVEL)),
+                        new Update().set("status", Courier.CourierStatus.EM_ROTA),
+                        Courier.class).getModifiedCount();
+                if (courierUpdated != 1) {
+                    courierRepository.findById(callerId)
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Entregador não encontrado: " + callerId));
                     throw new BusinessRuleException(
                             "O entregador precisa estar disponível para aceitar pedidos.");
                 }
-                order.setCourierId(callerId);
-                courier.setStatus(Courier.CourierStatus.EM_ROTA);
-                courierRepository.save(courier);
+                return claimedOrder;
             } else if (!callerId.equals(order.getCourierId())) {
                 throw new BusinessRuleException("Este pedido não pertence a este entregador.");
             }
@@ -86,6 +126,7 @@ public class OrderWorkflowService {
         return orderRepository.save(order);
     }
 
+    @Transactional
     public Order confirmarEntrega(String orderId, ConfirmDeliveryRequest request, String courierId) {
         if (!courierId.equals(request.courierId())) {
             throw new BusinessRuleException("O entregador informado não corresponde ao usuário autenticado.");
@@ -99,8 +140,6 @@ public class OrderWorkflowService {
             throw new BusinessRuleException("Este pedido não pertence a este entregador.");
         }
 
-        Courier courier = courierRepository.findById(courierId)
-                .orElseThrow(() -> new ResourceNotFoundException("Entregador não encontrado: " + courierId));
         ConfirmDeliveryRequest.CourierLocation location = request.courierLocation();
         double distance = distanceMeters(
                 order.getPinCliente().getY(), order.getPinCliente().getX(),
@@ -110,21 +149,65 @@ public class OrderWorkflowService {
                     + Math.round(deliveryRadiusMeters) + " m).");
         }
 
-        courier.setLocalizacaoAtual(new org.springframework.data.mongodb.core.geo.GeoJsonPoint(
-                location.lng(), location.lat()));
-        courier.setStatus(Courier.CourierStatus.DISPONIVEL);
-        courierRepository.save(courier);
-        order.transitionTo(OrderStatus.ENTREGUE);
-        return orderRepository.save(order);
+        Instant now = Instant.now();
+        Order deliveredOrder = mongoTemplate.findAndModify(
+                Query.query(Criteria.where("id").is(orderId)
+                        .and("courierId").is(courierId)
+                        .and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL)),
+                new Update()
+                        .set("status", OrderStatus.ENTREGUE)
+                        .set("timeline.entregueEm", now),
+                FindAndModifyOptions.options().returnNew(true),
+                Order.class);
+        if (deliveredOrder == null) {
+            throw new BusinessRuleException("Este pedido já foi confirmado ou não pertence a este entregador.");
+        }
+        long courierUpdated = mongoTemplate.updateFirst(
+                Query.query(Criteria.where("id").is(courierId)
+                        .and("status").is(Courier.CourierStatus.EM_ROTA)),
+                new Update()
+                        .set("localizacaoAtual", new GeoJsonPoint(location.lng(), location.lat()))
+                        .set("status", Courier.CourierStatus.DISPONIVEL),
+                Courier.class).getModifiedCount();
+        if (courierUpdated != 1) {
+            courierRepository.findById(courierId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Entregador não encontrado: " + courierId));
+            throw new BusinessRuleException("O entregador não está em rota.");
+        }
+        return deliveredOrder;
     }
 
-    public java.util.List<Order> listarDisponiveis(Pageable pageable) {
-        return orderRepository.findByStatus(OrderStatus.EM_PREPARO, pageable);
+    public OrderCursorSlice listarDisponiveis(int size, String cursorValue) {
+        return listar(Query.query(Criteria.where("status").is(OrderStatus.EM_PREPARO)), size, cursorValue);
     }
 
-    public java.util.List<Order> listarEmRota(String courierId, Pageable pageable) {
-        return orderRepository.findByCourierIdAndStatusIn(
-                courierId, Set.of(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL), pageable);
+    public OrderCursorSlice listarEmRota(String courierId, int size, String cursorValue) {
+        Criteria criteria = new Criteria().andOperator(
+                Criteria.where("courierId").is(courierId),
+                Criteria.where("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL));
+        return listar(Query.query(criteria), size, cursorValue);
+    }
+
+    private OrderCursorSlice listar(Query query, int size, String cursorValue) {
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new InvalidRequestException("O tamanho da página deve estar entre 1 e " + MAX_PAGE_SIZE + ".");
+        }
+        Optional<OrderCursor> cursor = OrderCursor.decode(cursorValue);
+        cursor.ifPresent(value -> query.addCriteria(new Criteria().orOperator(
+                Criteria.where("timeline.criadoEm").lt(value.createdAt()),
+                new Criteria().andOperator(
+                        Criteria.where("timeline.criadoEm").is(value.createdAt()),
+                        Criteria.where("id").lt(value.orderId())))));
+        query.with(ORDER_PAGE_SORT).limit(size + 1);
+
+        List<Order> orders = new ArrayList<>(mongoTemplate.find(query, Order.class));
+        boolean hasNext = orders.size() > size;
+        if (hasNext) {
+            orders.remove(orders.size() - 1);
+        }
+        String nextCursor = hasNext ? OrderCursor.encode(orders.get(orders.size() - 1)) : null;
+        return new OrderCursorSlice(orders, nextCursor);
     }
 
     private Order findOrder(String orderId) {

@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -103,5 +104,28 @@ class ReferencePointControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void nearbyRejeitaCoordenadaForaDoDominio() throws Exception {
+        mockMvc.perform(get("/reference-points/nearby")
+                        .param("lat", "91")
+                        .param("lng", "-46.33"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        verifyNoInteractions(referencePointService);
+    }
+
+    @Test
+    void nearbyRejeitaRaioAcimaDoLimite() throws Exception {
+        mockMvc.perform(get("/reference-points/nearby")
+                        .param("lat", "-23.97")
+                        .param("lng", "-46.33")
+                        .param("raioKm", "5.1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        verifyNoInteractions(referencePointService);
     }
 }

@@ -2,6 +2,7 @@ package com.penaareia.config;
 
 import com.penaareia.dto.ErrorResponse;
 import com.penaareia.service.ApiException;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -35,6 +36,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponse> handleApi(ApiException ex) {
         return ResponseEntity.status(ex.getStatus())
                 .body(new ErrorResponse(agora(), ex.getStatus().value(), ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        Map<String, String> campos = new LinkedHashMap<>();
+        ex.getConstraintViolations().forEach(violacao ->
+                campos.put(violacao.getPropertyPath().toString(), violacao.getMessage()));
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse(agora(), 400, "Dados invalidos", campos));
     }
 
     @Override

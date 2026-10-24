@@ -3,6 +3,7 @@ package com.penaareia.controller;
 import com.penaareia.dto.CreateOrderRequest;
 import com.penaareia.dto.ConfirmDeliveryRequest;
 import com.penaareia.dto.ErrorResponse;
+import com.penaareia.dto.OrderCursorSlice;
 import com.penaareia.dto.OrderResponse;
 import com.penaareia.dto.StatusUpdateRequest;
 import com.penaareia.model.Order;
@@ -16,13 +17,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,6 +31,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "Pedidos", description = "Criacao e consulta de pedidos, incluindo pin de localizacao")
 public class OrderController {
 
@@ -37,27 +39,36 @@ public class OrderController {
     private final OrderWorkflowService workflowService;
 
     @GetMapping("/available")
-    @Operation(summary = "Lista pedidos prontos que podem ser aceitos por um entregador")
-    public List<OrderResponse> listarDisponiveis(
+    @Operation(summary = "Lista pedidos prontos que podem ser aceitos por um entregador",
+            description = "Aceita size (1 a 100) e cursor retornado no header X-Next-Cursor.")
+    public ResponseEntity<List<OrderResponse>> listarDisponiveis(
             Authentication authentication,
-            @PageableDefault(size = 50, sort = "timeline.criadoEm", direction = Sort.Direction.DESC)
-            Pageable pageable) {
+            @RequestParam(defaultValue = "50") @Min(1) @Max(100) int size,
+            @RequestParam(required = false) String cursor) {
         requireRole(authentication, "ROLE_COURIER");
-        return workflowService.listarDisponiveis(pageable).stream()
-                .map(OrderResponse::fromEntity)
-                .toList();
+        return cursorResponse(workflowService.listarDisponiveis(size, cursor));
     }
 
     @GetMapping("/courier/active")
-    @Operation(summary = "Lista entregas em rota do entregador autenticado")
-    public List<OrderResponse> listarEmRota(
+    @Operation(summary = "Lista entregas em rota do entregador autenticado",
+            description = "Aceita size (1 a 100) e cursor retornado no header X-Next-Cursor.")
+    public ResponseEntity<List<OrderResponse>> listarEmRota(
             Authentication authentication,
-            @PageableDefault(size = 50, sort = "timeline.criadoEm", direction = Sort.Direction.DESC)
-            Pageable pageable) {
+            @RequestParam(defaultValue = "50") @Min(1) @Max(100) int size,
+            @RequestParam(required = false) String cursor) {
         requireRole(authentication, "ROLE_COURIER");
-        return workflowService.listarEmRota(authentication.getName(), pageable).stream()
+        return cursorResponse(workflowService.listarEmRota(authentication.getName(), size, cursor));
+    }
+
+    private static ResponseEntity<List<OrderResponse>> cursorResponse(OrderCursorSlice slice) {
+        List<OrderResponse> orders = slice.orders().stream()
                 .map(OrderResponse::fromEntity)
                 .toList();
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok();
+        if (slice.nextCursor() != null) {
+            response.header("X-Next-Cursor", slice.nextCursor());
+        }
+        return response.body(orders);
     }
 
     @PostMapping

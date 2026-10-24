@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * Cria o cliente Cloudinary a partir das credenciais configuradas.
  * Sem credenciais o bean ainda sobe (para desenvolvimento/testes); o
- * endpoint de upload responde 503 ate as variaveis serem definidas.
+ * endpoint de upload responde 503 até as variáveis serem definidas.
  */
 @Configuration
 @EnableConfigurationProperties(CloudinaryProperties.class)

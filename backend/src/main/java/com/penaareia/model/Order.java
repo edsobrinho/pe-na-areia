@@ -18,12 +18,10 @@ import java.util.List;
 @AllArgsConstructor
 @Document(collection = "orders")
 @CompoundIndexes({
-        @CompoundIndex(name = "status_created_desc_idx",
-                def = "{'status': 1, 'timeline.criadoEm': -1}"),
-        @CompoundIndex(name = "courier_status_created_desc_idx",
-                def = "{'courierId': 1, 'status': 1, 'timeline.criadoEm': -1}"),
-        @CompoundIndex(name = "user_created_desc_idx",
-                def = "{'userId': 1, 'timeline.criadoEm': -1}")
+        @CompoundIndex(name = "status_created_id_desc_idx",
+                def = "{'status': 1, 'timeline.criadoEm': -1, '_id': -1}"),
+        @CompoundIndex(name = "courier_status_created_id_desc_idx",
+                def = "{'courierId': 1, 'status': 1, 'timeline.criadoEm': -1, '_id': -1}")
 })
 public class Order {
 

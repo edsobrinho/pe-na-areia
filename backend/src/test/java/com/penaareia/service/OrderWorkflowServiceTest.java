@@ -1,24 +1,34 @@
 package com.penaareia.service;
 
 import com.penaareia.dto.ConfirmDeliveryRequest;
+import com.penaareia.dto.OrderCursor;
 import com.penaareia.model.Courier;
 import com.penaareia.model.Order;
 import com.penaareia.model.OrderStatus;
 import com.penaareia.repository.CourierRepository;
 import com.penaareia.repository.OrderRepository;
+import com.mongodb.client.result.UpdateResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,20 +39,23 @@ class OrderWorkflowServiceTest {
     private OrderRepository orderRepository;
     @Mock
     private CourierRepository courierRepository;
+    @Mock
+    private MongoTemplate mongoTemplate;
 
     private OrderWorkflowService service() {
-        return new OrderWorkflowService(orderRepository, courierRepository, 60);
+        return new OrderWorkflowService(orderRepository, courierRepository, mongoTemplate, 60);
     }
 
     @Test
     void courierCanAcceptPreparedOrderAndStartsRoute() {
         Order order = orderAtStatus(OrderStatus.EM_PREPARO);
-        Courier courier = new Courier();
-        courier.setId("courier-1");
-        courier.setStatus(Courier.CourierStatus.DISPONIVEL);
+        Order claimedOrder = orderAtStatus(OrderStatus.A_CAMINHO);
+        claimedOrder.setCourierId("courier-1");
         when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
-        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(courier));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class))).thenReturn(claimedOrder);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
 
         Order updated = service().atualizarStatus(
                 "order-1",
@@ -52,7 +65,59 @@ class OrderWorkflowServiceTest {
 
         assertThat(updated.getCourierId()).isEqualTo("courier-1");
         assertThat(updated.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
-        assertThat(courier.getStatus()).isEqualTo(Courier.CourierStatus.EM_ROTA);
+        ArgumentCaptor<Query> orderQuery = ArgumentCaptor.forClass(Query.class);
+        verify(mongoTemplate).findAndModify(orderQuery.capture(), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class));
+        assertThat(orderQuery.getValue().getQueryObject())
+                .containsEntry("id", "order-1")
+                .containsEntry("status", OrderStatus.EM_PREPARO)
+                .containsEntry("courierId", null);
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
+    @Test
+    void concurrentCourierClaimFailureDoesNotUpdateOrder() {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class))).thenReturn(null);
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1",
+                OrderStatus.A_CAMINHO,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("aceito por outro");
+
+        verify(mongoTemplate, never()).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
+    @Test
+    void unavailableCourierCannotKeepClaimedOrder() {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        Order claimedOrder = orderAtStatus(OrderStatus.A_CAMINHO);
+        claimedOrder.setCourierId("courier-1");
+        Courier courier = new Courier();
+        courier.setId("courier-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class))).thenReturn(claimedOrder);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null));
+        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(courier));
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1",
+                OrderStatus.A_CAMINHO,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("disponível");
+
+        verify(mongoTemplate).findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class));
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
     }
 
     @Test
@@ -60,10 +125,7 @@ class OrderWorkflowServiceTest {
         Order order = orderAtStatus(OrderStatus.A_CAMINHO);
         order.setCourierId("courier-1");
         order.setPinCliente(new GeoJsonPoint(-46.328, -23.972));
-        Courier courier = new Courier();
-        courier.setId("courier-1");
         when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
-        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(courier));
 
         assertThatThrownBy(() -> service().confirmarEntrega(
                 "order-1",
@@ -74,6 +136,8 @@ class OrderWorkflowServiceTest {
                 .hasMessageContaining("Aproxime-se");
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
+        verify(mongoTemplate, never()).findAndModify(
+                any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Order.class));
     }
 
     @Test
@@ -81,12 +145,13 @@ class OrderWorkflowServiceTest {
         Order order = orderAtStatus(OrderStatus.A_CAMINHO);
         order.setCourierId("courier-1");
         order.setPinCliente(new GeoJsonPoint(-46.328, -23.972));
-        Courier courier = new Courier();
-        courier.setId("courier-1");
-        courier.setStatus(Courier.CourierStatus.EM_ROTA);
+        Order deliveredOrder = orderAtStatus(OrderStatus.ENTREGUE);
+        deliveredOrder.setCourierId("courier-1");
         when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
-        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(courier));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class))).thenReturn(deliveredOrder);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
 
         Order delivered = service().confirmarEntrega(
                 "order-1",
@@ -95,8 +160,56 @@ class OrderWorkflowServiceTest {
                 "courier-1");
 
         assertThat(delivered.getStatus()).isEqualTo(OrderStatus.ENTREGUE);
-        assertThat(courier.getStatus()).isEqualTo(Courier.CourierStatus.DISPONIVEL);
-        verify(courierRepository).save(courier);
+        verify(mongoTemplate).findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class));
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
+    @Test
+    void cursorListFetchesOneExtraItemAndReturnsCursorForNextSlice() {
+        Order first = orderWithDate("order-3", Instant.parse("2026-10-22T10:00:00Z"));
+        Order second = orderWithDate("order-2", Instant.parse("2026-10-22T09:00:00Z"));
+        Order extra = orderWithDate("order-1", Instant.parse("2026-10-22T08:00:00Z"));
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of(first, second, extra));
+
+        var slice = service().listarDisponiveis(2, null);
+
+        assertThat(slice.orders()).containsExactly(first, second);
+        assertThat(slice.nextCursor()).isEqualTo(OrderCursor.encode(second));
+        ArgumentCaptor<Query> query = ArgumentCaptor.forClass(Query.class);
+        verify(mongoTemplate).find(query.capture(), eq(Order.class));
+        assertThat(query.getValue().getLimit()).isEqualTo(3);
+        assertThat(query.getValue().getSortObject()).containsEntry("timeline.criadoEm", -1);
+        assertThat(query.getValue().getSortObject()).containsEntry("id", -1);
+    }
+
+    @Test
+    void cursorIsAppliedAsSeekCriteria() {
+        Order lastOrder = orderWithDate("order-2", Instant.parse("2026-10-22T09:00:00Z"));
+        String cursor = OrderCursor.encode(lastOrder);
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of());
+
+        service().listarDisponiveis(50, cursor);
+
+        ArgumentCaptor<Query> query = ArgumentCaptor.forClass(Query.class);
+        verify(mongoTemplate).find(query.capture(), eq(Order.class));
+        assertThat(query.getValue().getQueryObject()).containsKey("$or");
+    }
+
+    @Test
+    void invalidPageSizeIsRejectedBeforeQuery() {
+        assertThatThrownBy(() -> service().listarDisponiveis(101, null))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("entre 1 e 100");
+        verify(mongoTemplate, never()).find(any(Query.class), eq(Order.class));
+    }
+
+    @Test
+    void invalidCursorIsRejectedBeforeQuery() {
+        assertThatThrownBy(() -> service().listarDisponiveis(50, "not-a-valid-cursor"))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("Cursor");
+        verify(mongoTemplate, never()).find(any(Query.class), eq(Order.class));
     }
 
     private static Order orderAtStatus(OrderStatus status) {
@@ -104,6 +217,13 @@ class OrderWorkflowServiceTest {
         order.setId("order-1");
         order.setUserId("client-1");
         order.transitionTo(status);
+        return order;
+    }
+
+    private static Order orderWithDate(String id, Instant createdAt) {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        order.setId(id);
+        order.getTimeline().setCriadoEm(createdAt);
         return order;
     }
 }

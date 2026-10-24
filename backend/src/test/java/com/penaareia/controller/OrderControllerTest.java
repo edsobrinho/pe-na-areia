@@ -10,13 +10,11 @@ import com.penaareia.service.OrderWorkflowService;
 import com.penaareia.service.ResourceNotFoundException;
 import com.penaareia.support.Fixtures;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -66,39 +64,48 @@ class OrderControllerTest {
         return objectMapper.writeValueAsString(Fixtures.requestValido());
     }
 
-    private MockHttpServletRequestBuilder post(String path) {
+    private MockHttpServletRequestBuilder post() {
         return org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .post(path)
+                .post("/orders")
                 .with(csrf());
     }
 
     @Test
     @WithMockUser(username = "courier-1", roles = "COURIER")
     void pedidosDisponiveisUsaPaginaPadraoLimitada() throws Exception {
-        when(workflowService.listarDisponiveis(any(Pageable.class))).thenReturn(List.of());
+        when(workflowService.listarDisponiveis(50, null))
+                .thenReturn(new com.penaareia.dto.OrderCursorSlice(List.of(), null));
 
         mockMvc.perform(get("/orders/available"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
 
-        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(workflowService).listarDisponiveis(pageable.capture());
-        assertThat(pageable.getValue().getPageNumber()).isZero();
-        assertThat(pageable.getValue().getPageSize()).isEqualTo(50);
+        verify(workflowService).listarDisponiveis(50, null);
     }
 
     @Test
     @WithMockUser(username = "courier-1", roles = "COURIER")
-    void pedidosDisponiveisLimitaTamanhoSolicitado() throws Exception {
-        when(workflowService.listarDisponiveis(any(Pageable.class))).thenReturn(List.of());
+    void pedidosDisponiveisEncaminhaTamanhoECursorEDevolveProximoCursor() throws Exception {
+        String cursor = "cursor-atual";
+        when(workflowService.listarDisponiveis(80, cursor))
+                .thenReturn(new com.penaareia.dto.OrderCursorSlice(List.of(), "cursor-seguinte"));
 
-        mockMvc.perform(get("/orders/available").param("page", "2").param("size", "500"))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/orders/available")
+                        .param("size", "80")
+                        .param("cursor", cursor))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("X-Next-Cursor", "cursor-seguinte"));
 
-        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(workflowService).listarDisponiveis(pageable.capture());
-        assertThat(pageable.getValue().getPageNumber()).isEqualTo(2);
-        assertThat(pageable.getValue().getPageSize()).isEqualTo(100);
+        verify(workflowService).listarDisponiveis(80, cursor);
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void pedidosDisponiveisRejeitaTamanhoAcimaDoLimite() throws Exception {
+        mockMvc.perform(get("/orders/available").param("size", "101"))
+                .andExpect(status().isBadRequest());
+        verify(workflowService, never()).listarDisponiveis(any(Integer.class), any());
     }
 
     // --- 201 e contrato de resposta ---
@@ -107,7 +114,7 @@ class OrderControllerTest {
     void criaPedidoRetorna201ComContratoCompleto() throws Exception {
         when(orderService.criarPedido(any(CreateOrderRequest.class))).thenReturn(Fixtures.orderEntity());
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonValido()))
                 .andExpect(status().isCreated())
@@ -171,7 +178,7 @@ class OrderControllerTest {
         CreateOrderRequest request = Fixtures.requestValido();
         request.getItens().get(0).setQuantidade(0);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -186,7 +193,7 @@ class OrderControllerTest {
         CreateOrderRequest request = Fixtures.requestValido();
         request.getItens().get(0).setQuantidade(null);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -208,7 +215,7 @@ class OrderControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonComItemNulo))
                 .andExpect(status().isBadRequest())
@@ -224,7 +231,7 @@ class OrderControllerTest {
         CreateOrderRequest request = Fixtures.requestValido();
         request.setDescricaoLocal("x".repeat(141));
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -237,7 +244,7 @@ class OrderControllerTest {
         CreateOrderRequest request = Fixtures.requestValido();
         request.getPinCliente().setLatitude(91.0);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -250,7 +257,7 @@ class OrderControllerTest {
         CreateOrderRequest request = Fixtures.requestValido();
         request.getPinCliente().setLongitude(-180.5);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -262,7 +269,7 @@ class OrderControllerTest {
     void formaPagamentoInvalidaRetorna400Padronizado() throws Exception {
         String jsonInvalido = jsonValido().replace("\"PIX\"", "\"BOLETO\"");
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonInvalido))
                 .andExpect(status().isBadRequest())
@@ -277,7 +284,7 @@ class OrderControllerTest {
         when(orderService.criarPedido(any(CreateOrderRequest.class)))
                 .thenThrow(new ResourceNotFoundException("Usuario nao encontrado: u1"));
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonValido()))
                 .andExpect(status().isNotFound())
@@ -290,7 +297,7 @@ class OrderControllerTest {
         when(orderService.criarPedido(any(CreateOrderRequest.class)))
                 .thenThrow(new BusinessRuleException("Quiosque inativo: k1"));
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonValido()))
                 .andExpect(status().isUnprocessableEntity())
@@ -303,7 +310,7 @@ class OrderControllerTest {
         when(orderService.criarPedido(any(CreateOrderRequest.class)))
                 .thenThrow(new BusinessRuleException("Item indisponivel no cardapio: m3"));
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post()
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonValido()))
                 .andExpect(status().isUnprocessableEntity())
