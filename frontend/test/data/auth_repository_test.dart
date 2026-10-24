@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pe_na_areia/data/auth/token_storage.dart';
 import 'package:pe_na_areia/data/http/api_client.dart';
+import 'package:pe_na_areia/data/http/api_exception.dart';
 import 'package:pe_na_areia/data/repositories/auth_repository.dart';
 import 'package:pe_na_areia/domain/models/auth_session.dart';
 
@@ -97,5 +98,66 @@ void main() {
       'vehicle': 'PE',
     });
     expect(session.isCourier, isTrue);
+  });
+
+  test('resposta de autenticação inválida vira erro de parsing tipado',
+      () async {
+    final repository = AuthRepository(
+      ApiClient(
+        baseUrl: 'http://api.test',
+        httpClient:
+            MockClient((_) async => http.Response('{"token": 12}', 200)),
+      ),
+      _MemorySessionStorage(),
+    );
+
+    await expectLater(
+      repository.login(email: 'ana@example.com', password: 'secret1'),
+      throwsA(
+        isA<ApiParsingException>()
+            .having((error) => error.uri.path, 'path', '/auth/login')
+            .having((error) => error.cause, 'cause', isA<FormatException>()),
+      ),
+    );
+  });
+
+  test('currentSession devolve a sessão armazenada', () async {
+    const session = AuthSession(
+      token: 'jwt',
+      userId: 'client-1',
+      name: 'Ana',
+      role: 'CLIENT',
+    );
+    final storage = _MemorySessionStorage()..session = session;
+    final repository = AuthRepository(
+      ApiClient(
+        baseUrl: 'http://api.test',
+        httpClient: MockClient((_) async => http.Response('{}', 200)),
+      ),
+      storage,
+    );
+
+    expect(await repository.currentSession(), session);
+  });
+
+  test('logout limpa a sessão armazenada', () async {
+    final storage = _MemorySessionStorage()
+      ..session = const AuthSession(
+        token: 'jwt',
+        userId: 'client-1',
+        name: 'Ana',
+        role: 'CLIENT',
+      );
+    final repository = AuthRepository(
+      ApiClient(
+        baseUrl: 'http://api.test',
+        httpClient: MockClient((_) async => http.Response('{}', 200)),
+      ),
+      storage,
+    );
+
+    await repository.logout();
+
+    expect(storage.session, isNull);
   });
 }

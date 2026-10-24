@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pe_na_areia/domain/geo.dart';
+import 'package:pe_na_areia/domain/models/auth_session.dart';
 import 'package:pe_na_areia/domain/models/courier.dart';
 import 'package:pe_na_areia/domain/models/geo_point.dart';
 import 'package:pe_na_areia/domain/models/order.dart';
@@ -9,6 +10,35 @@ import 'package:pe_na_areia/domain/models/order_status.dart';
 import 'package:pe_na_areia/domain/models/payment_method.dart';
 
 void main() {
+  group('AuthSession', () {
+    test('serializa e valida os dados de autenticação', () {
+      const session = AuthSession(
+        token: 'jwt',
+        userId: 'user-1',
+        name: 'Ana',
+        role: 'COURIER',
+      );
+
+      expect(AuthSession.fromJson(session.toJson()).isCourier, isTrue);
+    });
+
+    test('rejeita campos ausentes ou com tipo inválido', () {
+      expect(
+        () => AuthSession.fromJson({'token': 'jwt'}),
+        throwsFormatException,
+      );
+      expect(
+        () => AuthSession.fromJson({
+          'token': 'jwt',
+          'userId': 1,
+          'name': 'Ana',
+          'role': 'CLIENT',
+        }),
+        throwsFormatException,
+      );
+    });
+  });
+
   group('GeoPoint', () {
     test('e imutavel e expoe latitude/longitude', () {
       const ponto = GeoPoint(latitude: -23.9722, longitude: -46.3280);
@@ -66,7 +96,8 @@ void main() {
       expect(OrderStatus.fromWire('PAGO'), OrderStatus.pago);
       expect(OrderStatus.fromWire('EM_PREPARO'), OrderStatus.emPreparo);
       expect(OrderStatus.fromWire('A_CAMINHO'), OrderStatus.aCaminho);
-      expect(OrderStatus.fromWire('CHEGOU_NO_LOCAL'), OrderStatus.chegouNoLocal);
+      expect(
+          OrderStatus.fromWire('CHEGOU_NO_LOCAL'), OrderStatus.chegouNoLocal);
       expect(OrderStatus.fromWire('ENTREGUE'), OrderStatus.entregue);
       expect(OrderStatus.fromWire('CANCELADO'), OrderStatus.cancelado);
     });
