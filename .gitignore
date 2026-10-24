@@ -1,0 +1,16 @@
+# Build and compiler output
+.gradle/
+**/build/
+**/bin/
+**/target/
+**/out/
+*.class
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*~
+.DS_Store
+Thumbs.db
