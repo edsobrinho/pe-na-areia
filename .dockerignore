@@ -1,4 +1,6 @@
 .git
+.env
+**/.gradle
 **/target
 frontend
 **/.dart_tool

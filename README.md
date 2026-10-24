@@ -55,7 +55,7 @@ pe-na-areia/
 
 ### Migração do backend para Java 21
 
-- O backend usa toolchain Java 21 e Gradle Wrapper 8.10.2 (`backend/gradlew`
+- O backend usa toolchain Java 21 e Gradle Wrapper 9.7.1 (`backend/gradlew`
   ou `backend/gradlew.bat`); o build de contêiner também compila e executa com
   Java 21.
 - Virtual threads estão habilitadas por `spring.threads.virtual.enabled`.
@@ -83,54 +83,70 @@ pe-na-areia/
 
 ## Backend e infraestrutura local
 
-Requisitos: Docker com Docker Compose. Para executar a API diretamente no host,
-instale Java 21; o Gradle Wrapper incluído no backend fornece o build.
-
-Na raiz do projeto, inicie o MongoDB e a API:
+Requisitos: Docker com Docker Compose v2. Os comandos abaixo devem ser
+executados na raiz do repositório. Copie o exemplo de configuração apenas se
+ainda não existir um `.env` local. O Compose sobe o MongoDB como replica set de
+nó único e só inicia a API depois que o banco estiver saudável:
 
 ```powershell
-docker compose -f infrastructure/docker-compose.yml up --build
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+docker compose --env-file .env -f infrastructure/docker-compose.yml up --build -d
 ```
 
-O MongoDB local é iniciado como replica set de nó único (`rs0`) para suportar
-transações entre pedidos e entregadores. A API fica disponivel em
-`http://localhost:8080` e o MongoDB em
-`mongodb://localhost:27017/pe_na_areia?replicaSet=rs0`. Os dados persistem no
-volume Docker `pe-na-areia-mongodb-data`. Para encerrar os servicos, use
-`docker compose -f infrastructure/docker-compose.yml down`; para apagar tambem
-os dados locais do banco, acrescente `-v`.
+O arquivo `.env` é local e ignorado pelo Git. O valor de `JWT_SECRET` do
+exemplo é apenas para desenvolvimento; substitua-o por um segredo forte de pelo
+menos 32 caracteres antes de usar em qualquer ambiente compartilhado. As
+variáveis `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` e
+`CLOUDINARY_API_SECRET` são opcionais para iniciar a API, mas necessárias para
+uploads de fotos; sem elas, esse endpoint responde com serviço indisponível.
 
-Para outros ambientes, configure `MONGODB_URI` para um replica set ou cluster
-compatível com transações.
-Em bancos já existentes, crie os novos índices de paginação com `_id` e remova,
-após confirmar que os novos foram criados, os índices antigos
-`status_created_desc_idx` e `courier_status_created_desc_idx` da coleção
-`orders`.
-
-O segredo JWT padrao do Compose e apenas para desenvolvimento local; defina a
-variavel `JWT_SECRET` com pelo menos 32 caracteres antes de usar outro ambiente.
-As variaveis `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` e
-`CLOUDINARY_API_SECRET` sao necessarias para upload de fotos; sem elas, o
-endpoint responde com servico indisponivel. O seed dos postos de salvamento e
-executado automaticamente quando a API inicia.
-
-Alternativamente, rode apenas o banco e inicie a API no host:
+Confira o estado dos serviços e os logs:
 
 ```powershell
-docker compose -f infrastructure/docker-compose.yml up -d mongodb
+docker compose --env-file .env -f infrastructure/docker-compose.yml ps
+docker compose --env-file .env -f infrastructure/docker-compose.yml logs -f backend
+```
+
+Após a inicialização, a API fica disponível em `http://localhost:8080`, a
+documentação em `http://localhost:8080/docs` e o MongoDB em
+`mongodb://localhost:27017/pe_na_areia?replicaSet=rs0`. Os dados persistem no
+volume Docker `pe-na-areia-mongodb-data`. O seed dos postos de salvamento é
+executado automaticamente na inicialização.
+
+```powershell
+docker compose --env-file .env -f infrastructure/docker-compose.yml down
+```
+
+O comando `down` mantém os dados do banco; para removê-los também, use
+`docker compose --env-file .env -f infrastructure/docker-compose.yml down -v`.
+
+Para desenvolvimento sem Docker, instale Java 21. No PowerShell:
+
+```powershell
 Set-Location backend
 .\gradlew.bat bootRun
 ```
 
-O backend local usa
-`mongodb://localhost:27017/pe_na_areia?replicaSet=rs0&directConnection=true` por
-padrão; `directConnection=true` evita usar o nome interno do membro do Compose
-quando a API roda diretamente no host. Para outro banco, configure `MONGODB_URI`
-e opcionalmente `MONGODB_DATABASE`.
+No host, o backend usa por padrão
+`mongodb://localhost:27017/pe_na_areia?replicaSet=rs0&directConnection=true`.
+Para iniciar somente o MongoDB pelo Compose antes do `bootRun`, execute na raiz
+do repositório:
+
+```powershell
+docker compose --env-file .env -f infrastructure/docker-compose.yml up -d mongodb
+```
+O Gradle Wrapper do backend e o wrapper Android do frontend usam Gradle 9.7.1.
+
+Para outros ambientes, configure `MONGODB_URI` para um replica set ou cluster
+compatível com transações. Em bancos já existentes, crie os novos índices de
+paginação com `_id` e remova, após confirmar que os novos foram criados, os
+índices antigos `status_created_desc_idx` e
+`courier_status_created_desc_idx` da coleção `orders`.
 
 Para rodar os testes:
 
 ```powershell
+Set-Location backend
 .\gradlew.bat test
 ```
 

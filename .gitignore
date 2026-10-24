@@ -11,6 +11,7 @@
 *.tmp
 *.temp
 *.swp
+.env
 
 *~
 .DS_Store
