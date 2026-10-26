@@ -19,10 +19,12 @@ public class OrderResponse {
     private String id;
     private String userId;
     private String kioskId;
+    private String partnershipId;
     /** Nulo ate um entregador aceitar o pedido */
     private String courierId;
     private List<Order.OrderItem> itens;
     private BigDecimal valorTotal;
+    private Order.PricingSnapshot pricingSnapshot;
     private boolean embalagemSustentavel;
     private PaymentMethod formaPagamento;
     private boolean pago;
@@ -39,9 +41,11 @@ public class OrderResponse {
                 order.getId(),
                 order.getUserId(),
                 order.getKioskId(),
+                order.getPartnershipId(),
                 order.getCourierId(),
                 order.getItens(),
                 order.getValorTotal(),
+                order.getPricingSnapshot(),
                 order.isEmbalagemSustentavel(),
                 order.getFormaPagamento(),
                 order.isPago(),

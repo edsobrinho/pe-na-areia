@@ -3,7 +3,8 @@
 Aplicativo de pedidos e entregas para a orla de Santos. O cliente escolhe itens
 de quiosques parceiros e marca no mapa o ponto exato da praia onde deseja
 receber o pedido; o entregador consulta esse destino e confirma a entrega por
-GPS. Este repositório reúne o app Flutter, a API Java e a infraestrutura local.
+GPS. Este repositório reúne o app Flutter, o portal web React, a API Java e a
+infraestrutura local.
 
 Leia o [PRD do Pé na Areia](PRD.md) para conhecer o problema, os usuários,
 requisitos, regras de negócio, critérios de aceite e evolução planejada do
@@ -15,6 +16,7 @@ produto.
 pe-na-areia/
 ├── backend/         Java 21, Spring Boot, MongoDB, JWT e Cloudinary
 ├── frontend/        Flutter para Android e iOS
+├── web/             React 19, TypeScript e Vite para clientes e quiosques
 └── infrastructure/ Docker Compose e imagem local do backend
 ```
 
@@ -25,8 +27,8 @@ pe-na-areia/
 - Criar conta e entrar como cliente; a sessão JWT é guardada com segurança no
   dispositivo e usada nas chamadas autenticadas.
 - Consultar quiosques parceiros e seus cardápios, escolher itens e quantidades,
-  selecionar PIX ou cartão como forma informada e optar por embalagem
-  sustentável quando disponível.
+  selecionar um canal de venda, informar PIX ou cartão como forma registrada e
+  optar por embalagem sustentável quando disponível.
 - Escolher o ponto de entrega em um mapa Google Maps interativo: tocar no mapa
   ou arrastar o marcador vermelho, consultar postos de referência próximos,
   informar uma descrição e, opcionalmente, anexar uma foto do local.
@@ -45,6 +47,11 @@ pe-na-areia/
 
 - O backend calcula o total usando os preços cadastrados no cardápio e valida
   quiosque, usuário, itens, posto de referência e localização.
+- Os canais de venda têm ofertas e regras próprias por quiosque; o backend
+  valida elegibilidade, horários, pedido mínimo e limite de unidades e grava
+  um snapshot imutável da configuração e dos valores no pedido.
+- Comissões e taxas são calculadas e registradas para cada pedido, mas não há
+  cobrança ou repasse real nesta versão.
 - O backend requer Java 21 e habilita virtual threads suportadas pelo Spring
   Boot para o processamento bloqueante das requisições.
 - O pin deve estar a até 500 m do posto de referência escolhido.
@@ -171,18 +178,54 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 `10.0.2.2` aponta para o computador host no emulador Android. No simulador iOS
 ou em um dispositivo físico, use o endereço acessível do servidor.
 
+### Portal web
+
+O portal React atende clientes e operadores de quiosque sem substituir o app
+Flutter. Requer Node.js compatível com Vite. Copie `web/.env.example` para
+`web/.env.local`, configure a URL da API e uma chave restrita do Google Maps
+JavaScript API, e então execute:
+
+```powershell
+Set-Location web
+npm.cmd install
+npm.cmd run dev
+```
+
+O portal fica em `http://localhost:5173`. Sem `VITE_GOOGLE_MAPS_API_KEY`, o
+catálogo e a administração continuam disponíveis, mas o checkout web fica
+desabilitado porque não é possível confirmar o pin. Restrinja a chave do Maps
+por referenciador HTTP e habilite a Maps JavaScript API; não versione chaves
+reais.
+
+Clientes podem criar a própria conta. Contas de operador não são criadas pelo
+cadastro público: um administrador autenticado associa uma conta existente a
+um quiosque. Para preparar o primeiro administrador, crie uma conta CLIENT e
+altere seu campo `role` para `ADMIN` por um processo confiável de administração
+do MongoDB; depois, entre novamente para receber um JWT com esse perfil. O
+administrador pode criar canais e atribuir operadores pela área
+**Administração**. Configure `APP_CORS_ORIGINS` com a lista separada por vírgula
+dos domínios web permitidos em cada ambiente.
+
 ## Endpoints
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
 | POST | `/auth/register` | Público | Cadastra CLIENT ou COURIER e retorna JWT |
 | POST | `/auth/login` | Público | Autentica e retorna JWT |
+| GET | `/partnerships` | Público | Lista canais de venda ativos |
 | GET | `/reference-points` | Público | Lista os postos ativos |
 | GET | `/reference-points/nearby?lat=&lng=&raioKm=` | Público | Sugere postos próximos (lat -90..90, lng -180..180, raio 0.1..5 km) |
-| GET | `/kiosks` | Público | Lista quiosques, cardápios e itens |
+| GET | `/kiosks?partnershipId=` | Público | Lista quiosques e produtos elegíveis no canal |
+| GET | `/kiosks/{id}/partnerships` | Público | Lista ofertas, taxas e restrições por quiosque |
+| GET | `/kiosk/me/partnerships` | KIOSK_OPERATOR | Lista configurações do quiosque associado |
+| PUT | `/kiosk/me/partnerships/{partnershipId}` | KIOSK_OPERATOR | Atualiza produtos, filtros, taxas e restrições |
+| POST | `/kiosk/me/partnerships/{partnershipId}/preview` | KIOSK_OPERATOR | Calcula uma prévia sem criar pedido |
+| POST | `/admin/partnerships` | ADMIN | Cria canal de venda |
+| PUT | `/admin/partnerships/{partnershipId}` | ADMIN | Ativa ou pausa canal global |
+| PATCH | `/admin/kiosk-operators` | ADMIN | Associa conta existente a um quiosque |
 | GET | `/orders/available?size=50&cursor=` | COURIER | Lista pedidos prontos; usa `X-Next-Cursor` para buscar a próxima página (máximo 100) |
 | GET | `/orders/courier/active?size=50&cursor=` | COURIER | Lista entregas em rota; usa `X-Next-Cursor` para buscar a próxima página (máximo 100) |
-| POST | `/orders` | CLIENT | Cria pedido com preço calculado pelo servidor |
+| POST | `/orders` | CLIENT | Exige `partnershipId`; valida oferta e grava snapshot/preços no servidor |
 | GET | `/orders/{id}` | Dono ou entregador atribuído | Consulta o pedido |
 | PATCH | `/orders/{id}/status` | Dono ou COURIER atribuído | Avança o status conforme as regras |
 | POST | `/orders/{id}/confirm-delivery` | COURIER atribuído | Confirma a entrega dentro do raio GPS |

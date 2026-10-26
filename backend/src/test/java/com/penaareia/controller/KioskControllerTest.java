@@ -3,6 +3,7 @@ package com.penaareia.controller;
 import com.penaareia.config.JacksonConfig;
 import com.penaareia.model.Kiosk;
 import com.penaareia.service.KioskService;
+import com.penaareia.service.PartnershipService;
 import com.penaareia.security.JwtService;
 import com.penaareia.support.Fixtures;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,8 @@ class KioskControllerTest {
 
     @MockBean
     private KioskService kioskService;
+    @MockBean
+    private PartnershipService partnershipService;
     @MockBean
     private JwtService jwtService;
 

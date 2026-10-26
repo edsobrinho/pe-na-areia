@@ -2,6 +2,7 @@ package com.penaareia.service;
 
 import com.penaareia.dto.CreateOrderRequest;
 import com.penaareia.model.Kiosk;
+import com.penaareia.model.KioskPartnership;
 import com.penaareia.model.Order;
 import com.penaareia.model.ReferencePoint;
 import com.penaareia.model.User;
@@ -14,7 +15,6 @@ import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,6 +29,8 @@ public class OrderService {
     private final UserRepository userRepository;
     private final KioskRepository kioskRepository;
     private final ReferencePointRepository referencePointRepository;
+    private final PartnershipPricingService pricingService;
+    private final PartnershipService partnershipService;
 
     /**
      * Cria um pedido com validacao em cascata:
@@ -49,7 +51,6 @@ public class OrderService {
         if (!kiosk.isAtivo()) {
             throw new BusinessRuleException("Quiosque inativo: " + request.getKioskId());
         }
-
         ReferencePoint posto = referencePointRepository.findById(request.getPontoReferenciaId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Posto de referencia nao encontrado: " + request.getPontoReferenciaId()));
@@ -71,9 +72,23 @@ public class OrderService {
             throw new BusinessRuleException("O pin deve estar a no máximo 500 m do posto de referência.");
         }
 
+        KioskPartnership configuration = partnershipService.activeConfiguration(
+                kiosk.getId(), request.getPartnershipId());
+        if (!partnershipService.isWithinAcceptanceWindow(configuration)) {
+            throw new BusinessRuleException("A parceria está fora do horário de atendimento.");
+        }
+
         Map<String, Kiosk.MenuItem> cardapioPorId = (kiosk.getCardapio() == null ? List.<Kiosk.MenuItem>of()
                 : kiosk.getCardapio()).stream()
                 .collect(Collectors.toMap(Kiosk.MenuItem::getId, item -> item, (a, b) -> a));
+
+        long itemCount = request.getItens().stream()
+                .filter(java.util.Objects::nonNull)
+                .mapToLong(item -> item.getQuantidade() == null ? 0L : item.getQuantidade())
+                .sum();
+        if (itemCount > configuration.getMaxItemsPerOrder()) {
+            throw new BusinessRuleException("O pedido excede o máximo de itens permitido nesta parceria.");
+        }
 
         List<Order.OrderItem> itens = request.getItens().stream()
                 .map(itemReq -> {
@@ -94,25 +109,37 @@ public class OrderService {
                         throw new BusinessRuleException(
                                 "Item indisponivel no cardapio: " + itemReq.getMenuItemId());
                     }
+                    if (!partnershipService.isEligible(configuration, menuItem)) {
+                        throw new BusinessRuleException(
+                                "Item não disponível nesta parceria: " + itemReq.getMenuItemId());
+                    }
                     return new Order.OrderItem(
                             menuItem.getId(),
                             menuItem.getNome(),
                             quantidade,
-                            menuItem.getPreco()
+                            PartnershipPricingService.money(menuItem.getPreco()),
+                            menuItem.getCategory(),
+                            menuItem.isReturnablePackaging()
                     );
                 })
                 .toList();
 
-        BigDecimal valorTotal = itens.stream()
+        BigDecimal subtotal = itens.stream()
                 .map(item -> item.getPrecoUnitario().multiply(BigDecimal.valueOf(item.getQuantidade())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        subtotal = PartnershipPricingService.money(subtotal);
+        Order.PricingSnapshot pricingSnapshot = pricingService.calculate(subtotal, configuration);
+        if (pricingSnapshot.subtotal().compareTo(configuration.getMinimumOrder()) < 0) {
+            throw new BusinessRuleException("O subtotal do pedido está abaixo do mínimo desta parceria.");
+        }
 
         Order order = new Order();
         order.setUserId(usuario.getId());
         order.setKioskId(kiosk.getId());
+        order.setPartnershipId(configuration.getPartnershipId());
         order.setItens(itens);
-        order.setValorTotal(valorTotal);
+        order.setValorTotal(pricingSnapshot.customerTotal());
+        order.setPricingSnapshot(pricingSnapshot);
         order.setFormaPagamento(request.getFormaPagamento());
         order.setEmbalagemSustentavel(request.isEmbalagemSustentavel());
 

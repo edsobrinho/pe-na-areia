@@ -8,6 +8,8 @@ class MenuItem {
     this.descricao = '',
     required this.preco,
     this.disponivel = true,
+    this.category = 'Outros',
+    this.returnablePackaging = false,
   });
 
   final String id;
@@ -15,6 +17,8 @@ class MenuItem {
   final String descricao;
   final double preco;
   final bool disponivel;
+  final String category;
+  final bool returnablePackaging;
 }
 
 /// Quiosque/restaurante parceiro da orla.

@@ -1,4 +1,5 @@
 import '../../domain/models/kiosk.dart';
+import '../../domain/models/partnership.dart';
 import '../http/api_client.dart';
 import '../mappers/json_helpers.dart';
 import '../mappers/kiosk_mapper.dart';
@@ -11,10 +12,21 @@ class CatalogRepository {
 
   static const String _basePath = '/kiosks';
 
+  /// Lista os canais ativos (`GET /partnerships`).
+  Future<List<Partnership>> fetchPartnerships() async {
+    const path = '/partnerships';
+    final uri = _apiClient.resolve(path);
+    final data = await _apiClient.getJsonList(path);
+    return mapJsonObjectList(data, Partnership.fromJson, uri);
+  }
+
   /// Lista todos os quiosques ativos (`GET /kiosks`).
-  Future<List<Kiosk>> fetchKiosks() async {
-    final uri = _apiClient.resolve(_basePath);
-    final data = await _apiClient.getJsonList(_basePath);
+  Future<List<Kiosk>> fetchKiosks({String? partnershipId}) async {
+    final path = partnershipId == null
+        ? _basePath
+        : '$_basePath?partnershipId=${Uri.encodeQueryComponent(partnershipId)}';
+    final uri = _apiClient.resolve(path);
+    final data = await _apiClient.getJsonList(path);
     return mapJsonObjectList(data, KioskMapper.fromJson, uri);
   }
 

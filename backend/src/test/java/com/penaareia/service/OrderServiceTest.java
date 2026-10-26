@@ -1,6 +1,8 @@
 package com.penaareia.service;
 
 import com.penaareia.dto.CreateOrderRequest;
+import com.penaareia.model.Kiosk;
+import com.penaareia.model.KioskPartnership;
 import com.penaareia.model.Order;
 import com.penaareia.repository.KioskRepository;
 import com.penaareia.repository.OrderRepository;
@@ -14,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -41,15 +46,44 @@ class OrderServiceTest {
     @Mock
     private KioskRepository kioskRepository;
     @Mock
+    private PartnershipPricingService pricingService;
+    @Mock
+    private PartnershipService partnershipService;
+    @Mock
     private ReferencePointRepository referencePointRepository;
 
     @InjectMocks
     private OrderService service;
 
     private void stubFluxoValido() {
+        stubFluxoValido(configurationValida());
+    }
+
+    private void stubFluxoValido(KioskPartnership configuration) {
         when(userRepository.findById(Fixtures.USER_ID)).thenReturn(Optional.of(Fixtures.usuarioAtivo()));
         when(kioskRepository.findById(Fixtures.KIOSK_ID)).thenReturn(Optional.of(Fixtures.kioskAtivo()));
         when(referencePointRepository.findById(Fixtures.POSTO_ID)).thenReturn(Optional.of(Fixtures.postoAtivo()));
+        lenient().when(partnershipService.activeConfiguration(Fixtures.KIOSK_ID, "p1")).thenReturn(configuration);
+        lenient().when(partnershipService.isWithinAcceptanceWindow(configuration)).thenReturn(true);
+        lenient().when(partnershipService.isEligible(
+                        org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(true);
+        lenient().when(pricingService.calculate(any(BigDecimal.class), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> new PartnershipPricingService().calculate(
+                        invocation.getArgument(0), invocation.getArgument(1)));
+    }
+
+    private KioskPartnership configurationValida() {
+        KioskPartnership configuration = new KioskPartnership();
+        configuration.setKioskId(Fixtures.KIOSK_ID);
+        configuration.setPartnershipId("p1");
+        configuration.setActive(true);
+        configuration.setProductIds(new ArrayList<>(List.of(
+                Fixtures.MENU_ITEM_DISPONIVEL, Fixtures.MENU_ITEM_BARATO, Fixtures.MENU_ITEM_INDISPONIVEL)));
+        configuration.setMaxItemsPerOrder(50);
+        configuration.setAcceptFrom(LocalTime.MIN);
+        configuration.setAcceptUntil(LocalTime.MIN);
+        return configuration;
     }
 
     private void stubSave() {
@@ -91,6 +125,90 @@ class OrderServiceTest {
         assertThat(pedido.getTimeline().getEmPreparoEm()).isNotNull();
 
         verify(orderRepository).save(any(Order.class));
+    }
+
+    @Test
+    void criaSnapshotDeTaxasECalculaTotalDoClienteNoServidor() {
+        KioskPartnership configuration = configurationValida();
+        configuration.setCommissionPercent(new BigDecimal("10"));
+        configuration.setDeliveryFee(new BigDecimal("2.50"));
+        configuration.setDeliveryFeePayer(KioskPartnership.DeliveryFeePayer.CLIENT);
+        stubFluxoValido(configuration);
+        stubSave();
+
+        Order order = service.criarPedido(Fixtures.requestValido());
+
+        assertThat(order.getPartnershipId()).isEqualTo("p1");
+        assertThat(order.getValorTotal()).isEqualByComparingTo("34.75");
+        assertThat(order.getPricingSnapshot().subtotal()).isEqualByComparingTo("32.25");
+        assertThat(order.getPricingSnapshot().commissionAmount()).isEqualByComparingTo("3.23");
+        assertThat(order.getPricingSnapshot().customerTotal()).isEqualByComparingTo("34.75");
+        assertThat(order.getPricingSnapshot().kioskNet()).isEqualByComparingTo("29.02");
+    }
+
+    @Test
+    void taxaPagaPeloQuiosqueReduzLiquidoSemAumentarTotalDoCliente() {
+        KioskPartnership configuration = configurationValida();
+        configuration.setCommissionPercent(new BigDecimal("10"));
+        configuration.setDeliveryFee(new BigDecimal("2.50"));
+        configuration.setDeliveryFeePayer(KioskPartnership.DeliveryFeePayer.KIOSK);
+        stubFluxoValido(configuration);
+        stubSave();
+
+        Order order = service.criarPedido(Fixtures.requestValido());
+
+        assertThat(order.getValorTotal()).isEqualByComparingTo("32.25");
+        assertThat(order.getPricingSnapshot().kioskNet()).isEqualByComparingTo("26.52");
+    }
+
+    @Test
+    void pedidoAbaixoDoMinimoDaParceriaEhRejeitado() {
+        KioskPartnership configuration = configurationValida();
+        configuration.setMinimumOrder(new BigDecimal("33.00"));
+        stubFluxoValido(configuration);
+
+        assertThatThrownBy(() -> service.criarPedido(Fixtures.requestValido()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("abaixo do mínimo");
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void pedidoQueExcedeQuantidadeMaximaEhRejeitado() {
+        KioskPartnership configuration = configurationValida();
+        configuration.setMaxItemsPerOrder(2);
+        stubFluxoValido(configuration);
+        CreateOrderRequest request = Fixtures.requestValido();
+        request.setItens(List.of(Fixtures.item(Fixtures.MENU_ITEM_DISPONIVEL, 3)));
+
+        assertThatThrownBy(() -> service.criarPedido(request))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("máximo de itens");
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void produtoQueNaoPassaNoFiltroDaParceriaEhRejeitado() {
+        stubFluxoValido();
+        when(partnershipService.isEligible(any(KioskPartnership.class), any(Kiosk.MenuItem.class)))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.criarPedido(Fixtures.requestValido()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não disponível nesta parceria");
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void parceriaPausadaRecusaNovosPedidosComConflito() {
+        stubFluxoValido();
+        when(partnershipService.activeConfiguration(Fixtures.KIOSK_ID, "p1"))
+                .thenThrow(new ConflictException("A parceria está pausada e não aceita novos pedidos."));
+
+        assertThatThrownBy(() -> service.criarPedido(Fixtures.requestValido()))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("pausada");
+        verify(orderRepository, never()).save(any());
     }
 
     @Test

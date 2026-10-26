@@ -50,6 +50,7 @@ public class AuthService {
                 user.setTelefone(request.phone().trim());
                 user.setSenhaHash(passwordHash);
                 user.setAtivo(true);
+                user.setRole("CLIENT");
                 user = userRepository.save(user);
                 return response(user.getId(), user.getNome(), user.getEmail(), "CLIENT");
             }
@@ -77,7 +78,7 @@ public class AuthService {
         if (user.isPresent() && user.get().isAtivo()
                 && passwordEncoder.matches(request.password(), user.get().getSenhaHash())) {
             User authenticated = user.get();
-            return response(authenticated.getId(), authenticated.getNome(), email, "CLIENT");
+            return response(authenticated.getId(), authenticated.getNome(), email, authenticated.getRole());
         }
 
         var courier = courierRepository.findByEmail(email);

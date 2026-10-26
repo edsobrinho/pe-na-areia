@@ -22,6 +22,7 @@
 - `backend`
 - `e2e`
 - `frontend`
+- `web`
 - `infrastructure`
 - `PRD-v1.1-parcerias-quiosques.md`
 - `PRD.md`

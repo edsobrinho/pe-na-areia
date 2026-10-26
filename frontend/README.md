@@ -34,12 +34,15 @@ carregam.
 
 ### Fluxo conectado
 
-Depois do login de cliente, o app carrega `/kiosks`, permite escolher itens e
-forma de pagamento, abre a seleção interativa do pin e cria o pedido em
-`POST /orders`. O mapa de acompanhamento mostra o destino; use o botão atualizar
-para consultar o estado mais recente em `GET /orders/{id}`. O painel do
-entregador exibe o mesmo pin nos pedidos disponíveis e ativos. A confirmação
-final continua validando a posição GPS do entregador no backend.
+Depois do login de cliente, o app carrega os canais em `/partnerships`, permite
+escolher o canal, exibe apenas quiosques e produtos elegíveis por
+`/kiosks?partnershipId=`, escolhe itens e forma de pagamento, abre a seleção
+interativa do pin e cria o pedido em `POST /orders` incluindo `partnershipId`.
+O backend valida o canal e grava os valores usados no pedido. O mapa de
+acompanhamento mostra o destino; use o botão atualizar para consultar o estado
+mais recente em `GET /orders/{id}`. O painel do entregador exibe o mesmo pin nos
+pedidos disponíveis e ativos. A confirmação final continua validando a posição
+GPS do entregador no backend.
 
 As opções de pagamento são dados do pedido: esta versão não processa cobranças.
 Chat e sinal de ajuda permanecem apenas no protótipo, pois a API atual não

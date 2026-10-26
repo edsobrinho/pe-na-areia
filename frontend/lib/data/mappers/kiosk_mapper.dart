@@ -25,5 +25,7 @@ abstract final class MenuItemMapper {
         descricao: json['descricao'] as String? ?? '',
         preco: (json['preco'] as num).toDouble(),
         disponivel: json['disponivel'] as bool? ?? true,
+        category: json['category'] as String? ?? 'Outros',
+        returnablePackaging: json['returnablePackaging'] as bool? ?? false,
       );
 }

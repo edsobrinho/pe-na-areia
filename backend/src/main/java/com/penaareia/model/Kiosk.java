@@ -44,5 +44,16 @@ public class Kiosk {
         private String descricao;
         private BigDecimal preco;
         private boolean disponivel = true;
+        private String category = "Outros";
+        private boolean returnablePackaging;
+
+        public MenuItem(String id, String nome, String descricao, BigDecimal preco, boolean disponivel) {
+            this.id = id;
+            this.nome = nome;
+            this.descricao = descricao;
+            this.preco = preco;
+            this.disponivel = disponivel;
+            this.category = "Outros";
+        }
     }
 }

@@ -48,6 +48,7 @@ class OrderRepository {
   Future<Order> createOrder({
     required String userId,
     required String kioskId,
+    required String partnershipId,
     required List<OrderItemRequest> itens,
     required PaymentMethod formaPagamento,
     required OrderLocation localizacao,
@@ -56,6 +57,7 @@ class OrderRepository {
     final body = OrderMapper.toCreateOrderJson(
       userId: userId,
       kioskId: kioskId,
+      partnershipId: partnershipId,
       itens: itens,
       formaPagamento: formaPagamento,
       localizacao: localizacao,

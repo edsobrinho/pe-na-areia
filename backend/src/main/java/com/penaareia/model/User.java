@@ -31,5 +31,9 @@ public class User {
     /** Usuarios inativos nao podem criar novos pedidos */
     private boolean ativo = true;
 
+    private String role = "CLIENT";
+
+    private String kioskId;
+
     private Instant criadoEm = Instant.now();
 }

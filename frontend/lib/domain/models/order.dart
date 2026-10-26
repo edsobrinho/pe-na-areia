@@ -55,6 +55,7 @@ class Order {
     required this.id,
     required this.userId,
     required this.kioskId,
+    this.partnershipId = '',
     this.courierId,
     this.itens = const [],
     required this.valorTotal,
@@ -69,6 +70,7 @@ class Order {
   final String id;
   final String userId;
   final String kioskId;
+  final String partnershipId;
 
   /// Nulo ate um entregador aceitar o pedido.
   final String? courierId;

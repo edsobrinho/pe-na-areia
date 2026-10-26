@@ -356,6 +356,7 @@ void main() {
       final body = OrderMapper.toCreateOrderJson(
         userId: 'u1',
         kioskId: 'k1',
+        partnershipId: 'canal-app',
         itens: const [
           OrderItemRequest(menuItemId: 'm1', quantidade: 2),
           OrderItemRequest(menuItemId: 'm2', quantidade: 1),
@@ -367,6 +368,7 @@ void main() {
       expect(body, {
         'userId': 'u1',
         'kioskId': 'k1',
+        'partnershipId': 'canal-app',
         'itens': [
           {'menuItemId': 'm1', 'quantidade': 2},
           {'menuItemId': 'm2', 'quantidade': 1},
@@ -391,6 +393,7 @@ void main() {
       final body = OrderMapper.toCreateOrderJson(
         userId: 'u1',
         kioskId: 'k1',
+        partnershipId: 'canal-app',
         itens: const [OrderItemRequest(menuItemId: 'm1', quantidade: 1)],
         formaPagamento: PaymentMethod.pix,
         localizacao: localizacao,

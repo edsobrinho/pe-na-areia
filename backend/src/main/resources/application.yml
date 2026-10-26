@@ -45,6 +45,8 @@ cloudinary:
   api-secret: ${CLOUDINARY_API_SECRET:}
 
 app:
+  cors:
+    origins: ${APP_CORS_ORIGINS:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173}
   delivery:
     # Raio máximo (em metros) para aceitar a confirmação de entrega do entregador
     confirmation-radius-meters: 60

@@ -95,6 +95,7 @@ public final class Fixtures {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setUserId(USER_ID);
         request.setKioskId(KIOSK_ID);
+        request.setPartnershipId("p1");
         request.setItens(new ArrayList<>(List.of(item(MENU_ITEM_DISPONIVEL, 2), item(MENU_ITEM_BARATO, 1))));
         request.setFormaPagamento(PaymentMethod.PIX);
         request.setEmbalagemSustentavel(true);

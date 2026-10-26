@@ -11,6 +11,7 @@ import '../../domain/models/kiosk.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_location.dart';
 import '../../domain/models/order_status.dart';
+import '../../domain/models/partnership.dart';
 import '../../domain/models/payment_method.dart';
 import '../location_selection/location_selection_controller.dart';
 import '../location_selection/location_selection_screen.dart';
@@ -38,6 +39,8 @@ class CustomerHomeScreen extends StatefulWidget {
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   List<Kiosk> _kiosks = const [];
+  List<Partnership> _partnerships = const [];
+  Partnership? _selectedPartnership;
   Kiosk? _selectedKiosk;
   final Map<String, int> _quantities = {};
   PaymentMethod _paymentMethod = PaymentMethod.pix;
@@ -47,6 +50,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   bool _refreshingOrder = false;
   String? _error;
   Order? _order;
+  int _catalogRequestId = 0;
 
   @override
   void initState() {
@@ -54,21 +58,32 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     _loadCatalog();
   }
 
-  Future<void> _loadCatalog() async {
+  Future<void> _loadCatalog({Partnership? selectedPartnership}) async {
+    final requestId = ++_catalogRequestId;
     setState(() {
       _loadingCatalog = true;
       _error = null;
     });
     try {
-      final kiosks = await widget.catalogRepository.fetchKiosks();
-      if (!mounted) return;
+      final partnerships = await widget.catalogRepository.fetchPartnerships();
+      final partnership = selectedPartnership ??
+          _selectedPartnership ??
+          (partnerships.isEmpty ? null : partnerships.first);
+      final kiosks = partnership == null
+          ? <Kiosk>[]
+          : await widget.catalogRepository.fetchKiosks(
+              partnershipId: partnership.id,
+            );
+      if (!mounted || requestId != _catalogRequestId) return;
       setState(() {
+        _partnerships = partnerships;
+        _selectedPartnership = partnership;
         _kiosks = kiosks;
         _selectedKiosk = kiosks.isEmpty ? null : kiosks.first;
         _loadingCatalog = false;
       });
     } on ApiException catch (error) {
-      if (!mounted) return;
+      if (!mounted || requestId != _catalogRequestId) return;
       setState(() {
         _error = error.message;
         _loadingCatalog = false;
@@ -97,13 +112,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   Future<void> _checkout() async {
     final kiosk = _selectedKiosk;
+    final partnership = _selectedPartnership;
     final items = _quantities.entries
         .map((entry) => OrderItemRequest(
               menuItemId: entry.key,
               quantidade: entry.value,
             ))
         .toList(growable: false);
-    if (kiosk == null || items.isEmpty || _submittingOrder) return;
+    if (kiosk == null || partnership == null || items.isEmpty || _submittingOrder) return;
 
     setState(() {
       _submittingOrder = true;
@@ -121,6 +137,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       final order = await widget.orderRepository.createOrder(
         userId: widget.session.userId,
         kioskId: kiosk.id,
+        partnershipId: partnership.id,
         itens: items,
         formaPagamento: _paymentMethod,
         localizacao: location,
@@ -195,6 +212,33 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       _buildOrderTracking(_order!),
                     ],
                     const SizedBox(height: 20),
+                    if (_partnerships.isNotEmpty) ...[
+                      Text('Canal de venda',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<Partnership>(
+                        value: _selectedPartnership,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.storefront_outlined),
+                        ),
+                        items: _partnerships
+                            .map((partnership) => DropdownMenuItem(
+                                  value: partnership,
+                                  child: Text(partnership.name),
+                                ))
+                            .toList(growable: false),
+                        onChanged: _loadingCatalog
+                            ? null
+                            : (partnership) {
+                                if (partnership != null &&
+                                    partnership.id != _selectedPartnership?.id) {
+                                  _loadCatalog(selectedPartnership: partnership);
+                                }
+                              },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     Text('Quiosques',
                         style: Theme.of(context).textTheme.titleLarge),
                     if (_kiosks.isEmpty)

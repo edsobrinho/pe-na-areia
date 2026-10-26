@@ -10,16 +10,20 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+import java.util.Arrays;
 
 @Configuration
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    @Value("${app.cors.origins:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173}")
+    private String corsOrigins;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
@@ -37,9 +41,10 @@ public class SecurityConfig {
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        List<String> origins = List.of(
-                "http://localhost:8090", "http://127.0.0.1:8090",
-                "http://localhost:5173", "http://127.0.0.1:5173");
+        List<String> origins = Arrays.stream(corsOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));

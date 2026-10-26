@@ -22,6 +22,9 @@ public class CreateOrderRequest {
     @NotBlank
     private String kioskId;
 
+    @NotBlank(message = "Selecione uma parceria")
+    private String partnershipId;
+
     @NotEmpty(message = "O pedido precisa ter ao menos um item")
     @Valid
     private List<@NotNull(message = "Item do pedido nao pode ser nulo") ItemRequest> itens;

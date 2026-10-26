@@ -115,6 +115,25 @@ void main() {
   });
 
   group('CatalogRepository', () {
+    test('fetchPartnerships carrega canais ativos', () async {
+      final repo = CatalogRepository(buildClient((request) async {
+        expect(request.url.path, '/partnerships');
+        return http.Response(
+          jsonEncode([
+            {'id': 'canal-app', 'name': 'Pé na Areia', 'channel': 'APP', 'active': true},
+          ]),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }));
+
+      final partnerships = await repo.fetchPartnerships();
+
+      expect(partnerships, hasLength(1));
+      expect(partnerships.single.id, 'canal-app');
+      expect(partnerships.single.name, 'Pé na Areia');
+    });
+
     test('fetchKiosks le GET /kiosks com cardapio', () async {
       final repo = CatalogRepository(buildClient((request) async {
         expect(request.url.path, '/kiosks');
@@ -152,6 +171,19 @@ void main() {
       expect(captured.path, '/kiosks/by-reference-point/posto-6');
       expect(kiosks, isEmpty);
     });
+
+    test('fetchKiosks filtra catálogo pelo canal escolhido', () async {
+      late Uri captured;
+      final repo = CatalogRepository(buildClient((request) async {
+        captured = request.url;
+        return http.Response('[]', 200);
+      }));
+
+      await repo.fetchKiosks(partnershipId: 'canal app');
+
+      expect(captured.path, '/kiosks');
+      expect(captured.queryParameters, {'partnershipId': 'canal app'});
+    });
   });
 
   group('OrderRepository', () {
@@ -179,6 +211,7 @@ void main() {
       final order = await repo.createOrder(
         userId: 'u1',
         kioskId: 'k1',
+        partnershipId: 'canal-app',
         itens: const [OrderItemRequest(menuItemId: 'm1', quantidade: 2)],
         formaPagamento: PaymentMethod.pix,
         localizacao: _localizacao,
@@ -190,6 +223,7 @@ void main() {
       expect(jsonDecode(captured.body), {
         'userId': 'u1',
         'kioskId': 'k1',
+        'partnershipId': 'canal-app',
         'itens': [
           {'menuItemId': 'm1', 'quantidade': 2},
         ],
@@ -216,6 +250,7 @@ void main() {
         repo.createOrder(
           userId: 'u1',
           kioskId: 'k1',
+          partnershipId: 'canal-app',
           itens: const [OrderItemRequest(menuItemId: 'm1', quantidade: 1)],
           formaPagamento: PaymentMethod.pix,
           localizacao: _localizacao,
@@ -233,6 +268,7 @@ void main() {
         repo.createOrder(
           userId: 'u1',
           kioskId: 'k1',
+          partnershipId: 'canal-app',
           itens: const [OrderItemRequest(menuItemId: 'm1', quantidade: 1)],
           formaPagamento: PaymentMethod.pix,
           localizacao: _localizacao,

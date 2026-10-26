@@ -12,6 +12,7 @@ abstract final class OrderMapper {
         id: json['id'] as String,
         userId: json['userId'] as String? ?? '',
         kioskId: json['kioskId'] as String? ?? '',
+        partnershipId: json['partnershipId'] as String? ?? '',
         courierId: json['courierId'] as String?,
         itens: (json['itens'] as List<dynamic>? ?? const [])
             .map((item) => _itemFromJson(item as Map<String, dynamic>))
@@ -34,6 +35,7 @@ abstract final class OrderMapper {
   static Map<String, dynamic> toCreateOrderJson({
     required String userId,
     required String kioskId,
+    required String partnershipId,
     required List<OrderItemRequest> itens,
     required PaymentMethod formaPagamento,
     required OrderLocation localizacao,
@@ -42,6 +44,7 @@ abstract final class OrderMapper {
       {
         'userId': userId,
         'kioskId': kioskId,
+        'partnershipId': partnershipId,
         'itens': itens
             .map((item) => {
                   'menuItemId': item.menuItemId,

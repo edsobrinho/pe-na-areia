@@ -31,9 +31,11 @@ public class Order {
     private String userId;
     private String kioskId;
     private String courierId; // nulo ate um entregador aceitar
+    private String partnershipId;
 
     private List<OrderItem> itens;
     private BigDecimal valorTotal;
+    private PricingSnapshot pricingSnapshot;
     private boolean embalagemSustentavel;
 
     private PaymentMethod formaPagamento;
@@ -61,6 +63,35 @@ public class Order {
         private String nome;
         private int quantidade;
         private BigDecimal precoUnitario;
+        private String category;
+        private boolean returnablePackaging;
+
+        public OrderItem(String menuItemId, String nome, int quantidade, BigDecimal precoUnitario) {
+            this(menuItemId, nome, quantidade, precoUnitario, "Outros", false);
+        }
+    }
+
+    public record PricingSnapshot(
+            BigDecimal commissionPercent,
+            BigDecimal commissionAmount,
+            BigDecimal deliveryFee,
+            String deliveryFeePayer,
+            BigDecimal minimumOrder,
+            Integer maxItemsPerOrder,
+            java.time.LocalTime acceptFrom,
+            java.time.LocalTime acceptUntil,
+            Integer prepMinutes,
+            java.util.List<String> filterCategories,
+            boolean onlyReturnable,
+            java.util.List<String> enabledProductIds,
+            BigDecimal subtotal,
+            BigDecimal customerTotal,
+            BigDecimal kioskNet
+    ) {
+        public PricingSnapshot {
+            filterCategories = java.util.List.copyOf(filterCategories);
+            enabledProductIds = java.util.List.copyOf(enabledProductIds);
+        }
     }
 
     @Data
