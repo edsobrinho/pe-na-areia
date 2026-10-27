@@ -22,7 +22,8 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    @Value("${app.cors.origins:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:9101,http://127.0.0.1:54219,http://localhost:55400,http://localhost:50190}")
+    @Value("${app.cors.origins:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:9101,http://127.0.0.1:54219,http://localhost:55400,http://localhost:50190,\r\n" + //
+                "http://localhost:53302,http://localhost:58788}")
     private String corsOrigins;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
