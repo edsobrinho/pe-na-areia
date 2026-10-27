@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../app/routes.dart';
+import '../../core/forms/formatters.dart';
+import '../../core/forms/validators.dart';
 import '../../data/http/api_exception.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../theme/app_colors.dart';
-import '../../app/routes.dart';
+import '../widgets/app_text_field.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.authRepository});
@@ -36,14 +39,14 @@ class _LoginScreenState extends State<LoginScreen> {
       final session = _registerMode
           ? await widget.authRepository.register(
               name: _nameController.text.trim(),
-              email: _emailController.text.trim(),
-              phone: _phoneController.text.trim(),
+              email: _emailController.text.trim().toLowerCase(),
+              phone: AppValidators.stripNonDigits(_phoneController.text),
               password: _passwordController.text,
               role: _courierMode ? 'COURIER' : 'CLIENT',
               vehicle: _courierMode ? 'PE' : null,
             )
           : await widget.authRepository.login(
-              email: _emailController.text.trim(),
+              email: _emailController.text.trim().toLowerCase(),
               password: _passwordController.text,
             );
       if (!mounted) return;
@@ -89,28 +92,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     if (_registerMode) ...[
-                      TextFormField(
+                      AppTextField(
                         controller: _nameController,
+                        label: 'Nome completo',
+                        hint: 'Ex: Carlos da Silva',
                         textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(
-                          labelText: 'Nome',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) => value == null || value.trim().isEmpty
-                            ? 'Informe seu nome'
-                            : null,
+                        validator: AppValidators.validateFullName,
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
+                      AppTextField(
                         controller: _phoneController,
+                        label: 'Telefone / Celular',
+                        hint: '(13) 99999-9999',
                         keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Telefone',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) => value == null || value.trim().isEmpty
-                            ? 'Informe seu telefone'
-                            : null,
+                        autofillHints: const [AutofillHints.telephoneNumber],
+                        formatters: [PhoneInputFormatter()],
+                        validator: AppValidators.validatePhone,
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
@@ -122,26 +118,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
                     ],
-                    TextFormField(
+                    AppTextField(
                       controller: _emailController,
+                      label: 'E-mail',
+                      hint: 'nome@dominio.com',
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'E-mail',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) =>
-                          value == null || !value.contains('@')
-                              ? 'Informe um e-mail válido'
-                              : null,
+                      autofillHints: const [AutofillHints.email],
+                      validator: AppValidators.validateEmail,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    AppTextField(
                       controller: _passwordController,
+                      label: 'Senha',
                       obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Senha',
-                        border: OutlineInputBorder(),
-                      ),
                       validator: (value) => value == null || value.length < 6
                           ? 'A senha deve ter ao menos 6 caracteres'
                           : null,

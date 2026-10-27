@@ -46,7 +46,7 @@ cloudinary:
 
 app:
   cors:
-    origins: ${APP_CORS_ORIGINS:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173}
+    origins: ${APP_CORS_ORIGINS:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:9101,http://127.0.0.1:54219,http://localhost:55400,http://localhost:50190}
   delivery:
     # Raio máximo (em metros) para aceitar a confirmação de entrega do entregador
     confirmation-radius-meters: 60

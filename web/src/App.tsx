@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, ApiError, clearSession, readSession, storeSession } from './api'
 import { MapPicker } from './MapPicker'
+import { maskPhone, unmask } from './utils/masks.ts'
+import { isValidEmail, isValidPhoneBR } from './utils/validators.ts'
 import type {
   AuthSession,
   BeachLocation,
@@ -317,12 +319,29 @@ function AuthDialog({ onClose, onAuthenticated }: AuthDialogProps) {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setBusy(true)
     setError(null)
+
+    if (!isValidEmail(email)) {
+      setError('Informe um e-mail válido (ex: seu.nome@dominio.com)')
+      return
+    }
+
+    if (mode === 'register') {
+      if (name.trim().split(/\s+/).filter(Boolean).length < 2) {
+        setError('Informe seu nome completo (nome e ao menos um sobrenome)')
+        return
+      }
+      if (!isValidPhoneBR(phone)) {
+        setError('Informe um celular válido com DDD (ex: (13) 99999-9999)')
+        return
+      }
+    }
+
+    setBusy(true)
     try {
       const session = mode === 'login'
-        ? await api.login(email, password)
-        : await api.registerClient(name, email, phone, password)
+        ? await api.login(email.trim().toLowerCase(), password)
+        : await api.registerClient(name.trim(), email.trim().toLowerCase(), unmask(phone), password)
       onAuthenticated(session)
     } catch (reason: unknown) {
       setError(messageOf(reason))
@@ -339,10 +358,43 @@ function AuthDialog({ onClose, onAuthenticated }: AuthDialogProps) {
         <h2 id="auth-title">{mode === 'login' ? 'Entre na sua conta' : 'Crie sua conta'}</h2>
         <p className="muted">A conta de operador é provisionada pela administração da plataforma.</p>
         <form onSubmit={(event) => void submit(event)} className="form-stack">
-          {mode === 'register' && <Field label="Nome" value={name} onChange={setName} required />}
-          {mode === 'register' && <Field label="Telefone" value={phone} onChange={setPhone} required />}
-          <Field label="E-mail" type="email" value={email} onChange={setEmail} required />
-          <Field label="Senha" type="password" value={password} onChange={setPassword} required minLength={6} />
+          {mode === 'register' && (
+            <Field
+              label="Nome"
+              placeholder="Ex: Carlos da Silva"
+              value={name}
+              onChange={setName}
+              required
+            />
+          )}
+          {mode === 'register' && (
+            <Field
+              label="Telefone"
+              type="tel"
+              inputMode="tel"
+              placeholder="(13) 99999-9999"
+              value={phone}
+              onChange={(val) => setPhone(maskPhone(val))}
+              required
+            />
+          )}
+          <Field
+            label="E-mail"
+            type="email"
+            inputMode="email"
+            placeholder="nome@dominio.com"
+            value={email}
+            onChange={setEmail}
+            required
+          />
+          <Field
+            label="Senha"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            required
+            minLength={6}
+          />
           {error && <p className="field-error" role="alert">{error}</p>}
           <button className="button button-primary button-full" disabled={busy}>
             {busy ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta de cliente'}
@@ -748,6 +800,8 @@ interface FieldProps {
   value: string | number
   onChange: (value: string) => void
   type?: string
+  placeholder?: string
+  inputMode?: 'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'
   required?: boolean
   min?: string
   max?: string
@@ -756,12 +810,14 @@ interface FieldProps {
   step?: string
 }
 
-function Field({ label, value, onChange, type = 'text', required, min, max, maxLength, minLength, step }: FieldProps) {
+function Field({ label, value, onChange, type = 'text', placeholder, inputMode, required, min, max, maxLength, minLength, step }: FieldProps) {
   return (
     <label className="field">
       <span>{label}</span>
       <input
         type={type}
+        placeholder={placeholder}
+        inputMode={inputMode}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}

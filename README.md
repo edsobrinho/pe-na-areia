@@ -142,6 +142,7 @@ do repositório:
 ```powershell
 docker compose --env-file .env -f infrastructure/docker-compose.yml up -d mongodb
 ```
+
 O Gradle Wrapper do backend e o wrapper Android do frontend usam Gradle 9.7.1.
 
 Para outros ambientes, configure `MONGODB_URI` para um replica set ou cluster
@@ -209,7 +210,7 @@ dos domínios web permitidos em cada ambiente.
 ## Endpoints
 
 | Método | Rota | Acesso | Descrição |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | POST | `/auth/register` | Público | Cadastra CLIENT ou COURIER e retorna JWT |
 | POST | `/auth/login` | Público | Autentica e retorna JWT |
 | GET | `/partnerships` | Público | Lista canais de venda ativos |

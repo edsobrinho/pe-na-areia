@@ -22,7 +22,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    @Value("${app.cors.origins:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173}")
+    @Value("${app.cors.origins:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:9101,http://127.0.0.1:54219,http://localhost:55400,http://localhost:50190}")
     private String corsOrigins;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
@@ -42,7 +42,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         List<String> origins = Arrays.stream(corsOrigins.split(","))
-                .map(String::trim)
+                .map(arg0 -> arg0.trim())
                 .filter(origin -> !origin.isEmpty())
                 .toList();
         CorsConfiguration config = new CorsConfiguration();
@@ -60,7 +60,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(t -> t.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(errors -> errors.authenticationEntryPoint(
                         (request, response, exception) ->
