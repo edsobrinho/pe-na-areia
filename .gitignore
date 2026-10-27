@@ -4,6 +4,7 @@
 **/bin/
 **/target/
 **/out/
+**/.idea/
 *.class
 
 # Temporary files
@@ -11,6 +12,7 @@
 *.tmp
 *.temp
 *.swp
+*.idea
 .env
 
 *~
