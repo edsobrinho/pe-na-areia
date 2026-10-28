@@ -20,6 +20,8 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 /**
  * Padroniza todos os erros da API no corpo {@link ErrorResponse}:
  * <pre>{ "timestamp": ..., "status": ..., "mensagem": ..., "campos": {...} }</pre>
@@ -76,7 +78,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenerico(Exception ex) {
-        log.error("Erro inesperado na API", ex);
+        log.error("api_unexpected_error", kv("error", ex.getClass().getSimpleName()));
         return ResponseEntity.internalServerError()
                 .body(new ErrorResponse(agora(), 500, "Erro interno do servidor", null));
     }

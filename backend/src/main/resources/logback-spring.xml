@@ -1,0 +1,53 @@
+<configuration>
+    <springProperty scope="context" name="serviceName" source="spring.application.name"
+                    defaultValue="pe-na-areia-backend"/>
+
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <timeZone>UTC</timeZone>
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <level>level</level>
+                <logger>logger</logger>
+                <message>message</message>
+                <thread>thread</thread>
+            </fieldNames>
+            <customFields>{"service":"${serviceName}"}</customFields>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+            <excludeKeyValueKeyName>password</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>Password</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>senha</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>senhaHash</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>senha_hash</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>token</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>accessToken</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>refreshToken</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>cpf</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>CPF</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>cnpj</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>cartao</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>cardNumber</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>cvv</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>authorization</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>Authorization</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>e-mail</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>email</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>mail</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>telefone</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>phone</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>dataNascimento</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>address</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>nomeCompleto</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>body</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>requestBody</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>responseBody</excludeKeyValueKeyName>
+            <excludeKeyValueKeyName>payload</excludeKeyValueKeyName>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON_CONSOLE"/>
+    </root>
+</configuration>

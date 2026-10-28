@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Map;
@@ -65,6 +66,52 @@ class CloudinaryStorageServiceTest {
         // A imagem vai para a pasta dedicada de fotos de local
         verify(uploader).upload(any(), argThat(opcoes ->
                 "pe-na-areia/fotos-local".equals(opcoes.get("folder"))));
+    }
+
+    @Test
+    void acceptsJpegAndWebpSignatures() throws IOException {
+        CloudinaryStorageService service =
+                new CloudinaryStorageService(cloudinary, propertiesConfiguradas());
+        when(cloudinary.uploader()).thenReturn(uploader);
+        when(uploader.upload(any(), anyMap())).thenReturn(Map.of("secure_url", "https://example.test/image"));
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        byte[] webp = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P'};
+
+        assertThat(service.enviarFotoLocal(
+                new MockMultipartFile("file", "foto.jpg", "image/jpeg", jpeg)))
+                .isEqualTo("https://example.test/image");
+        assertThat(service.enviarFotoLocal(
+                new MockMultipartFile("file", "foto.webp", "image/webp", webp)))
+                .isEqualTo("https://example.test/image");
+    }
+
+    @Test
+    void rejectsShortImageSignaturesAndUnrecognizedMagicBytes() {
+        CloudinaryStorageService service =
+                new CloudinaryStorageService(cloudinary, propertiesConfiguradas());
+
+        assertThatThrownBy(() -> service.enviarFotoLocal(
+                new MockMultipartFile("file", "curta.jpg", "image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8})))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("Formato invalido");
+        assertThatThrownBy(() -> service.enviarFotoLocal(
+                new MockMultipartFile("file", "nao-e-imagem", "application/octet-stream", new byte[12])))
+                .isInstanceOf(InvalidRequestException.class);
+    }
+
+    @Test
+    void unreadableUploadIsRejectedBeforeCallingProvider() throws IOException {
+        CloudinaryStorageService service =
+                new CloudinaryStorageService(cloudinary, propertiesConfiguradas());
+        MultipartFile unreadable = org.mockito.Mockito.mock(MultipartFile.class);
+        when(unreadable.isEmpty()).thenReturn(false);
+        when(unreadable.getSize()).thenReturn((long) PNG_VALIDO.length);
+        when(unreadable.getBytes()).thenThrow(new IOException("unreadable"));
+
+        assertThatThrownBy(() -> service.enviarFotoLocal(unreadable))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("Nao foi possivel ler o arquivo enviado");
+        verify(cloudinary, org.mockito.Mockito.never()).uploader();
     }
 
     @Test

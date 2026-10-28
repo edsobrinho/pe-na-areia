@@ -201,6 +201,8 @@ class OrderWorkflowServiceTest {
         assertThatThrownBy(() -> service().listarDisponiveis(101, null))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("entre 1 e 100");
+        assertThatThrownBy(() -> service().listarDisponiveis(0, null))
+                .isInstanceOf(InvalidRequestException.class);
         verify(mongoTemplate, never()).find(any(Query.class), eq(Order.class));
     }
 
@@ -210,6 +212,152 @@ class OrderWorkflowServiceTest {
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Cursor");
         verify(mongoTemplate, never()).find(any(Query.class), eq(Order.class));
+    }
+
+    @Test
+    void clientCanPayOwnOrderButCannotChangeAnotherUsersOrder() {
+        Order order = orderAtStatus(OrderStatus.CRIADO);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        assertThat(service().atualizarStatus(
+                "order-1", OrderStatus.PAGO, "client-1",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))).getStatus())
+                .isEqualTo(OrderStatus.PAGO);
+
+        Order otherOrder = orderAtStatus(OrderStatus.CRIADO);
+        when(orderRepository.findById("other")).thenReturn(Optional.of(otherOrder));
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "other", OrderStatus.PAGO, "another-client",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Somente o cliente");
+    }
+
+    @Test
+    void rejectsInvalidTransitionsAndUnauthorizedCourierTransitions() {
+        Order created = orderAtStatus(OrderStatus.CRIADO);
+        when(orderRepository.findById("created")).thenReturn(Optional.of(created));
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "created", OrderStatus.ENTREGUE, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Transição inválida");
+
+        Order inRoute = orderAtStatus(OrderStatus.A_CAMINHO);
+        inRoute.setCourierId("courier-1");
+        when(orderRepository.findById("route")).thenReturn(Optional.of(inRoute));
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "route", OrderStatus.CHEGOU_NO_LOCAL, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Somente um entregador");
+
+        Order assignedElsewhere = orderAtStatus(OrderStatus.EM_PREPARO);
+        assignedElsewhere.setCourierId("courier-2");
+        when(orderRepository.findById("assigned")).thenReturn(Optional.of(assignedElsewhere));
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "assigned", OrderStatus.A_CAMINHO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("outro entregador");
+    }
+
+    @Test
+    void courierCanMarkArrivalOnlyForTheirOwnOrder() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setCourierId("courier-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        assertThat(service().atualizarStatus(
+                "order-1", OrderStatus.CHEGOU_NO_LOCAL, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))).getStatus())
+                .isEqualTo(OrderStatus.CHEGOU_NO_LOCAL);
+
+        Order unassigned = orderAtStatus(OrderStatus.A_CAMINHO);
+        when(orderRepository.findById("unassigned")).thenReturn(Optional.of(unassigned));
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "unassigned", OrderStatus.CHEGOU_NO_LOCAL, "courier-2",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não pertence");
+    }
+
+    @Test
+    void confirmsDeliveryOnlyForMatchingCourierAndActiveRoute() {
+        ConfirmDeliveryRequest validRequest = new ConfirmDeliveryRequest(
+                "courier-1", new ConfirmDeliveryRequest.CourierLocation(-23.972, -46.328));
+        assertThatThrownBy(() -> service().confirmarEntrega("missing", validRequest, "courier-2"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não corresponde");
+
+        Order created = orderAtStatus(OrderStatus.CRIADO);
+        when(orderRepository.findById("created")).thenReturn(Optional.of(created));
+        assertThatThrownBy(() -> service().confirmarEntrega("created", validRequest, "courier-1"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("a caminho");
+
+        Order assigned = orderAtStatus(OrderStatus.A_CAMINHO);
+        assigned.setCourierId("courier-2");
+        assigned.setPinCliente(new GeoJsonPoint(-46.328, -23.972));
+        when(orderRepository.findById("assigned")).thenReturn(Optional.of(assigned));
+        assertThatThrownBy(() -> service().confirmarEntrega("assigned", validRequest, "courier-1"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não pertence");
+    }
+
+    @Test
+    void concurrentDeliveryConfirmationAndUnavailableCourierAreRejected() {
+        Order order = orderAtStatus(OrderStatus.CHEGOU_NO_LOCAL);
+        order.setCourierId("courier-1");
+        order.setPinCliente(new GeoJsonPoint(-46.328, -23.972));
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class))).thenReturn(null);
+        var request = new ConfirmDeliveryRequest(
+                "courier-1", new ConfirmDeliveryRequest.CourierLocation(-23.972, -46.328));
+
+        assertThatThrownBy(() -> service().confirmarEntrega("order-1", request, "courier-1"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("já foi confirmado");
+    }
+
+    @Test
+    void deliveryFailureHandlesMissingAndNonRoutedCouriers() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setCourierId("courier-1");
+        order.setPinCliente(new GeoJsonPoint(-46.328, -23.972));
+        var request = new ConfirmDeliveryRequest(
+                "courier-1", new ConfirmDeliveryRequest.CourierLocation(-23.972, -46.328));
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class))).thenReturn(order);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null));
+        when(courierRepository.findById("courier-1")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().confirmarEntrega("order-1", request, "courier-1"))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Entregador não encontrado");
+
+        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(new Courier()));
+        assertThatThrownBy(() -> service().confirmarEntrega("order-1", request, "courier-1"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não está em rota");
+    }
+
+    @Test
+    void listsCurrentCourierOrdersWithoutCreatingNextCursorForExactPage() {
+        Order first = orderWithDate("order-2", Instant.parse("2026-10-22T09:00:00Z"));
+        Order second = orderWithDate("order-1", Instant.parse("2026-10-22T08:00:00Z"));
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of(first, second));
+
+        var slice = service().listarEmRota("courier-1", 2, null);
+
+        assertThat(slice.orders()).containsExactly(first, second);
+        assertThat(slice.nextCursor()).isNull();
+        verify(mongoTemplate).find(any(Query.class), eq(Order.class));
     }
 
     private static Order orderAtStatus(OrderStatus status) {

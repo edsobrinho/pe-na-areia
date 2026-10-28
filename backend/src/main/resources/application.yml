@@ -24,6 +24,11 @@ spring:
       database: ${MONGODB_DATABASE:pe_na_areia}
       auto-index-creation: true
 
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+
 jwt:
   # Nunca versione o secret real - defina via variavel de ambiente em producao
   secret: ${JWT_SECRET:troque-este-segredo-antes-de-ir-para-producao}

@@ -239,3 +239,35 @@ entrega; a confirmação final exige a localização atual do entregador dentro 
 raio definido por `app.delivery.confirmation-radius-meters` (60 m por padrão).
 O JWT expira em 24 horas por padrão; configure `JWT_EXPIRATION_MS` para alterar
 esse prazo.
+
+### Observabilidade e cobertura do backend
+
+Cada requisição HTTP gera um log JSON ao terminar, com método, rota Spring
+normalizada, status, duração, `requestId`, `traceId` e `spanId`. A amostragem de
+traces está configurada em 100%. O backend aceita `X-Request-Id` somente quando
+o valor é um UUID válido; caso contrário, gera um identificador e o devolve no
+header da resposta. Rotas não resolvidas são registradas como `UNMATCHED`.
+
+Um aspecto também registra início, conclusão e falhas dos métodos públicos de
+Controller, Service, Repository e Security. Eventos seguem nomes estáveis em
+`snake_case`, sem registrar argumentos, retornos ou mensagens de exceção. O
+nível é `INFO` para sucesso, `WARN` para falhas esperadas 4xx e `ERROR` para
+falhas inesperadas/5xx. Assim, os eventos das camadas executadas durante uma
+requisição compartilham os identificadores de correlação do MDC.
+
+Os logs não incluem corpo, query string, credenciais, valores de headers ou
+mensagens de exceção. Exemplo de conclusão HTTP:
+
+```json
+{"timestamp":"2026-10-27T15:00:00.000Z","level":"INFO","logger":"com.penaareia.config.HttpRequestLoggingFilter","message":"api_requisicao_concluida","service":"pe-na-areia-backend","requestId":"8f14e45f-ea5e-47d3-9c2a-0b1c2d3e4f50","traceId":"11223344556677889900aabbccddeeff","spanId":"1122334455667788","httpMethod":"GET","httpPath":"/orders/{id}","httpStatus":200,"durationMs":12}
+```
+
+O `check` do Gradle exige cobertura JaCoCo mínima de 80% em linhas e branches.
+Para executar os testes, validar os limites e gerar os relatórios HTML/XML:
+
+```powershell
+Set-Location backend
+.\gradlew.bat check jacocoTestReport
+```
+
+O relatório HTML fica em `backend/build/reports/jacoco/test/html/index.html`.
