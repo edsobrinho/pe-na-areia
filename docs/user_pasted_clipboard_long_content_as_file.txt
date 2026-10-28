@@ -1,0 +1,78 @@
+Você vai me ajudar a desenvolver o "Pé na Areia", um app de entrega sustentável para a orla de Santos, com foco em locais sem endereço formal (praia), usando pin de geolocalização + pontos de referência oficiais (postos de salvamento).
+
+## Stack técnica obrigatória
+- Frontend: Flutter (Dart), compatível com Android e iOS
+- Backend: Java 17+ com Spring Boot (REST API)
+- Banco de dados: NoSQL gratuito — MongoDB Atlas (cluster M0 free tier), 
+  integrado via Spring Data MongoDB
+- Autenticação: JWT (Spring Security)
+- Mapas: Google Maps SDK (Flutter) para exibição de pin e rota
+- Notificações: Firebase Cloud Messaging (push, camada gratuita)
+
+## Contexto do produto
+Cliente faz pedido em restaurante/quiosque parceiro na orla, mas em vez de digitar 
+endereço, marca um pin no mapa e seleciona o posto de salvamento mais próximo como 
+ponto de referência. Pagamento é sempre antecipado (Pix ou cartão). Quando o 
+entregador chega perto do pin, o cliente ativa um sinal visual (tela cheia colorida) 
+para ser identificado.
+
+## Módulos e entidades principais (collections MongoDB)
+1. `users` — clientes: nome, telefone, e-mail, histórico de pedidos
+2. `couriers` — entregadores: nome, veículo (pé/bike), status (disponível/em rota), 
+   localização atual (geoJSON point)
+3. `kiosks` — quiosques/restaurantes parceiros: nome, posto de referência mais 
+   próximo, cardápio, geolocalização
+4. `reference_points` — postos de salvamento oficiais de Santos: número, nome, 
+   coordenadas (geoJSON point) — dado fixo, seed inicial no banco
+5. `orders` — pedidos: itens, valor, forma de pagamento, status, pin do cliente 
+   (geoJSON point), posto de referência vinculado, descrição textual do local, 
+   foto do local (URL), embalagem sustentável (boolean), courier_id, timestamps 
+   de cada etapa (criado, pago, em preparo, a caminho, entregue)
+
+## Funcionalidades do MVP — app do cliente (Flutter)
+1. Tela de seleção de restaurante/quiosque parceiro
+2. Tela de seleção de localização: mapa com pin arrastável, sugestão automática do 
+   posto de referência mais próximo (via geolocalização do dispositivo), campo de 
+   descrição curta do local, upload de foto opcional
+3. Tela de checkout: resumo do pedido, toggle de embalagem sustentável, seleção de 
+   pagamento (Pix/cartão), pagamento antecipado obrigatório
+4. Tela de acompanhamento em tempo real: mapa com posição do entregador, 
+   notificações push nos marcos do pedido
+5. Tela de identificação no local: botão de "ativar sinal" (tela cheia colorida) 
+   com contagem regressiva, ativado quando o entregador está a poucos metros
+
+## Funcionalidades do MVP — app do entregador (Flutter, ou seção separada)
+1. Tela de pedidos disponíveis com distância estimada
+2. Tela de rota até o quiosque e depois até o pin do cliente (integrada ao Google Maps)
+3. Botão de confirmação de entrega, exigindo que a geolocalização do entregador 
+   esteja dentro de um raio X metros do pin do pedido
+4. Chat simples com o cliente
+
+## Backend (Java Spring Boot) — endpoints principais
+- POST /auth/login, /auth/register (clientes e entregadores)
+- GET /kiosks (lista de parceiros próximos)
+- GET /reference-points (lista de postos de referência)
+- POST /orders (cria pedido com localização, itens, pagamento)
+- PATCH /orders/{id}/status (atualiza status do pedido)
+- GET /orders/{id}/tracking (posição do entregador em tempo real)
+- POST /orders/{id}/confirm-delivery (valida geolocalização do entregador vs. pin)
+- WebSocket ou polling para atualização de localização em tempo real do entregador
+
+## Requisitos não-funcionais
+- Toda a stack deve rodar em camadas gratuitas (MongoDB Atlas M0, Firebase free tier, 
+  hospedagem backend em Render ou Railway free tier)
+- Código organizado em arquitetura limpa (camadas: controller, service, repository 
+  no backend; camadas de data/domain/presentation no Flutter)
+- Testes unitários básicos para os endpoints críticos (criação de pedido, 
+  confirmação de entrega)
+- Documentação da API via Swagger/OpenAPI
+
+## Entregável esperado
+Comece gerando: 
+1. A estrutura de pastas do projeto (backend e frontend separados)
+2. Os models/entities do MongoDB (Java) e suas classes correspondentes no Flutter
+3. Os três primeiros endpoints do backend (criação de pedido, listagem de postos 
+   de referência, listagem de quiosques)
+4. A tela de seleção de localização no Flutter, com mapa e pin arrastável
+
+Pergunte antes de prosseguir se algo estiver ambíguo.

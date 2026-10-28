@@ -10,6 +10,7 @@ class MenuItem {
     this.disponivel = true,
     this.category = 'Outros',
     this.returnablePackaging = false,
+    this.fotoUrl,
   });
 
   final String id;
@@ -19,6 +20,7 @@ class MenuItem {
   final bool disponivel;
   final String category;
   final bool returnablePackaging;
+  final String? fotoUrl;
 }
 
 /// Quiosque/restaurante parceiro da orla.

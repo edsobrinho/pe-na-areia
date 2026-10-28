@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -41,12 +42,26 @@ public class Order {
     private PaymentMethod formaPagamento;
     private boolean pago = false;
 
+    // --- Dados de Cobranca Pix Antecipada ---
+    private String pixTxId;
+    private String pixCopiaECola;
+    private String pixQrCodeBase64;
+    private Instant pixExpiracao;
+
     // --- Localizacao do pedido (o nucleo do diferencial do app) ---
     private GeoJsonPoint pinCliente;
 
     private String pontoReferenciaId;
     private String descricaoLocal;   // ex: "guarda-sol listrado azul, perto do quiosque do Ze"
     private String fotoLocalUrl;     // opcional
+
+    // --- Live Tracking do Entregador na Praia ---
+    private GeoJsonPoint localizacaoEntregador;
+    private Instant atualizadoEntregadorEm;
+    private boolean alertaProximidadeEnviado = false;
+
+    // --- Canal Rapido de Mensagens (A_CAMINHO / CHEGOU_NO_LOCAL) ---
+    private List<OrderMessage> mensagens = new ArrayList<>();
 
     /** Uma vez PAGO, o pin nao pode mais ser alterado (trava, como no modelo Dominos) */
     private boolean localizacaoTravada = false;
@@ -69,6 +84,14 @@ public class Order {
         public OrderItem(String menuItemId, String nome, int quantidade, BigDecimal precoUnitario) {
             this(menuItemId, nome, quantidade, precoUnitario, "Outros", false);
         }
+    }
+
+    public record OrderMessage(
+            String senderId,
+            String senderRole,
+            String texto,
+            Instant enviadoEm
+    ) {
     }
 
     public record PricingSnapshot(

@@ -26,11 +26,23 @@ public class CloudinaryStorageService implements StorageService {
     /** Pasta no Cloudinary para separar as fotos de local dos demais assets. */
     static final String PASTA_FOTOS = "pe-na-areia/fotos-local";
 
+    /** Pasta no Cloudinary para fotos de produtos do cardapio. */
+    static final String PASTA_CARDAPIO = "pe-na-areia/cardapio";
+
     private final Cloudinary cloudinary;
     private final CloudinaryProperties properties;
 
     @Override
     public String enviarFotoLocal(MultipartFile arquivo) {
+        return uploadParaPasta(arquivo, PASTA_FOTOS);
+    }
+
+    @Override
+    public String enviarFotoProduto(MultipartFile arquivo) {
+        return uploadParaPasta(arquivo, PASTA_CARDAPIO);
+    }
+
+    private String uploadParaPasta(MultipartFile arquivo, String pasta) {
         byte[] conteudo = validar(arquivo);
 
         if (!properties.configurado()) {
@@ -39,7 +51,7 @@ public class CloudinaryStorageService implements StorageService {
         }
 
         Map<String, Object> opcoes = new HashMap<>();
-        opcoes.put("folder", PASTA_FOTOS);
+        opcoes.put("folder", pasta);
 
         try {
             Map<?, ?> resultado = cloudinary.uploader().upload(conteudo, opcoes);

@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pé na Areia — Telas do MVP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand-50: #F7F1E2;
+    --sand-100: #EFE2C4;
+    --sand-200: #E4D3A8;
+    --ocean-900: #0B3B40;
+    --ocean-700: #135A61;
+    --ocean-500: #1E8A93;
+    --ocean-300: #7FC4C9;
+    --mango-500: #FF7A3D;
+    --mango-600: #E8632A;
+    --seafoam-500: #4C8C6B;
+    --seafoam-100: #DCEAE0;
+    --ink: #12201E;
+    --paper: #FFFDF7;
+    --line: rgba(18,32,30,0.12);
+    --shadow: rgba(11,59,64,0.18);
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --sand-50: #0E1917;
+      --sand-100: #16221F;
+      --sand-200: #1E2C28;
+      --paper: #16221F;
+      --ink: #EFE9DA;
+      --ocean-900: #EFE9DA;
+      --ocean-700: #BFE3E6;
+      --ocean-500: #63C2CA;
+      --ocean-300: #2E4B4E;
+      --line: rgba(239,233,218,0.14);
+      --shadow: rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --sand-50: #0E1917;
+    --sand-100: #16221F;
+    --sand-200: #1E2C28;
+    --paper: #16221F;
+    --ink: #EFE9DA;
+    --ocean-900: #EFE9DA;
+    --ocean-700: #BFE3E6;
+    --ocean-500: #63C2CA;
+    --ocean-300: #2E4B4E;
+    --line: rgba(239,233,218,0.14);
+    --shadow: rgba(0,0,0,0.45);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--sand-50);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 28px 80px;
+  }
+
+  header.intro {
+    max-width: 640px;
+    margin-bottom: 56px;
+  }
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--seafoam-500);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.15;
+    margin: 0 0 16px;
+    color: var(--ocean-900);
+  }
+  header.intro p {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink);
+    opacity: 0.8;
+    margin: 0;
+  }
+
+  .screens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    align-items: flex-start;
+  }
+
+  .screen-block {
+    flex: 1 1 300px;
+    max-width: 340px;
+    min-width: 280px;
+  }
+
+  .step-label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .step-num {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--paper);
+    background: var(--ocean-900);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--ocean-900);
+  }
+  .step-sub {
+    font-size: 13.5px;
+    color: var(--ink);
+    opacity: 0.65;
+    margin: 4px 0 22px 34px;
+    line-height: 1.5;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 100%;
+    aspect-ratio: 9 / 19.5;
+    background: var(--ink);
+    border-radius: 34px;
+    padding: 10px;
+    box-shadow: 0 24px 48px -12px var(--shadow);
+    margin-bottom: 24px;
+  }
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    background: var(--paper);
+    border-radius: 26px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .statusbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 18px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+
+  /* ---- Screen 1: Map / location ---- */
+  .map-area {
+    position: relative;
+    flex: 1;
+    background:
+      radial-gradient(ellipse 140% 60% at 50% 0%, var(--ocean-300) 0%, var(--ocean-500) 55%, var(--ocean-700) 100%);
+    overflow: hidden;
+  }
+  .sand-strip {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 42%;
+    background: linear-gradient(180deg, var(--sand-100), var(--sand-200));
+    border-radius: 60% 60% 0 0 / 30px;
+  }
+  .wave-dots {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 42%;
+    height: 3px;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.55) 1.5px, transparent 1.5px);
+    background-size: 14px 3px;
+    opacity: 0.8;
+  }
+  .posto-marker {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-body);
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--ocean-900);
+    background: rgba(255,253,247,0.9);
+    padding: 3px 7px 3px 5px;
+    border-radius: 20px;
+  }
+  .posto-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ocean-700);
+  }
+  .pin-drop {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    transform: translate(-50%, -100%);
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,0.25));
+  }
+  .pin-shadow-ring {
+    position: absolute;
+    left: 50%; top: calc(52% + 3px);
+    transform: translate(-50%, -50%);
+    width: 34px; height: 10px;
+    border-radius: 50%;
+    background: rgba(11,59,64,0.18);
+  }
+
+  .sheet {
+    background: var(--paper);
+    border-radius: 20px 20px 0 0;
+    margin-top: -22px;
+    position: relative;
+    padding: 18px 18px 20px;
+    flex-shrink: 0;
+    box-shadow: 0 -8px 20px -12px var(--shadow);
+  }
+  .sheet-handle {
+    width: 34px; height: 4px;
+    background: var(--line);
+    border-radius: 4px;
+    margin: 0 auto 14px;
+  }
+  .sheet-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    margin: 0 0 3px;
+    color: var(--ocean-900);
+  }
+  .sheet-hint {
+    font-size: 11.5px;
+    color: var(--ink);
+    opacity: 0.6;
+    margin: 0 0 14px;
+  }
+  .chip-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 11px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    color: var(--ocean-900);
+  }
+  .chip.active {
+    background: var(--ocean-900);
+    color: var(--paper);
+    border-color: var(--ocean-900);
+  }
+  .field {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--ink);
+    opacity: 0.75;
+    margin-bottom: 10px;
+  }
+  .photo-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ocean-700);
+    border: 1px dashed var(--ocean-300);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+  }
+  .btn-primary {
+    width: 100%;
+    background: var(--mango-500);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 13px;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 13.5px;
+    text-align: center;
+  }
+  .btn-secondary {
+    width: 100%;
+    background: transparent;
+    color: var(--ocean-900);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 11px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* ---- Screen 2: Checkout ---- */
+  .checkout-body {
+    flex: 1;
+    padding: 6px 18px 4px;
+    overflow: hidden;
+  }
+  .co-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--ocean-900);
+    margin: 6px 0 16px;
+  }
+  .line-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .line-item .name { font-weight: 600; color: var(--ink); }
+  .line-item .qty { opacity: 0.55; font-weight: 400; }
+  .line-item .price { font-weight: 600; color: var(--ink); }
+
+  .eco-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--seafoam-100);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 14px 0;
+  }
+  .eco-toggle .label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--seafoam-500);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .switch {
+    width: 30px; height: 17px;
+    background: var(--seafoam-500);
+    border-radius: 20px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .switch::after {
+    content: "";
+    position: absolute;
+    right: 2px; top: 2px;
+    width: 13px; height: 13px;
+    background: #fff;
+    border-radius: 50%;
+  }
+
+  .pay-methods { display: flex; gap: 8px; margin: 14px 0 6px; }
+  .pay-pill {
+    flex: 1;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 6px;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink);
+    opacity: 0.55;
+  }
+  .pay-pill.selected {
+    border-color: var(--ocean-900);
+    color: var(--ocean-900);
+    opacity: 1;
+    background: var(--sand-100);
+  }
+
+  .co-footer {
+    border-top: 1px solid var(--line);
+    padding: 14px 18px 18px;
+    flex-shrink: 0;
+    background: var(--paper);
+  }
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--ocean-900);
+    margin-bottom: 12px;
+  }
+  .prepay-note {
+    font-size: 10px;
+    text-align: center;
+    color: var(--ink);
+    opacity: 0.5;
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+
+  /* ---- Screen 3: On-site identification ---- */
+  .id-map {
+    position: relative;
+    flex: 1;
+    background: linear-gradient(180deg, var(--ocean-300), var(--ocean-500) 55%, var(--ocean-700));
+    overflow: hidden;
+  }
+  .id-sand {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 38%;
+    background: linear-gradient(180deg, var(--sand-100), var(--sand-200));
+    border-radius: 60% 60% 0 0 / 26px;
+  }
+  .courier-dot {
+    position: absolute;
+    left: 34%;
+    top: 46%;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--mango-500);
+    border: 3px solid var(--paper);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+  }
+  .courier-path {
+    position: absolute;
+    left: 41%; top: 50%;
+    width: 26%; height: 1px;
+    border-top: 2px dashed rgba(255,253,247,0.65);
+    transform: rotate(8deg);
+  }
+  .dest-pin {
+    position: absolute;
+    right: 30%;
+    top: 44%;
+  }
+  .eta-banner {
+    position: absolute;
+    top: 12px; left: 12px; right: 12px;
+    background: rgba(11,59,64,0.85);
+    color: #fff;
+    border-radius: 12px;
+    padding: 9px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .eta-banner .mins { font-family: var(--font-display); font-size: 13px; }
+
+  .id-sheet {
+    background: var(--paper);
+    border-radius: 20px 20px 0 0;
+    margin-top: -20px;
+    padding: 18px;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 -8px 20px -12px var(--shadow);
+    text-align: center;
+  }
+  .id-desc {
+    font-size: 11.5px;
+    color: var(--ink);
+    opacity: 0.65;
+    margin: 0 0 14px;
+  }
+  .signal-btn {
+    width: 92px; height: 92px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--mango-500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .signal-btn::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px solid var(--mango-500);
+    opacity: 0.35;
+  }
+  .signal-btn span {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 10.5px;
+    color: #fff;
+    text-align: center;
+    line-height: 1.25;
+  }
+  .countdown {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mango-600);
+    margin-bottom: 4px;
+  }
+  .id-caption {
+    font-size: 10.5px;
+    color: var(--ink);
+    opacity: 0.5;
+  }
+
+  .annotations {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .annotations li {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink);
+    opacity: 0.78;
+    padding-left: 16px;
+    position: relative;
+  }
+  .annotations li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 7px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--seafoam-500);
+  }
+  .annotations strong { color: var(--ink); opacity: 1; font-weight: 600; }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 40px 18px 60px; }
+    .screens { gap: 48px; }
+    .screen-block { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="intro">
+    <p class="eyebrow">Pé na Areia — mockup de telas</p>
+    <h1>As três telas que carregam o modelo</h1>
+    <p>Seleção de localização, checkout com pagamento antecipado e identificação no local — a sequência mínima inspirada no Pinpoint Delivery, adaptada para pontos de referência da orla de Santos.</p>
+  </header>
+
+  <div class="screens">
+
+    <div class="screen-block">
+      <div class="step-label">
+        <span class="step-num">1</span>
+        <span class="step-title">Seleção de localização</span>
+      </div>
+      <p class="step-sub">Pin no mapa, posto de referência sugerido e reforço com foto do local.</p>
+
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ✆ 84%</span></div>
+          <div class="map-area">
+            <div class="posto-marker" style="top:18%; left:14%;"><span class="posto-dot"></span>Posto 5</div>
+            <div class="posto-marker" style="top:14%; right:12%;"><span class="posto-dot"></span>Posto 7</div>
+            <div class="pin-shadow-ring"></div>
+            <svg class="pin-drop" width="30" height="38" viewBox="0 0 30 38" fill="none">
+              <path d="M15 0C6.7 0 0 6.7 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.7 23.3 0 15 0z" fill="#FF7A3D"/>
+              <circle cx="15" cy="15" r="5.5" fill="#FFFDF7"/>
+            </svg>
+            <div class="wave-dots"></div>
+            <div class="sand-strip"></div>
+          </div>
+          <div class="sheet">
+            <div class="sheet-handle"></div>
+            <p class="sheet-title">Onde você está?</p>
+            <p class="sheet-hint">Toque no mapa ou arraste o pin para ajustar</p>
+            <div class="chip-row">
+              <span class="chip active">Posto 6</span>
+              <span class="chip">Posto 5</span>
+              <span class="chip">Posto 7</span>
+            </div>
+            <div class="field">Guarda-sol listrado azul, perto do quiosque do Zé</div>
+            <div class="photo-row">📷 Adicionar foto do local (opcional)</div>
+            <button class="btn-primary">Confirmar localização</button>
+          </div>
+        </div>
+      </div>
+
+      <ul class="annotations">
+        <li><strong>Pin arrastável</strong> sobre mapa estilizado da orla, com postos de referência próximos já marcados.</li>
+        <li><strong>Chips de posto</strong> sugerem o mais próximo automaticamente pela geolocalização.</li>
+        <li><strong>Descrição curta</strong> obrigatória do local ou da pessoa, complementando o pin.</li>
+        <li><strong>Foto opcional</strong> do guarda-sol ou ponto exato, para reforçar a identificação depois.</li>
+      </ul>
+    </div>
+
+    <div class="screen-block">
+      <div class="step-label">
+        <span class="step-num">2</span>
+        <span class="step-title">Checkout</span>
+      </div>
+      <p class="step-sub">Revisão do pedido, embalagem sustentável e pagamento antecipado obrigatório.</p>
+
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar"><span>9:42</span><span>●●● ✆ 84%</span></div>
+          <div class="checkout-body">
+            <p class="co-title">Revise seu pedido</p>
+            <div class="line-item"><span class="name">Água de coco gelada <span class="qty">×2</span></span><span class="price">R$ 18</span></div>
+            <div class="line-item"><span class="name">Porção de tapioca <span class="qty">×1</span></span><span class="price">R$ 22</span></div>
+            <div class="line-item"><span class="name">Suco natural laranja <span class="qty">×1</span></span><span class="price">R$ 14</span></div>
+            <div class="eco-toggle">
+              <span class="label">🌱 Embalagem retornável</span>
+              <div class="switch"></div>
+            </div>
+            <div class="pay-methods">
+              <div class="pay-pill selected">Pix</div>
+              <div class="pay-pill">Cartão</div>
+            </div>
+          </div>
+          <div class="co-footer">
+            <div class="total-row"><span>Total</span><span>R$ 58,00</span></div>
+            <button class="btn-primary">Pagar e confirmar pedido</button>
+            <p class="prepay-note">Pagamento antecipado obrigatório — sem opção de pagar na entrega</p>
+          </div>
+        </div>
+      </div>
+
+      <ul class="annotations">
+        <li><strong>Pagamento 100% antecipado</strong>, seguindo o modelo Domino's — reduz o maior risco operacional.</li>
+        <li><strong>Toggle de embalagem sustentável</strong> reforça o posicionamento do app já no fechamento.</li>
+        <li>Local escolhido na tela anterior <strong>fica anexado ao pedido</strong> e é travado após a confirmação.</li>
+        <li>Pix priorizado como método padrão, alinhado ao comportamento de pagamento no Brasil.</li>
+      </ul>
+    </div>
+
+    <div class="screen-block">
+      <div class="step-label">
+        <span class="step-num">3</span>
+        <span class="step-title">Identificação no local</span>
+      </div>
+      <p class="step-sub">Sinal visual ativado quando o entregador está por perto, dentro de uma janela curta.</p>
+
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="statusbar"><span>10:07</span><span>●●● ✆ 79%</span></div>
+          <div class="id-map">
+            <div class="eta-banner"><span>Seu entregador está perto</span><span class="mins">~1 min</span></div>
+            <div class="courier-dot"></div>
+            <div class="courier-path"></div>
+            <svg class="dest-pin" width="24" height="30" viewBox="0 0 30 38" fill="none">
+              <path d="M15 0C6.7 0 0 6.7 0 15c0 10.5 15 23 15 23s15-12.5 15-23C30 6.7 23.3 0 15 0z" fill="#0B3B40"/>
+              <circle cx="15" cy="15" r="5.5" fill="#FFFDF7"/>
+            </svg>
+            <div class="id-sand"></div>
+          </div>
+          <div class="id-sheet">
+            <p class="countdown">Ative o sinal em 3:47</p>
+            <div class="signal-btn"><span>Ativar<br>sinal</span></div>
+            <p class="id-desc">Guarda-sol listrado azul, perto do quiosque do Zé</p>
+            <p class="id-caption">A tela ficará laranja em tela cheia para o entregador te encontrar</p>
+          </div>
+        </div>
+      </div>
+
+      <ul class="annotations">
+        <li><strong>Janela de tempo curta</strong> (poucos minutos) desde a chegada do entregador ao ponto marcado.</li>
+        <li><strong>Botão de sinal visual</strong> transforma a tela em um farol laranja em tela cheia, visível de longe.</li>
+        <li>Recapitula a <strong>descrição e a foto</strong> cadastradas na etapa 1, para o entregador conferir.</li>
+        <li>Se não houver contato na janela, o fluxo escala para chat e depois para reagendamento.</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

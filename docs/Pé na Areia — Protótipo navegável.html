@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pé na Areia — Protótipo navegável</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#EA1D2C; --gray:#F7F7F7; --green:#0CB35B; --yellow:#FFC20E; --ink:#3E3E3E; --muted:#717171; --line:#E8E8E8;
+  --page:#EDEDED; --chrome:#FFFFFF; --text:#1F1F1F; --text2:#5E5E5E; --chip:#E2E2E2;
+  --f:'Nunito Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+:root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
+  --page:#141414; --chrome:#222; --text:#F2F2F2; --text2:#B5B5B5; --chip:#333;
+}}
+:root[data-theme="dark"]{ --page:#141414; --chrome:#222; --text:#F2F2F2; --text2:#B5B5B5; --chip:#333; }
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--f);}
+button{font-family:inherit;cursor:pointer;}
+.wrap{max-width:1100px;margin:0 auto;padding:22px 18px 50px;}
+h1{font-size:22px;margin:0 0 4px;font-weight:800;} .sub{font-size:13.5px;color:var(--text2);margin:0 0 18px;max-width:70ch;line-height:1.5;}
+.tabs{display:flex;gap:6px;background:var(--chrome);padding:5px;border-radius:12px;width:fit-content;max-width:100%;overflow-x:auto;margin-bottom:22px;}
+.tab{border:0;background:transparent;color:var(--text2);font-weight:700;font-size:13.5px;padding:9px 16px;border-radius:9px;white-space:nowrap;}
+.tab.on{background:var(--red);color:#fff;}
+
+/* flow map */
+.lane{background:var(--chrome);border-radius:14px;padding:16px 16px 12px;margin-bottom:16px;}
+.lane h3{margin:0 0 12px;font-size:13px;color:var(--text2);font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+.row{display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:6px;}
+.node{flex:0 0 112px;border:1.5px solid var(--line);background:var(--gray);color:#1F1F1F;border-radius:12px;padding:10px 8px;text-align:center;font-weight:700;font-size:12.5px;}
+.node:hover{border-color:var(--red);} .node small{display:block;font-weight:600;color:var(--muted);font-size:10.5px;margin-top:3px;}
+.arr{flex:0 0 74px;border:0;background:transparent;color:var(--red);display:flex;flex-direction:column;align-items:center;padding:6px 2px 0;font-size:20px;font-weight:800;line-height:1;}
+.arr span{font-size:9.5px;font-weight:700;color:var(--text2);margin-top:4px;line-height:1.2;text-align:center;}
+.arr:hover{transform:scale(1.08);}
+.x-title{font-size:13px;font-weight:800;margin:6px 0 10px;}
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;}
+.xl{background:var(--chrome);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;text-align:left;color:var(--text);font-size:12.5px;line-height:1.45;}
+.xl b{color:var(--red);} .xl:hover{border-color:var(--red);}
+
+/* stage */
+.stage{display:flex;gap:34px;align-items:flex-start;justify-content:center;flex-wrap:wrap;}
+.side{max-width:300px;font-size:13px;color:var(--text2);line-height:1.55;padding-top:12px;}
+.side h3{margin:0 0 6px;color:var(--text);font-size:15px;} .pill{display:inline-block;background:var(--chip);color:var(--text);border-radius:20px;padding:4px 11px;font-size:11.5px;font-weight:700;margin:2px 4px 2px 0;}
+.phone{width:350px;height:720px;background:#111;border-radius:42px;padding:10px;box-shadow:0 22px 44px -14px rgba(0,0,0,.4);flex-shrink:0;}
+.scr{position:relative;width:100%;height:100%;border-radius:33px;overflow:hidden;background:var(--gray);color:var(--ink);display:flex;flex-direction:column;}
+.sb{display:flex;justify-content:space-between;padding:10px 20px 4px;font-size:11.5px;font-weight:700;background:var(--red);color:#fff;}
+.hd{background:var(--red);color:#fff;padding:6px 14px 14px;display:flex;align-items:center;gap:8px;font-size:17px;}
+.hd b{font-weight:800;} .bk{background:rgba(255,255,255,.2);border:0;color:#fff;width:30px;height:30px;border-radius:50%;font-size:20px;line-height:1;}
+.body{flex:1;overflow-y:auto;padding:14px;} .foot{padding:12px 14px 16px;background:#fff;border-top:1px solid var(--line);}
+.card{background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+.cta{width:100%;background:var(--red);color:#fff;border:0;border-radius:12px;padding:14px;font-weight:800;font-size:15px;}
+.cta:disabled{background:#CFCFCF;color:#8a8a8a;cursor:not-allowed;}
+.cta.green{background:var(--green);} .ghost{width:100%;background:#fff;border:1.5px solid var(--line);color:var(--ink);border-radius:12px;padding:11px;font-weight:700;font-size:13.5px;margin-top:8px;}
+.h2{font-weight:800;font-size:15px;margin:2px 0 8px;} .mut{color:var(--muted);font-size:12px;line-height:1.4;}
+.srch{background:#fff;border-radius:12px;padding:11px 14px;color:var(--muted);font-size:13px;margin-bottom:12px;}
+.cats{display:flex;gap:8px;margin-bottom:12px;} .cat{background:#fff;border-radius:12px;padding:10px 6px;flex:1;text-align:center;font-size:11.5px;font-weight:700;} .cat i{display:block;font-style:normal;font-size:20px;margin-bottom:3px;}
+.entry{background:#fff;border:2px solid var(--red);border-radius:12px;padding:14px;display:flex;gap:12px;align-items:center;width:100%;text-align:left;color:var(--ink);}
+.entry .ic{width:46px;height:46px;border-radius:12px;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+.badge{display:inline-block;background:var(--red);color:#fff;font-size:9.5px;font-weight:800;border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:middle;}
+.ok{display:inline-block;background:#DDF5E8;color:var(--green);font-weight:800;font-size:11.5px;border-radius:20px;padding:4px 10px;}
+.warn{display:inline-block;background:#EEE;color:var(--muted);font-weight:800;font-size:11.5px;border-radius:20px;padding:4px 10px;}
+.kio{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:#fff;border:0;border-radius:12px;padding:12px;margin-bottom:10px;color:var(--ink);}
+.kio .th{width:50px;height:50px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+.kio b{display:block;font-size:14px;} .kio span{font-size:11.5px;color:var(--muted);}
+.map{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#8FD3DA 0%,#4FB0BE 46%,#E9D9AE 47%,#E3CE98 100%);touch-action:none;}
+.map .wave{position:absolute;left:0;right:0;top:44%;height:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.8) 0 5px,transparent 5px 14px);}
+.pt{position:absolute;transform:translate(-50%,-50%);font-size:9.5px;font-weight:800;background:#fff;color:#1F1F1F;border-radius:20px;padding:2px 7px;box-shadow:0 1px 3px rgba(0,0,0,.25);white-space:nowrap;}
+.pt.on{background:var(--red);color:#fff;}
+.pin{position:absolute;transform:translate(-50%,-100%);font-size:30px;line-height:1;cursor:grab;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35));user-select:none;}
+.dest{position:absolute;transform:translate(-50%,-100%);width:26px;height:26px;border-radius:50% 50% 50% 0;rotate:-45deg;background:var(--yellow);border:3px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);}
+.me{position:absolute;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--red);border:3px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.35);}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;} .chip{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:6px 12px;font-weight:700;font-size:12px;color:var(--ink);} .chip.on{background:var(--red);border-color:var(--red);color:#fff;}
+textarea,.fld{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13px;resize:none;background:#fff;color:var(--ink);}
+.li{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);} .li:last-child{border:0;}
+.sw{width:42px;height:24px;border-radius:20px;background:#CFCFCF;position:relative;border:0;flex-shrink:0;} .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;} .sw.on{background:var(--green);} .sw.on::after{left:21px;}
+.pays{display:flex;gap:8px;} .pay{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13px;color:var(--ink);} .pay.on{border-color:var(--red);color:var(--red);}
+.step{display:flex;gap:10px;align-items:center;padding:8px 0;font-size:13px;} .dot{width:22px;height:22px;border-radius:50%;background:#DDD;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;} .dot.done{background:var(--green);} .dot.cur{background:var(--red);}
+.toast{position:absolute;left:12px;right:12px;top:46px;background:#1F1F1F;color:#fff;border-radius:12px;padding:11px 14px;font-size:12.5px;font-weight:700;z-index:5;animation:tin .3s;} @keyframes tin{from{transform:translateY(-14px);opacity:0}}
+.big{width:150px;height:150px;border-radius:50%;background:var(--red);color:#fff;border:0;font-size:18px;font-weight:800;margin:8px auto;display:block;box-shadow:0 0 0 12px rgba(234,29,44,.15);}
+.sig{position:absolute;inset:0;background:var(--red);z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;border:0;animation:pl 1s infinite alternate;} @keyframes pl{from{background:#EA1D2C}to{background:#FF4A57}}
+.sig b{font-size:34px;} .sig span{font-size:13px;margin-top:8px;opacity:.9;}
+.cd{font-size:30px;font-weight:800;text-align:center;color:var(--red);}
+.msgs{display:flex;flex-direction:column;gap:8px;} .m{max-width:80%;padding:9px 12px;border-radius:14px;font-size:13px;line-height:1.35;} .m.in{background:#fff;align-self:flex-start;} .m.out{background:var(--red);color:#fff;align-self:flex-end;}
+.rate{font-size:30px;text-align:center;letter-spacing:4px;}
+input[type=range]{width:100%;accent-color:var(--red);}
+@media(max-width:420px){.phone{transform:scale(.92);transform-origin:top center;margin-bottom:-50px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pé na Areia — protótipo navegável</h1>
+  <p class="sub">“Pé na Areia” como card de entrada dentro de um app de delivery com identidade iFood. Use as abas para alternar entre o mapa do fluxo (setas clicáveis) e os dois lados do app. Tudo é simulado e vive só nesta página.</p>
+  <div class="tabs" id="tabs"></div>
+  <div id="view"></div>
+</div>
+
+<script>
+var CS=['Home','Quiosques','Localização','Checkout','Acompanhamento','Sinal visual','Entregue'];
+var DS=['Pedidos','Rota','Confirmação','Chat'];
+var KIOS=[{n:'Quiosque do Zé',p:5,e:'🥥',t:'12–25 min'},{n:'Tapioca da Praia',p:6,e:'🫓',t:'15–30 min'},{n:'Sorvete & Cia',p:7,e:'🍦',t:'10–20 min'}];
+var POSTS=[{id:5,x:14},{id:6,x:38},{id:7,x:62},{id:8,x:86}];
+var S={tab:'flow',c:0,d:0,kiosk:0,px:38,py:72,posto:6,desc:'',photo:false,eco:true,pay:'Pix',paid:false,accepted:false,stage:0,arrived:false,delivered:false,signal:false,
+  dist:120,msgs:[{w:'in',t:'Oi! Estou chegando no ponto 😊'}],prog:0,cd:227,toast:'',tm:null,ct:null};
+
+function $(s){return document.querySelector(s);}
+function hd(t,back){return '<div class="sb"><span>9:41</span><span>●●● 84%</span></div><div class="hd">'+(back?'<button class="bk" data-go="'+back+'">‹</button>':'')+'<b>'+t+'</b></div>';}
+function map(h,inner){return '<div class="map" id="map" style="height:'+h+'px"><div class="wave"></div>'+inner+'</div>';}
+function postsHTML(sel){return POSTS.map(function(p){return '<div class="pt'+(p.id===sel?' on':'')+'" style="left:'+p.x+'%;top:34%">Posto '+p.id+'</div>';}).join('');}
+function kn(){return KIOS[S.kiosk];}
+
+/* ---------- client screens ---------- */
+var C=[
+function(){return '<div class="sb"><span>9:41</span><span>●●● 84%</span></div><div class="hd"><b>Santos, SP ▾</b></div><div class="body"><div class="srch">🔍 Busque por item ou loja</div>'+
+ '<div class="cats"><div class="cat"><i>🍔</i>Restaurantes</div><div class="cat"><i>🛒</i>Mercado</div><div class="cat"><i>💊</i>Farmácia</div></div>'+
+ '<button class="entry" data-go="c:1"><div class="ic">🏖️</div><div><b>Pé na Areia<span class="badge">NOVO</span></b><div class="mut">Entrega direto na sua toalha, com pin no mapa. Sem endereço.</div></div></button>'+
+ '<div class="h2" style="margin-top:16px">Peça de novo</div><div class="card mut">Seus pedidos recentes aparecem aqui.</div></div>';},
+function(){return hd('Pé na Areia','c:0')+'<div class="body"><div class="h2">Quiosques perto de você</div>'+KIOS.map(function(k,i){return '<button class="kio" data-kiosk="'+i+'"><div class="th">'+k.e+'</div><div><b>'+k.n+'</b><span>Perto do Posto '+k.p+' · '+k.t+' · ♻ embalagem retornável</span></div></button>';}).join('')+'</div>';},
+function(){return hd('Onde você está?','c:1')+'<div class="body">'+map(210,postsHTML(S.posto)+'<div class="pin" id="pin" style="left:'+S.px+'%;top:'+S.py+'%">📍</div>')+
+ '<div class="mut" style="margin-top:6px">Arraste o pin até o ponto exato na areia.</div><div class="chips" id="chips">'+chips()+'</div>'+
+ '<textarea id="desc" rows="2" maxlength="140" placeholder="Ex: guarda-sol listrado azul, perto do quiosque">'+S.desc+'</textarea>'+
+ '<button class="ghost" id="photo">'+(S.photo?'✅ Foto adicionada':'📷 Adicionar foto do local (opcional)')+'</button></div>'+
+ '<div class="foot"><button class="cta" id="conf" data-go="c:3" '+(S.desc.trim()?'':'disabled')+'>Confirmar localização</button></div>';},
+function(){var k=kn();return hd('Checkout','c:2')+'<div class="body"><div class="card"><div class="h2">'+k.n+'</div><div class="li"><span>2× Água de coco</span><b>R$ 18,00</b></div><div class="li"><span>1× Porção de tapioca</span><b>R$ 22,00</b></div><div class="li"><span>1× Suco de laranja</span><b>R$ 14,00</b></div><div class="li"><span>Entrega</span><b>R$ 4,00</b></div></div>'+
+ '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><b>🌱 Embalagem retornável</b><div class="mut">Sem lixo extra na areia</div></div><button class="sw'+(S.eco?' on':'')+'" id="eco"></button></div>'+
+ '<div class="card"><div class="h2">Local de entrega</div><div style="font-size:13px">📍 Posto '+S.posto+' — '+(S.desc||'sem descrição')+'</div>'+(S.paid?'<div class="mut" style="margin-top:6px">🔒 Local travado após o pagamento</div>':'')+'</div>'+
+ '<div class="card"><div class="h2">Pagamento antecipado</div><div class="pays"><button class="pay'+(S.pay==='Pix'?' on':'')+'" data-pay="Pix">Pix</button><button class="pay'+(S.pay==='Cartão'?' on':'')+'" data-pay="Cartão">Cartão</button></div></div></div>'+
+ '<div class="foot"><div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:10px"><span>Total</span><span>R$ 58,00</span></div>'+
+ (S.paid?'<div style="text-align:center;margin-bottom:8px"><span class="ok">✓ Pago</span></div><button class="cta green" data-go="c:4">Acompanhar pedido</button>':'<button class="cta" id="pay">Pagar e confirmar pedido</button>')+'</div>';},
+function(){var st=S.accepted;return hd('Acompanhamento',null)+'<div class="body">'+map(190,postsHTML(S.posto)+'<div class="dest" style="left:'+S.px+'%;top:'+S.py+'%"></div><div class="me" id="me" style="left:'+(6+S.prog*(S.px-6)/100)+'%;top:'+(18+S.prog*(S.py-18)/100)+'%"></div>')+
+ '<div class="card" style="margin-top:12px"><div class="step"><div class="dot done">✓</div><span><b>Pago</b> <span class="ok">Pix</span></span></div><div class="step"><div class="dot '+(st?'done':'cur')+'">'+(st?'✓':'2')+'</div><span>'+(st?'Pedido em preparo / retirado':'Aguardando um entregador aceitar…')+'</span></div><div class="step"><div class="dot '+(st?'cur':'')+'">3</div><span>'+(st?'<b>A caminho</b> — chega em ~'+Math.max(1,Math.round((100-S.prog)/12))+' min':'A caminho')+'</span></div></div>'+
+ (st?'':'<div class="mut">Dica: aceite o pedido na aba “App do entregador”.</div>')+'</div><div class="foot"><button class="cta" data-go="c:5">Simular: entregador chegou perto</button></div>';},
+function(){return hd('Seu entregador chegou',null)+'<div class="body" style="text-align:center"><div class="mut" style="margin:8px 0">Ative o sinal e levante o celular para ele te achar na areia.</div><div class="cd" id="cd">'+fmt(S.cd)+'</div><div class="mut">tempo restante para ativar</div><button class="big" id="sig">Ativar<br>sinal</button>'+
+ '<div class="card" style="text-align:left"><div class="mut">Você marcou</div><div style="font-size:13px;margin-top:3px">📍 Posto '+S.posto+' — '+(S.desc||'—')+'</div></div></div><div class="foot"><button class="cta green" data-go="c:6">Recebi meu pedido</button></div>'+(S.signal?'<button class="sig" id="sigoff"><b>Estou aqui! 👋</b><span>toque para fechar</span></button>':'');},
+function(){return hd('Pedido entregue',null)+'<div class="body" style="text-align:center"><div style="font-size:54px;margin-top:20px">✅</div><div class="h2" style="font-size:18px">Bom apetite!</div><div class="mut">Entregue a pé · embalagem '+(S.eco?'retornável':'comum')+'</div><div class="card" style="margin-top:18px"><div class="h2">Como foi encontrar você?</div><div class="rate">★★★★★</div></div></div><div class="foot"><button class="cta" data-go="c:0" id="reset">Voltar ao início</button></div>';}
+];
+function chips(){return POSTS.map(function(p){return '<button class="chip'+(p.id===S.posto?' on':'')+'" data-posto="'+p.id+'">Posto '+p.id+'</button>';}).join('');}
+function fmt(s){return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2);}
+
+/* ---------- courier screens ---------- */
+var D=[
+function(){return hd('Pedidos disponíveis',null)+'<div class="body">'+(S.paid&&!S.accepted?'<div class="card"><div style="display:flex;justify-content:space-between"><b>'+kn().n+'</b><span class="ok">R$ 6,50</span></div><div class="mut" style="margin:6px 0">Retirada → Posto '+S.posto+' · ~'+(120+S.posto*8)+' m · a pé</div><div style="font-size:12.5px;margin-bottom:10px">♻ Embalagem '+(S.eco?'retornável':'comum')+'</div><button class="cta" data-accept="1">Aceitar pedido</button></div>':
+ S.accepted?'<div class="card"><span class="ok">Pedido aceito</span><div class="mut" style="margin-top:6px">Siga para a rota.</div></div><button class="cta" data-go="d:1">Ir para a rota</button>':'<div class="card mut" style="text-align:center;padding:30px 12px">Nenhum pedido no momento.<br>Faça um pedido na aba “App do cliente”.</div>')+'</div>';},
+function(){var q=S.stage;return hd('Rota','d:0')+'<div class="body">'+map(200,postsHTML(S.posto)+'<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%"><line x1="10" y1="30" x2="'+S.px+'" y2="'+S.py+'" stroke="#EA1D2C" stroke-width="1.2" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/></svg><div class="pt" style="left:10%;top:30%">🏪 '+kn().n+'</div><div class="dest" style="left:'+S.px+'%;top:'+S.py+'%"></div>')+
+ '<div class="card" style="margin-top:12px"><div class="step"><div class="dot '+(q>0?'done':'cur')+'">'+(q>0?'✓':'1')+'</div><span>Retirar no quiosque</span></div><div class="step"><div class="dot '+(q>0?'cur':'')+'">2</div><span>Ir até o pin <span class="pt" style="position:static;transform:none;background:var(--yellow)">destino</span></span></div></div>'+
+ '<button class="ghost" data-go="d:3">💬 Chat com o cliente</button></div><div class="foot">'+(q===0?'<button class="cta" id="pick">Retirei o pedido</button>':'<button class="cta" id="near">Cheguei perto do pin</button>')+'</div>';},
+function(){var ok=S.dist<=60;return hd('Confirmar entrega','d:1')+'<div class="body"><div class="card"><div class="mut">Cliente marcou</div><div style="font-size:14px;font-weight:700;margin:4px 0">📍 Posto '+S.posto+'</div><div style="font-size:13px">“'+(S.desc||'sem descrição')+'”</div>'+(S.photo?'<div class="map" style="height:70px;margin-top:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#444">📷 foto do local</div>':'')+'</div>'+
+ '<div class="card"><div class="h2">Distância até o pin: <span id="dv">'+S.dist+' m</span></div><input type="range" id="rg" min="0" max="150" value="'+S.dist+'"><div class="mut">Arraste para simular a aproximação.</div><div style="margin-top:8px" id="rb">'+(ok?'<span class="ok">✓ Dentro do raio (≤ 60 m)</span>':'<span class="warn">Fora do raio de confirmação</span>')+'</div></div>'+
+ '<button class="ghost" data-go="d:3">💬 Abrir chat</button></div><div class="foot"><button class="cta green" id="deliver" '+(ok?'':'disabled')+'>Confirmar entrega</button></div>';},
+function(){return hd('Chat com o cliente','d:2')+'<div class="body"><div class="msgs">'+S.msgs.map(function(m){return '<div class="m '+m.w+'">'+m.t+'</div>';}).join('')+'</div></div><div class="foot"><div class="chips" style="margin-top:0"><button class="chip" data-q="Estou na areia, perto do posto!">Estou perto</button><button class="chip" data-q="Pode ativar o sinal?">Ativar sinal?</button></div><div style="display:flex;gap:8px"><input class="fld" id="mi" placeholder="Mensagem…"><button class="cta" style="width:auto;padding:0 18px" id="send">Enviar</button></div></div>';}
+];
+
+/* ---------- renderers ---------- */
+function tabs(){$('#tabs').innerHTML=[['flow','Mapa do fluxo'],['cli','App do cliente'],['cou','App do entregador']].map(function(t){return '<button class="tab'+(S.tab===t[0]?' on':'')+'" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join('');}
+function flow(){
+  var cr=CS.map(function(n,i){var trig=['toca no card','escolhe quiosque','confirma pin','paga (Pix/cartão)','entregador perto','recebe pedido'][i];return '<button class="node" data-go="c:'+i+'">'+n+'<small>Cliente · '+(i+1)+'</small></button>'+(i<CS.length-1?'<button class="arr" data-go="c:'+(i+1)+'">→<span>'+trig+'</span></button>':'');}).join('');
+  var dr=DS.map(function(n,i){var trig=['aceita pedido','chega perto','confirma / chat'][i];return '<button class="node" data-go="d:'+i+'">'+n+'<small>Entregador · '+(i+1)+'</small></button>'+(i<DS.length-1?'<button class="arr" data-go="d:'+(i+1)+'">→<span>'+trig+'</span></button>':'');}).join('');
+  $('#view').innerHTML='<div class="lane"><h3>Fluxo do cliente</h3><div class="row">'+cr+'</div></div><div class="lane"><h3>Fluxo do entregador</h3><div class="row">'+dr+'</div></div>'+
+  '<div class="x-title">Gatilhos entre os dois apps</div><div class="xlinks">'+
+  '<button class="xl" data-go="d:0"><b>Checkout pago →</b> o pedido aparece em “Pedidos disponíveis” do entregador.</button>'+
+  '<button class="xl" data-go="c:4"><b>Entregador aceita →</b> o cliente vê “a caminho” e o mapa anima.</button>'+
+  '<button class="xl" data-go="c:5"><b>Entregador chega perto →</b> push + tela do sinal visual no cliente.</button>'+
+  '<button class="xl" data-go="d:2"><b>Confirmação ≤ 60 m →</b> só libera “Confirmar entrega” dentro do raio do pin.</button></div>';}
+function stage(kind){
+  var i=kind==='cli'?S.c:S.d, names=kind==='cli'?CS:DS, f=kind==='cli'?C[S.c]:D[S.d];
+  var side=kind==='cli'?'<div class="side"><h3>App do cliente</h3><div>Tela '+(i+1)+' de '+CS.length+': <b>'+names[i]+'</b></div><p>'+['Card “Pé na Areia” dentro da home — o gatilho que leva ao fluxo.','Quiosques parceiros perto da orla.','Arraste o pin: o posto mais próximo é sugerido sozinho.','Pagamento antecipado; o local fica travado.','O entregador só aparece em movimento depois de aceitar.','Sinal visual em tela cheia para ser achado na areia.','Fim do fluxo.'][i]+'</p>'+CS.map(function(n,j){return '<span class="pill" style="'+(j===i?'background:var(--red);color:#fff':'')+'">'+(j+1)+'. '+n+'</span>';}).join('')+'</div>':
+   '<div class="side"><h3>App do entregador</h3><div>Tela '+(i+1)+' de '+DS.length+': <b>'+names[i]+'</b></div><p>'+['Pedidos pagos aparecem aqui.','Rota até o quiosque e depois até o destino (amarelo).','Só confirma a entrega dentro do raio do pin.','Chat simples com o cliente.'][i]+'</p>'+DS.map(function(n,j){return '<span class="pill" style="'+(j===i?'background:var(--red);color:#fff':'')+'">'+(j+1)+'. '+n+'</span>';}).join('')+'</div>';
+  $('#view').innerHTML='<div class="stage"><div class="phone"><div class="scr" id="scr">'+(S.toast?'<div class="toast">'+S.toast+'</div>':'')+f()+'</div></div>'+side+'</div>';
+  wire();
+}
+function render(){tabs();clearInterval(S.tm);clearInterval(S.ct);if(S.tab==='flow')flow();else stage(S.tab);
+  if(S.tab==='cli'&&S.c===4&&S.accepted){S.tm=setInterval(function(){S.prog=Math.min(100,S.prog+2);var m=$('#me');if(m){m.style.left=(6+S.prog*(S.px-6)/100)+'%';m.style.top=(18+S.prog*(S.py-18)/100)+'%';}if(S.prog>=100)clearInterval(S.tm);},350);}
+  if(S.tab==='cli'&&S.c===5){S.ct=setInterval(function(){S.cd=Math.max(0,S.cd-1);var e=$('#cd');if(e)e.textContent=fmt(S.cd);},1000);}}
+function toast(t){S.toast=t;render();setTimeout(function(){S.toast='';var e=document.querySelector('.toast');if(e)e.remove();},2600);}
+function go(t){var p=t.split(':'),n=+p[1];if(p[0]==='c'){S.tab='cli';S.c=n;if(n===4&&S.accepted&&S.prog>=100)S.prog=0;if(n===5)S.cd=227;}else{S.tab='cou';S.d=n;}render();}
+
+function wire(){
+  var v=$('#view');
+  var pin=$('#pin'),mp=$('#map');
+  if(pin&&mp){var drag=false;
+    pin.addEventListener('pointerdown',function(e){drag=true;pin.setPointerCapture(e.pointerId);});
+    pin.addEventListener('pointerup',function(){drag=false;});
+    pin.addEventListener('pointermove',function(e){if(!drag)return;var r=mp.getBoundingClientRect();
+      S.px=Math.max(4,Math.min(96,(e.clientX-r.left)/r.width*100));S.py=Math.max(30,Math.min(96,(e.clientY-r.top)/r.height*100+8));
+      pin.style.left=S.px+'%';pin.style.top=S.py+'%';
+      var best=POSTS.reduce(function(a,b){return Math.abs(b.x-S.px)<Math.abs(a.x-S.px)?b:a;});
+      if(best.id!==S.posto){S.posto=best.id;mp.querySelectorAll('.pt').forEach(function(el,i){el.classList.toggle('on',POSTS[i].id===S.posto);});$('#chips').innerHTML=chips();}});}
+  var d=$('#desc');if(d)d.addEventListener('input',function(){S.desc=d.value;$('#conf').disabled=!d.value.trim();});
+  var rg=$('#rg');if(rg)rg.addEventListener('input',function(){S.dist=+rg.value;$('#dv').textContent=S.dist+' m';var ok=S.dist<=60;$('#rb').innerHTML=ok?'<span class="ok">✓ Dentro do raio (≤ 60 m)</span>':'<span class="warn">Fora do raio de confirmação</span>';$('#deliver').disabled=!ok;});
+  var mi=$('#mi');if(mi)mi.addEventListener('keydown',function(e){if(e.key==='Enter')$('#send').click();});
+}
+document.addEventListener('click',function(e){
+  var t=e.target.closest('button');if(!t)return;
+  if(t.dataset.tab){S.tab=t.dataset.tab;return render();}
+  if(t.dataset.kiosk){S.kiosk=+t.dataset.kiosk;return go('c:2');}
+  if(t.dataset.posto){S.posto=+t.dataset.posto;S.px=POSTS.filter(function(p){return p.id===S.posto;})[0].x;return render();}
+  if(t.dataset.pay){S.pay=t.dataset.pay;return render();}
+  if(t.dataset.accept){S.accepted=true;S.prog=0;return toast('Pedido aceito — o cliente já vê “a caminho”');}
+  if(t.dataset.q){S.msgs.push({w:'out',t:t.dataset.q});return render();}
+  if(t.id==='photo'){S.photo=!S.photo;return render();}
+  if(t.id==='eco'){S.eco=!S.eco;return render();}
+  if(t.id==='pay'){S.paid=true;return toast('Pagamento aprovado · pedido enviado aos entregadores');}
+  if(t.id==='sig'){S.signal=true;return render();}
+  if(t.id==='sigoff'){S.signal=false;return render();}
+  if(t.id==='pick'){S.stage=1;return render();}
+  if(t.id==='near'){S.arrived=true;return go('d:2');}
+  if(t.id==='deliver'){S.delivered=true;S.msgs.push({w:'in',t:'Entrega confirmada ✅ Bom apetite!'});return toast('Entrega confirmada dentro do raio do pin');}
+  if(t.id==='send'){var i=$('#mi');if(i&&i.value.trim()){S.msgs.push({w:'out',t:i.value.trim()});}return render();}
+  if(t.id==='reset'){S.paid=false;S.accepted=false;S.stage=0;S.prog=0;S.desc='';S.photo=false;S.signal=false;S.delivered=false;S.dist=120;}
+  if(t.dataset.go)go(t.dataset.go);
+});
+render();
+</script>
+</body>
+</html>

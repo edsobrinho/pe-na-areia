@@ -2,6 +2,7 @@ import '../../domain/models/order.dart';
 import '../../domain/models/order_location.dart';
 import '../../domain/models/order_status.dart';
 import '../../domain/models/payment_method.dart';
+import 'geo_json_mapper.dart';
 import 'json_helpers.dart';
 import 'order_location_mapper.dart';
 
@@ -24,7 +25,21 @@ abstract final class OrderMapper {
             ? PaymentMethod.pix
             : PaymentMethod.fromWire(json['formaPagamento'] as String),
         pago: json['pago'] as bool? ?? false,
+        pixTxId: json['pixTxId'] as String?,
+        pixCopiaECola: json['pixCopiaECola'] as String?,
+        pixQrCodeBase64: json['pixQrCodeBase64'] as String?,
+        pixExpiracao: dateTimeFromJson(json['pixExpiracao']),
         localizacao: OrderLocationMapper.tryFromOrderJson(json),
+        localizacaoEntregador:
+            GeoJsonMapper.geoPointFromJson(json['localizacaoEntregador']),
+        atualizadoEntregadorEm:
+            dateTimeFromJson(json['atualizadoEntregadorEm']),
+        alertaProximidadeEnviado:
+            json['alertaProximidadeEnviado'] as bool? ?? false,
+        mensagens: (json['mensagens'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(_messageFromJson)
+            .toList(growable: false),
         status: OrderStatus.fromWire(
           json['status'] as String? ?? OrderStatus.criado.wireValue,
         ),
@@ -61,6 +76,14 @@ abstract final class OrderMapper {
         nome: json['nome'] as String? ?? '',
         quantidade: (json['quantidade'] as num?)?.toInt() ?? 0,
         precoUnitario: (json['precoUnitario'] as num?)?.toDouble() ?? 0,
+      );
+
+  static OrderMessage _messageFromJson(Map<String, dynamic> json) =>
+      OrderMessage(
+        senderId: json['senderId'] as String? ?? '',
+        senderRole: json['senderRole'] as String? ?? 'CLIENT',
+        texto: json['texto'] as String? ?? '',
+        enviadoEm: dateTimeFromJson(json['enviadoEm']),
       );
 }
 

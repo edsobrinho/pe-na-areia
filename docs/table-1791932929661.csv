@@ -1,0 +1,10 @@
+﻿Requisito do documento,Onde está no protótipo
+"Tela 1 — seleção de quiosque,""Lista com distância em metros, nota e posto de referência mais próximo"""
+"Tela 2 — localização,""Mapa estilizado da orla (Av. Atlântica, areia, mar) com **pin arrastável de verdade** — solte e o posto sugerido recalcula automaticamente"""
+"Tela 3 — checkout,""Resumo, toggle de embalagem sustentável, Pix/cartão como pagamento antecipado"""
+Tela 4 — acompanhamento,Timeline de status + entregador animado se aproximando no mapa
+"Tela 5 — sinal visual,""Tela vermelha pulsante com contagem regressiva de 30 s, liberada só quando o courier chega a <100 m"""
+Courier 1 — pedidos disponíveis,Lista com distância estimada e valor
+"Courier 2 — rota,""Duas fases: quiosque → pin do cliente, com botão """"simular GPS"""""""
+Courier 3 — confirmação com raio,Botão de confirmar só habilita dentro de **50 m do pin** (regra do backend)
+Courier 4 — chat,Bubbles simples com resposta automática

@@ -89,6 +89,38 @@ class OrderRepository {
     }
   }
 
+  /// Atualiza a localização GPS em tempo real do entregador na areia (`PATCH /orders/{id}/courier-location`).
+  Future<Order> updateCourierLocation({
+    required String orderId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final path = '$_basePath/$orderId/courier-location';
+    final json = await _apiClient.patchJson(path, {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+    try {
+      return OrderMapper.fromJson(json);
+    } on TypeError catch (error) {
+      throw ApiParsingException(_apiClient.resolve(path), error);
+    }
+  }
+
+  /// Envia uma mensagem rápida no pedido (`POST /orders/{id}/messages`).
+  Future<Order> sendOrderMessage({
+    required String orderId,
+    required String texto,
+  }) async {
+    final path = '$_basePath/$orderId/messages';
+    final json = await _apiClient.postJson(path, {'texto': texto});
+    try {
+      return OrderMapper.fromJson(json);
+    } on TypeError catch (error) {
+      throw ApiParsingException(_apiClient.resolve(path), error);
+    }
+  }
+
   /// Confirma a entrega com a posição GPS atual do entregador.
   Future<Order> confirmDelivery({
     required String orderId,

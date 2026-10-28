@@ -8,6 +8,7 @@ import com.penaareia.model.Order;
 import com.penaareia.model.OrderStatus;
 import com.penaareia.repository.CourierRepository;
 import com.penaareia.repository.OrderRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -32,6 +33,7 @@ import java.util.Set;
 public class OrderWorkflowService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final double PROXIMITY_ALERT_RADIUS_METERS = 60.0;
     private static final Sort ORDER_PAGE_SORT = Sort.by(
             Sort.Order.desc("timeline.criadoEm"),
             Sort.Order.desc("id"));
@@ -50,15 +52,30 @@ public class OrderWorkflowService {
     private final CourierRepository courierRepository;
     private final MongoTemplate mongoTemplate;
     private final double deliveryRadiusMeters;
+    private final NotificationService notificationService;
+    private final OrderEventStreamService streamService;
 
     public OrderWorkflowService(OrderRepository orderRepository,
                                 CourierRepository courierRepository,
                                 MongoTemplate mongoTemplate,
-                                @Value("${app.delivery.confirmation-radius-meters:60}") double deliveryRadiusMeters) {
+                                double deliveryRadiusMeters) {
+        this(orderRepository, courierRepository, mongoTemplate, deliveryRadiusMeters,
+                new NotificationService(), new OrderEventStreamService());
+    }
+
+    @Autowired
+    public OrderWorkflowService(OrderRepository orderRepository,
+                                CourierRepository courierRepository,
+                                MongoTemplate mongoTemplate,
+                                @Value("${app.delivery.confirmation-radius-meters:60}") double deliveryRadiusMeters,
+                                NotificationService notificationService,
+                                OrderEventStreamService streamService) {
         this.orderRepository = orderRepository;
         this.courierRepository = courierRepository;
         this.mongoTemplate = mongoTemplate;
         this.deliveryRadiusMeters = deliveryRadiusMeters;
+        this.notificationService = notificationService != null ? notificationService : new NotificationService();
+        this.streamService = streamService != null ? streamService : new OrderEventStreamService();
     }
 
     @Transactional
@@ -109,6 +126,7 @@ public class OrderWorkflowService {
                     throw new BusinessRuleException(
                             "O entregador precisa estar disponível para aceitar pedidos.");
                 }
+                streamService.publish(claimedOrder);
                 return claimedOrder;
             } else if (!callerId.equals(order.getCourierId())) {
                 throw new BusinessRuleException("Este pedido não pertence a este entregador.");
@@ -123,7 +141,89 @@ public class OrderWorkflowService {
         }
 
         order.transitionTo(newStatus);
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        streamService.publish(saved);
+        return saved;
+    }
+
+    @Transactional
+    public Order atualizarLocalizacaoEntregador(String orderId,
+                                                double latitude,
+                                                double longitude,
+                                                String courierId) {
+        Order order = findOrder(orderId);
+        if (order.getStatus() != OrderStatus.A_CAMINHO
+                && order.getStatus() != OrderStatus.CHEGOU_NO_LOCAL) {
+            throw new BusinessRuleException(
+                    "A localização em tempo real só pode ser enviada enquanto o pedido estiver a caminho.");
+        }
+        if (!courierId.equals(order.getCourierId())) {
+            throw new BusinessRuleException("Este pedido não pertence a este entregador.");
+        }
+
+        GeoJsonPoint courierPoint = new GeoJsonPoint(longitude, latitude);
+        order.setLocalizacaoEntregador(courierPoint);
+        order.setAtualizadoEntregadorEm(Instant.now());
+
+        if (order.getPinCliente() != null && !order.isAlertaProximidadeEnviado()) {
+            double distance = distanceMeters(
+                    order.getPinCliente().getY(),
+                    order.getPinCliente().getX(),
+                    latitude,
+                    longitude);
+            if (distance <= PROXIMITY_ALERT_RADIUS_METERS) {
+                order.setAlertaProximidadeEnviado(true);
+                notificationService.notificarProximidadeAreia(order, distance);
+            }
+        }
+
+        Order saved = orderRepository.save(order);
+        mongoTemplate.updateFirst(
+                Query.query(Criteria.where("id").is(courierId)),
+                new Update().set("localizacaoAtual", courierPoint),
+                Courier.class);
+        streamService.publish(saved);
+        return saved;
+    }
+
+    @Transactional
+    public Order enviarMensagemRapida(String orderId,
+                                      String callerId,
+                                      Collection<? extends GrantedAuthority> authorities,
+                                      String texto) {
+        Order order = findOrder(orderId);
+        if (order.getStatus() != OrderStatus.A_CAMINHO
+                && order.getStatus() != OrderStatus.CHEGOU_NO_LOCAL) {
+            throw new BusinessRuleException(
+                    "O canal de mensagens rápidas só fica disponível enquanto o entregador está a caminho.");
+        }
+        boolean isOrderClient = callerId.equals(order.getUserId());
+        boolean isOrderCourier = callerId.equals(order.getCourierId());
+        if (!isOrderClient && !isOrderCourier) {
+            throw new BusinessRuleException("Você não participa desta entrega.");
+        }
+
+        String senderRole = isOrderCourier || hasRole(authorities, "ROLE_COURIER") ? "COURIER" : "CLIENT";
+        if (order.getMensagens() == null) {
+            order.setMensagens(new ArrayList<>());
+        }
+        order.getMensagens().add(new Order.OrderMessage(
+                callerId,
+                senderRole,
+                texto.trim(),
+                Instant.now()));
+
+        Order saved = orderRepository.save(order);
+        streamService.publish(saved);
+        return saved;
+    }
+
+    public List<Order.OrderMessage> listarMensagens(String orderId, String callerId) {
+        Order order = findOrder(orderId);
+        if (!callerId.equals(order.getUserId()) && !callerId.equals(order.getCourierId())) {
+            throw new BusinessRuleException("Você não tem acesso às mensagens deste pedido.");
+        }
+        return order.getMensagens() == null ? List.of() : List.copyOf(order.getMensagens());
     }
 
     @Transactional
@@ -175,6 +275,7 @@ public class OrderWorkflowService {
                             "Entregador não encontrado: " + courierId));
             throw new BusinessRuleException("O entregador não está em rota.");
         }
+        streamService.publish(deliveredOrder);
         return deliveredOrder;
     }
 

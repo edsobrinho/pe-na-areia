@@ -16,4 +16,12 @@ public interface StorageService {
      * @return URL publica (HTTPS) da imagem
      */
     String enviarFotoLocal(MultipartFile arquivo);
+
+    /**
+     * Valida e envia a foto de um item do cardapio.
+     *
+     * @param arquivo imagem recebida no multipart/form-data (campo "file")
+     * @return URL publica (HTTPS) da imagem
+     */
+    String enviarFotoProduto(MultipartFile arquivo);
 }

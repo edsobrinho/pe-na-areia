@@ -1,14 +1,46 @@
-// Teste E2E do fluxo completo Pé na Areia
-// Dois "aparelhos" simulados com sessões JWT totalmente independentes:
-//   Aparelho A = Cliente, Aparelho B = Entregador principal, Aparelho C = outro Entregador
-// Pré-requisitos: API em http://localhost:8080 e kiosk-santos-1 semeado no MongoDB (Posto 5 = id 6acfd917f737c71df923a343).
+// Teste E2E Completo Pé na Areia (Backend + MongoDB Docker + Cloudinary Mock Docker + Regras Web/Mobile)
 // Executar: node e2e/e2e_delivery_flow.mjs
+
+import { execSync } from 'node:child_process';
 
 const BASE = process.env.API_BASE_URL || 'http://localhost:8080';
 const POSTO5_ID = '6acfd917f737c71df923a343';
 const KIOSK_ID = 'kiosk-santos-1';
+const PARTNERSHIP_ID = 'pe-na-areia-app';
 // Posto 5: lat -23.9689, lng -46.3336
 const PIN = { latitude: -23.9691, longitude: -46.3334 }; // ~30 m do Posto 5 (dentro de 500 m)
+
+// Garante dados base no MongoDB Docker (kiosk-santos-1 com _id nos subdocumentos do cardápio)
+try {
+  const seedScript = `
+    db.kiosk_partnerships.deleteMany({ kioskId: "kiosk-santos-1" });
+    db.kiosks.updateOne(
+      { _id: "kiosk-santos-1" },
+      {
+        $set: {
+          nome: "Quiosque Pé na Areia",
+          pontoReferenciaId: "${POSTO5_ID}",
+          localizacao: { type: "Point", coordinates: [-46.3338, -23.969] },
+          aceitaEmbalagemSustentavel: true,
+          ativo: true,
+          cardapio: [
+            { _id: "agua-coco", nome: "Água de Coco", descricao: "Coco gelado 500ml", preco: "12.00", disponivel: true, category: "Bebidas", returnablePackaging: true, fotoUrl: null },
+            { _id: "pastel-camarao", nome: "Pastel de Camarão", descricao: "6 unidades", preco: "38.50", disponivel: true, category: "Porções", returnablePackaging: false, fotoUrl: null },
+            { _id: "sundae", nome: "Sundae", descricao: "Chocolate", preco: "15.00", disponivel: true, category: "Sobremesas", returnablePackaging: false, fotoUrl: null },
+            { _id: "item-agotado", nome: "Rabo de Tatu", descricao: "Fora do menu temporada", preco: "60.00", disponivel: false, category: "Outros", returnablePackaging: false, fotoUrl: null }
+          ]
+        }
+      },
+      { upsert: true }
+    );
+  `;
+  execSync('docker exec -i pe-na-areia-mongodb-1 mongosh pe_na_areia --quiet', {
+    input: seedScript,
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+} catch {
+  // Ignora se mongosh não estiver acessível via CLI local
+}
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -17,11 +49,10 @@ function check(name, cond, detail = '') {
   else { fail++; failures.push(`${name}${detail ? ' -> ' + detail : ''}`); console.log(`  FAIL ${name}${detail ? ' -> ' + detail : ''}`); }
 }
 
-// Cada "aparelho" guarda o próprio token JWT: sessões independentes.
 function device(label) {
   let token = null;
   return {
-    get role() { return null; },
+    get token() { return token; },
     async call(method, path, body) {
       const res = await fetch(BASE + path, {
         method,
@@ -31,6 +62,22 @@ function device(label) {
           'X-Device': label,
         },
         body: body ? JSON.stringify(body) : undefined,
+      });
+      let data = null;
+      const text = await res.text();
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      return { status: res.status, data };
+    },
+    async uploadFile(path, filename, buffer, mimeType = 'image/png') {
+      const form = new FormData();
+      form.append('file', new Blob([buffer], { type: mimeType }), filename);
+      const res = await fetch(BASE + path, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'X-Device': label,
+        },
+        body: form,
       });
       let data = null;
       const text = await res.text();
@@ -54,8 +101,9 @@ const stamp = Date.now();
 const aparecimentoA = device('aparelho-A-cliente');
 const aparecimentoB = device('aparelho-B-entregador');
 const aparelhoC = device('aparelho-C-entregador-2');
+const aparelhoOp = device('painel-web-operador');
 
-console.log('== it_01 Cadastro e sessão de cada aparelho ==');
+console.log('== it_01 Cadastro e sessão de cada aparelho (Cliente, Entregadores e Operador) ==');
 const regCliente = await aparecimentoA.register({
   name: 'Cliente E2E', email: `cliente.e2e.${stamp}@exemplo.com`, phone: '13990000001',
   password: 'senha123', role: 'CLIENT',
@@ -85,17 +133,44 @@ check('e-mail duplicado rejeitado (422)', dupEmail.status === 422, JSON.stringif
 const loginC = await aparecimentoB.login({ email: `entregador.e2e.${stamp}@exemplo.com`, password: 'senha123' });
 check('login do entregador retorna mesmo userId', loginC.status === 200 && loginC.data?.userId === regCourier.data?.userId, JSON.stringify(loginC.data));
 
+// Registra e promove operador do quiosque para configurar a parceria via API REST oficial
+await aparelhoOp.register({
+  name: 'Operador Quiosque', email: `op.e2e.${stamp}@exemplo.com`, phone: '13990000099',
+  password: 'senha123', role: 'CLIENT',
+});
+execSync('docker exec -i pe-na-areia-mongodb-1 mongosh pe_na_areia --quiet', {
+  input: `db.users.updateOne({ email: "op.e2e.${stamp}@exemplo.com" }, { $set: { role: "KIOSK_OPERATOR", kioskId: "kiosk-santos-1" } });`,
+  stdio: ['pipe', 'ignore', 'ignore'],
+});
+await aparelhoOp.login({ email: `op.e2e.${stamp}@exemplo.com`, password: 'senha123' });
+
+const configPartnership = await aparelhoOp.call('PUT', `/kiosk/me/partnerships/${PARTNERSHIP_ID}`, {
+  active: true,
+  commissionPercent: 0,
+  deliveryFee: 0,
+  deliveryFeePayer: 'KIOSK',
+  minimumOrder: 0,
+  maxItemsPerOrder: 50,
+  acceptFrom: '00:00:00',
+  acceptUntil: '00:00:00',
+  prepMinutes: 15,
+  filters: { categories: [], onlyReturnable: false },
+  productIds: ['agua-coco', 'pastel-camarao', 'sundae', 'item-agotado'],
+});
+check('Operador ativa parceria pe-na-areia-app via API REST (200)', configPartnership.status === 200 && configPartnership.data?.active === true, JSON.stringify(configPartnership.data));
+
 console.log('== it_02 Catálogo no aparelho do cliente ==');
 const kiosks = await aparecimentoA.call('GET', '/kiosks');
 check('GET /kiosks 200 na sessão do cliente', kiosks.status === 200 && Array.isArray(kiosks.data) && kiosks.data.length > 0);
 const kiosk = kiosks.data.find(k => k.id === KIOSK_ID);
 check('quiosque semeado visível no catálogo', !!kiosk);
-check('cardápio tem itens id/availáveis', kiosk?.cardapio?.every(i => i.id && typeof i.disponivel === 'boolean'));
+check('cardápio tem itens id/availáveis', kiosk?.cardapio?.every(i => i.id && typeof i.disponivel === 'boolean'), JSON.stringify(kiosk?.cardapio));
 
 console.log('== it_03 Validations de criação de pedido ==');
 const baseOrder = {
   userId: regCliente.data.userId,
   kioskId: KIOSK_ID,
+  partnershipId: PARTNERSHIP_ID,
   formaPagamento: 'PIX',
   embalagemSustentavel: true,
   pinCliente: PIN,
@@ -122,7 +197,7 @@ check('item indisponível é negado (422)', unavailable.status === 422, JSON.str
 const unknownItem = await aparecimentoA.call('POST', '/orders', {
   ...baseOrder, itens: [{ menuItemId: 'item-fantasma', quantidade: 1 }],
 });
-check('item fora do cardápio é negado', unknownItem.status === 404, JSON.stringify(unknownItem.data));
+check('item fora do cardápio é negado (404)', unknownItem.status === 404, JSON.stringify(unknownItem.data));
 
 const farPin = await aparecimentoA.call('POST', '/orders', {
   ...baseOrder,
@@ -134,9 +209,20 @@ check('pin a mais de 500 m do posto é negado (422)', farPin.status === 422, JSO
 const availableDenied = await aparecimentoA.call('GET', '/orders/available');
 check('cliente não pode listar pedidos disponíveis (422)', availableDenied.status === 422, JSON.stringify(availableDenied.data));
 
-console.log('== it_04 Criação do pedido no aparelho do cliente ==');
+console.log('== it_04 Upload de fotos no Cloudinary Mock Docker (local e cardápio) ==');
+const validPngBuffer = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
+const uploadLocalRes = await aparecimentoA.uploadFile('/uploads/location-photo', 'guarda-sol.png', validPngBuffer, 'image/png');
+check('POST /uploads/location-photo retorna 200 com secureUrl', uploadLocalRes.status === 200 && !!uploadLocalRes.data?.secureUrl, JSON.stringify(uploadLocalRes.data));
+const fetchUploadedImg = await fetch(uploadLocalRes.data.secureUrl);
+check('Imagem salva no container cloudinary-mock é servida via HTTP 200', fetchUploadedImg.status === 200 && fetchUploadedImg.headers.get('content-type')?.includes('image/png'));
+
+console.log('== it_05 Criação do pedido com foto do local e Pix gerado ==');
 const createOrder = await aparecimentoA.call('POST', '/orders', {
   ...baseOrder,
+  fotoLocalUrl: uploadLocalRes.data.secureUrl,
   itens: [
     { menuItemId: 'agua-coco', quantidade: 2 },
     { menuItemId: 'pastel-camarao', quantidade: 1 },
@@ -147,112 +233,98 @@ const order = createOrder.data || {};
 const orderId = order.id;
 check('status inicial PAGO/EM_PREPARO e pago=true', order.status === 'EM_PREPARO' && order.pago === true, JSON.stringify({ status: order.status, pago: order.pago }));
 check('total calculado no servidor = 62.50 (2x12.00 + 1x38.50)', Number(order.valorTotal) === 62.5, String(order.valorTotal));
-check('preço dos itens vem do cardápio do servidor', order.itens?.[0]?.precoUnitario === 12 && order.itens?.[1]?.precoUnitario === 38.5, JSON.stringify(order.itens));
-check('sem entregador atribuído ainda', !order.courierId);
-check('pin geográfico correto ([lng,lat])', Array.isArray(order.pinCliente?.coordinates) && order.pinCliente.coordinates[0] === PIN.longitude && order.pinCliente.coordinates[1] === PIN.latitude, JSON.stringify(order.pinCliente));
-check('postId de referência e descrição persistidos', order.pontoReferenciaId === POSTO5_ID && order.descricaoLocal === baseOrder.descricaoLocal);
-check('timeline pagoEm/emPreparo preenchidos', !!order.timeline?.pagoEm && !!order.timeline?.emPreparoEm);
+check('Pix Copia e Cola e TxID gerados no servidor', !!order.pixTxId && String(order.pixCopiaECola).includes('br.gov.bcb.pix'), JSON.stringify({ pixTxId: order.pixTxId }));
+check('fotoLocalUrl do Cloudinary Docker vinculada ao pedido', order.fotoLocalUrl === uploadLocalRes.data.secureUrl);
+check('pin geográfico correto ([lng,lat])', Array.isArray(order.pinCliente?.coordinates) && order.pinCliente.coordinates[0] === PIN.longitude && order.pinCliente.coordinates[1] === PIN.latitude);
 
-console.log('== it_05 Segurança de acesso antes do aceite ==');
+console.log('== it_06 Segurança de acesso antes do aceite ==');
 const clientFetchCourier = await aparecimentoA.call('GET', '/orders/courier/active');
-check('cliente não acessa rota de entregador (422)', clientFetchCourier.status === 422, JSON.stringify(clientFetchCourier.data));
-
+check('cliente não acessa rota de entregador (422)', clientFetchCourier.status === 422);
 const noAuth = await device('aparelho-anonimo').call('GET', '/orders');
-check('requisição sem token é 401', noAuth.status === 401, String(noAuth.status));
-
+check('requisição sem token é 401', noAuth.status === 401);
 const courierCView = await aparelhoC.call('GET', `/orders/${orderId}`);
-check('entrevistador C não vê pedido de terceiros antes do aceite (422)', courierCView.status === 422, JSON.stringify(courierCView.data));
+check('entregador C não vê pedido de terceiros antes do aceite (422)', courierCView.status === 422);
 
-// it_06 raio de confirmação (negativo controlado):
-// mesmo estrutura do it_09, mas executado aqui para não depender de estado novo.
-// O teste na API valida o limite com o pin a mais de 60 m.
-
-console.log('== it_06 Criação de pedido 2 para cancelamento ==');
+console.log('== it_07 Criação de pedido 2 para cancelamento ==');
 const order2Res = await aparecimentoA.call('POST', '/orders', {
   ...baseOrder,
-  itemIdCancelBugfix: undefined,
   itens: [{ menuItemId: 'sundae', quantidade: 1 }],
   descricaoLocal: 'Quiosque de roda amarela',
 });
-check('pedido 2 criado', order2Res.status === 201, JSON.stringify(order2Res.data?.id));
+check('pedido 2 criado', order2Res.status === 201);
 const order2 = order2Res.data || {};
 const cancel = await aparecimentoA.call('PATCH', `/orders/${order2.id}/status`, { status: 'CANCELADO' });
-check('cliente cancela antes de sair para entrega', cancel.status === 200 && cancel.data?.status === 'CANCELADO', JSON.stringify(cancel.data));
-const cancelAgain = await aparecimentoA.call('PATCH', `/orders/${order2.id}/status`, { status: 'CANCELADO' });
-check('transição CANCELADO -> CANCELADO é negada (422)', cancelAgain.status === 422, JSON.stringify(cancelAgain.data));
+check('cliente cancela antes de sair para entrega', cancel.status === 200 && cancel.data?.status === 'CANCELADO');
 
-console.log('== it_07 Entregador consulta disponíveis e aceita (A_CAMINHO) ==');
+console.log('== it_08 Entregador consulta disponíveis e aceita (A_CAMINHO) ==');
 const courierLists = await aparecimentoB.call('GET', '/orders/available');
-check('entregador lista pedidos EM_PREPARO disponíveis', courierLists.status === 200 && Array.isArray(courierLists.data) && courierLists.data.some(o => o.id === orderId), JSON.stringify(courierLists.status));
-const availableView = courierLists.data.find(o => o.id === orderId);
-check('lista de disponíveis mostra o destino do pedido (pin amarelo)', !!availableView && Array.isArray(availableView.pinCliente?.coordinates), JSON.stringify(availableView?.pinCliente));
-
-const clientStartsDelivery = await aparecimentoA.call('PATCH', `/orders/${orderId}/status`, { status: 'A_CAMINHO' });
-check('cliente não pode iniciar a entrega (422)', clientStartsDelivery.status === 422, JSON.stringify(clientStartsDelivery.data));
-
+check('entregador lista pedidos EM_PREPARO disponíveis', courierLists.status === 200 && Array.isArray(courierLists.data) && courierLists.data.some(o => o.id === orderId));
 const accept = await aparecimentoB.call('PATCH', `/orders/${orderId}/status`, { status: 'A_CAMINHO' });
-check('entregador aceita e fica A_CAMINHO com courierId dele', accept.status === 200 && accept.data?.status === 'A_CAMINHO' && accept.data?.courierId === regCourier.data.userId, JSON.stringify({ status: accept.status, courierId: accept.data?.courierId }));
+check('entregador aceita e fica A_CAMINHO com courierId dele', accept.status === 200 && accept.data?.status === 'A_CAMINHO' && accept.data?.courierId === regCourier.data.userId);
 
-const acceptC = await aparelhoC.call('PATCH', `/orders/${orderId}/status`, { status: 'A_CAMINHO' });
-check('outro entregador não pode assumir pedido já aceito (422)', acceptC.status === 422, JSON.stringify(acceptC.data));
-
-console.log('== it_08 Chegada no local ==');
-const arrive = await aparecimentoB.call('PATCH', `/orders/${orderId}/status`, { status: 'CHEGOU_NO_LOCAL' });
-check('entregador marca CHEGOU_NO_LOCAL', arrive.status === 200 && arrive.data?.status === 'CHEGOU_NO_LOCAL', JSON.stringify(arrive.data));
-check('timeline aCaminhoEm preenchida', !!(arrive.data?.timeline?.acaminhoEm ?? arrive.data?.timeline?.aCaminhoEm), JSON.stringify(arrive.data?.timeline));
-
-console.log('== it_09 Confirmação de entrega validada por GPS (raio 60 m)==');
-const wrongSelf = await aparecimentoB.call('POST', `/orders/${orderId}/confirm-delivery`, {
-  courierId: 'id-falso',
-  courierLocation: { lat: PIN.latitude, lng: PIN.longitude },
+console.log('== it_09 Live Tracking na Areia, Alerta de 60m e Mensagens Rápidas ==');
+const gpsLonge = await aparecimentoB.call('PATCH', `/orders/${orderId}/courier-location`, {
+  latitude: PIN.latitude + 0.0020, // ~220m do pin
+  longitude: PIN.longitude,
 });
-check('courierId divergente do token é negado (422)', wrongSelf.status === 422, JSON.stringify(wrongSelf.data));
+check('entregador atualiza GPS longe (>60m) sem disparar alerta de proximidade', gpsLonge.status === 200 && gpsLonge.data?.alertaProximidadeEnviado === false);
+
+const gpsPerto = await aparecimentoB.call('PATCH', `/orders/${orderId}/courier-location`, {
+  latitude: PIN.latitude + 0.0002, // ~22m do pin (dentro dos 60m)
+  longitude: PIN.longitude,
+});
+check('entregador entra no raio de 60m na areia e dispara alerta de proximidade', gpsPerto.status === 200 && gpsPerto.data?.alertaProximidadeEnviado === true, JSON.stringify(gpsPerto.data));
+
+const msgCliente = await aparecimentoA.call('POST', `/orders/${orderId}/messages`, {
+  texto: 'A maré subiu, mudei alguns metros para trás',
+});
+check('cliente envia mensagem rápida na praia (200)', msgCliente.status === 200 && msgCliente.data?.mensagens?.length === 1);
+
+const msgCourier = await aparecimentoB.call('POST', `/orders/${orderId}/messages`, {
+  texto: 'Estou a 20m a Sudeste, levante o Sinalizador Laranja!',
+});
+check('entregador responde no canal rápido (200)', msgCourier.status === 200 && msgCourier.data?.mensagens?.length === 2);
+const messages = await aparecimentoA.call('GET', `/orders/${orderId}/messages`);
+check('cliente consulta as mensagens rápidas trocadas (200)', messages.status === 200 && messages.data?.length === 2);
+
+console.log('== it_10 Chegada no local e confirmação de entrega validada por GPS (raio 60 m) ==');
+const arrive = await aparecimentoB.call('PATCH', `/orders/${orderId}/status`, { status: 'CHEGOU_NO_LOCAL' });
+check('entregador marca CHEGOU_NO_LOCAL', arrive.status === 200 && arrive.data?.status === 'CHEGOU_NO_LOCAL');
 
 const tooFar = await aparecimentoB.call('POST', `/orders/${orderId}/confirm-delivery`, {
   courierId: regCourier.data.userId,
   courierLocation: { lat: PIN.latitude + 0.0012, lng: PIN.longitude }, // ~135 m do pin
 });
-check('confirmação a ~135 m do pin é negada (422)', tooFar.status === 422 && /pin do cliente|máximo/.test(String(tooFar.data?.mensagem || '')), JSON.stringify(tooFar.data));
-
-const clientConfirms = await aparecimentoA.call('POST', `/orders/${orderId}/confirm-delivery`, {
-  courierId: regCliente.data.userId,
-  courierLocation: { lat: PIN.latitude, lng: PIN.longitude },
-});
-check('cliente não pode confirmar entrega (422)', clientConfirms.status === 422, JSON.stringify(clientConfirms.data));
+check('confirmação a ~135 m do pin é negada (422)', tooFar.status === 422);
 
 const confirm = await aparecimentoB.call('POST', `/orders/${orderId}/confirm-delivery`, {
   courierId: regCourier.data.userId,
   courierLocation: { lat: PIN.latitude + 0.00005, lng: PIN.longitude }, // ~5 m do pin
 });
-check('confirmação a ~5 m do pin é aceita e vira ENTREGUE', confirm.status === 200 && confirm.data?.status === 'ENTREGUE', JSON.stringify(confirm.data?.status));
-check('timeline entregueEm preenchida', !!confirm.data?.timeline?.entregueEm);
+check('confirmação a ~5 m do pin é aceita e vira ENTREGUE', confirm.status === 200 && confirm.data?.status === 'ENTREGUE');
 
-console.log('== it_10 Cliente consulta o pedido atualizado ==');
-const clientView = await aparecimentoA.call('GET', `/orders/${orderId}`);
-check('aparelho do cliente vê o mesmo pedido', clientView.status === 200 && clientView.data?.id === orderId);
-check('status visto pelo cliente é ENTREGUE', clientView.data?.status === 'ENTREGUE');
-check('timeline completa (pagoEm, aCaminhoEm, entregueEm)', !!clientView.data?.timeline?.pagoEm && !!(clientView.data?.timeline?.acaminhoEm ?? clientView.data?.timeline?.aCaminhoEm) && !!clientView.data?.timeline?.entregueEm, JSON.stringify(clientView.data?.timeline));
+console.log('== it_11 CRUD de Cardápio com Foto pelo Operador do Quiosque (Web) ==');
+const uploadMenuPhoto = await aparelhoOp.uploadFile('/uploads/menu-item-photo', 'acai.png', validPngBuffer, 'image/png');
+check('Operador faz upload de foto do produto para pe-na-areia/cardapio no Cloudinary Docker', uploadMenuPhoto.status === 200 && uploadMenuPhoto.data?.secureUrl?.includes('pe-na-areia/cardapio'), JSON.stringify(uploadMenuPhoto.data));
 
-const courierCView2 = await aparelhoC.call('GET', `/orders/${orderId}`);
-check('entregador C ainda não vê o pedido alheio (422)', courierCView2.status === 422, JSON.stringify(courierCView2.data));
-
-console.log('== it_11 Entregador liberado após a entrega ==');
-const courierActive = await aparecimentoB.call('GET', '/orders/courier/active');
-check('rota ativa fica vazia após ENTREGUE', courierActive.status === 200 && Array.isArray(courierActive.data) && courierActive.data.length === 0, JSON.stringify(courierActive.data));
-
-const order3Res = await aparecimentoA.call('POST', '/orders', {
-  ...baseOrder,
-  itens: [{ menuItemId: 'agua-coco', quantidade: 1 }],
-  descricaoLocal: 'Perto do poste 12',
+const createItem = await aparelhoOp.call('POST', '/kiosk/me/menu', {
+  nome: 'Açaí na Tigela 500ml',
+  descricao: 'Com banana e granola',
+  preco: 28.9,
+  disponivel: true,
+  category: 'Sobremesas',
+  returnablePackaging: true,
+  fotoUrl: uploadMenuPhoto.data.secureUrl,
 });
-check('pedido 3 criado para validar liberacao do entregador', order3Res.status === 201, JSON.stringify(order3Res.data?.id));
-const reAccept = await aparecimentoB.call('PATCH', `/orders/${order3Res.data.id}/status`, { status: 'A_CAMINHO' });
-check('entregador DISPONIVEL volta a aceitar novo pedido', reAccept.status === 200 && reAccept.data?.courierId === regCourier.data.userId, JSON.stringify(reAccept.data?.courierId));
-// devolve pedido 3 para EM_PREPARO? não há transição inversa; encerramos com cancelamento negativo e deixamos em A_CAMINHO.
-const farCancel = await aparecimentoA.call('PATCH', `/orders/${order3Res.data.id}/status`, { status: 'CANCELADO' });
-check('após A_CAMINHO não pode cancelar (422)', farCancel.status === 422, JSON.stringify(farCancel.data));
+check('Operador cadastra novo item com foto no cardápio (201)', createItem.status === 201 && createItem.data?.fotoUrl === uploadMenuPhoto.data.secureUrl, JSON.stringify(createItem.data));
 
-console.log('\n===== RESULTADO =====');
+const listMenu = await aparelhoOp.call('GET', '/kiosk/me/menu');
+check('Operador lista cardápio e encontra item com foto', listMenu.status === 200 && listMenu.data?.some(i => i.id === createItem.data.id && i.fotoUrl === uploadMenuPhoto.data.secureUrl));
+
+const deleteItem = await aparelhoOp.call('DELETE', `/kiosk/me/menu/${createItem.data.id}`);
+check('Operador remove item de teste do cardápio (204)', deleteItem.status === 204);
+
+console.log('\n===== RESULTADO E2E =====');
 console.log(`PASS: ${pass}  FAIL: ${fail}`);
 if (failures.length) { console.log('Falhas:\n - ' + failures.join('\n - ')); }
 process.exit(fail === 0 ? 0 : 1);

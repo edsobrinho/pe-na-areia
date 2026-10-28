@@ -1,13 +1,17 @@
 package com.penaareia.controller;
 
-import com.penaareia.dto.CreateOrderRequest;
 import com.penaareia.dto.ConfirmDeliveryRequest;
+import com.penaareia.dto.CreateOrderRequest;
 import com.penaareia.dto.ErrorResponse;
 import com.penaareia.dto.OrderCursorSlice;
 import com.penaareia.dto.OrderResponse;
+import com.penaareia.dto.OrderTrackingDtos.CourierLocationUpdateRequest;
+import com.penaareia.dto.OrderTrackingDtos.OrderMessageRequest;
+import com.penaareia.dto.OrderTrackingDtos.PixChargeResponse;
 import com.penaareia.dto.StatusUpdateRequest;
 import com.penaareia.model.Order;
 import com.penaareia.service.BusinessRuleException;
+import com.penaareia.service.OrderEventStreamService;
 import com.penaareia.service.OrderService;
 import com.penaareia.service.OrderWorkflowService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,24 +23,46 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/orders")
-@RequiredArgsConstructor
 @Validated
 @Tag(name = "Pedidos", description = "Criacao e consulta de pedidos, incluindo pin de localizacao")
 public class OrderController {
 
     private final OrderService orderService;
     private final OrderWorkflowService workflowService;
+    private final OrderEventStreamService streamService;
+
+    public OrderController(OrderService orderService, OrderWorkflowService workflowService) {
+        this(orderService, workflowService, new OrderEventStreamService());
+    }
+
+    @Autowired
+    public OrderController(OrderService orderService,
+                           OrderWorkflowService workflowService,
+                           @Autowired(required = false) OrderEventStreamService streamService) {
+        this.orderService = orderService;
+        this.workflowService = workflowService;
+        this.streamService = streamService != null ? streamService : new OrderEventStreamService();
+    }
 
     @GetMapping("/available")
     @Operation(summary = "Lista pedidos prontos que podem ser aceitos por um entregador",
@@ -111,6 +137,17 @@ public class OrderController {
         return OrderResponse.fromEntity(order);
     }
 
+    @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "Stream SSE em tempo real de status e localização do entregador")
+    public SseEmitter acompanharEmTempoReal(@PathVariable String id, Authentication authentication) {
+        Order order = orderService.buscarPorId(id);
+        if (!authentication.getName().equals(order.getUserId())
+                && !authentication.getName().equals(order.getCourierId())) {
+            throw new BusinessRuleException("Você não tem acesso a este pedido.");
+        }
+        return streamService.subscribe(order);
+    }
+
     @PatchMapping("/{id}/status")
     @Operation(summary = "Atualiza o status do pedido respeitando as transições permitidas")
     public OrderResponse atualizarStatus(@PathVariable String id,
@@ -118,6 +155,39 @@ public class OrderController {
                                          Authentication authentication) {
         return OrderResponse.fromEntity(workflowService.atualizarStatus(
                 id, request.status(), authentication.getName(), authentication.getAuthorities()));
+    }
+
+    @PatchMapping("/{id}/courier-location")
+    @Operation(summary = "Atualiza a coordenada GPS em tempo real do entregador na rota")
+    public OrderResponse atualizarLocalizacaoEntregador(
+            @PathVariable String id,
+            @Valid @RequestBody CourierLocationUpdateRequest request,
+            Authentication authentication) {
+        requireRole(authentication, "ROLE_COURIER");
+        return OrderResponse.fromEntity(workflowService.atualizarLocalizacaoEntregador(
+                id, request.latitude(), request.longitude(), authentication.getName()));
+    }
+
+    @PostMapping("/{id}/messages")
+    @Operation(summary = "Envia uma mensagem rápida no pedido durante a entrega")
+    public OrderResponse enviarMensagem(@PathVariable String id,
+                                        @Valid @RequestBody OrderMessageRequest request,
+                                        Authentication authentication) {
+        return OrderResponse.fromEntity(workflowService.enviarMensagemRapida(
+                id, authentication.getName(), authentication.getAuthorities(), request.texto()));
+    }
+
+    @GetMapping("/{id}/messages")
+    @Operation(summary = "Lista as mensagens rápidas trocadas durante a entrega")
+    public List<Order.OrderMessage> listarMensagens(@PathVariable String id, Authentication authentication) {
+        return workflowService.listarMensagens(id, authentication.getName());
+    }
+
+    @PostMapping("/{id}/pix-charge")
+    @Operation(summary = "Gera ou recupera a cobrança Pix dinâmica do pedido")
+    public PixChargeResponse gerarCobrancaPix(@PathVariable String id, Authentication authentication) {
+        requireRole(authentication, "ROLE_CLIENT");
+        return orderService.gerarCobrancaPix(id, authentication.getName());
     }
 
     @PostMapping("/{id}/confirm-delivery")

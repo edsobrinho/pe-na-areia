@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, ApiError, clearSession, readSession, storeSession } from './api'
 import { MapPicker } from './MapPicker'
+import { MenuManager } from './components/MenuManager'
 import { maskPhone, unmask } from './utils/masks.ts'
 import { isValidEmail, isValidPhoneBR } from './utils/validators.ts'
 import type {
@@ -235,7 +236,13 @@ function App() {
                         <div className="product-grid">
                           {selectedKiosk.cardapio.map((item) => (
                             <article className="product-card" key={item.id}>
-                              <div className="product-icon" aria-hidden="true">🥥</div>
+                              <div className="product-icon" aria-hidden="true">
+                                {item.fotoUrl ? (
+                                  <img src={item.fotoUrl} alt={item.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                                ) : (
+                                  '🥥'
+                                )}
+                              </div>
                               <div className="product-info">
                                 <span className="product-category">{item.category || 'Outros'}</span>
                                 <h4>{item.nome}</h4>
@@ -254,7 +261,28 @@ function App() {
                         <div className="checkout-bar">
                           <div><small>Subtotal estimado</small><strong>{currency(subtotal)}</strong></div>
                           {order ? (
-                            <span className="order-created">Pedido {order.id} criado · {order.status}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                              <span className="order-created">
+                                Pedido #{order.id} · {order.status} {order.pago ? '· Pago (Pix)' : ''}
+                              </span>
+                              {order.pixCopiaECola && (
+                                <button
+                                  type="button"
+                                  className="button button-outline button-small"
+                                  onClick={() => {
+                                    void navigator.clipboard.writeText(order.pixCopiaECola ?? '')
+                                    setSuccess('Código Pix Copia e Cola copiado!')
+                                  }}
+                                >
+                                  📋 Copiar Pix Copia e Cola ({order.pixTxId ?? 'PNA'})
+                                </button>
+                              )}
+                              {order.alertaProximidadeEnviado && (
+                                <small className="returnable">
+                                  🏖️ Entregador a menos de 60m na areia! Levante o sinalizador no app.
+                                </small>
+                              )}
+                            </div>
                           ) : (
                             <button
                               className="button button-primary"
@@ -409,6 +437,10 @@ function AuthDialog({ onClose, onAuthenticated }: AuthDialogProps) {
 }
 
 function OperatorDashboard() {
+  const [operatorTab, setOperatorTab] = useState<'parcerias' | 'cardapio'>('cardapio')
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [menuLoading, setMenuLoading] = useState(false)
+  const [menuError, setMenuError] = useState<string | null>(null)
   const [configurations, setConfigurations] = useState<PartnershipConfiguration[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [draft, setDraft] = useState<PartnershipConfiguration | null>(null)
@@ -417,6 +449,19 @@ function OperatorDashboard() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const loadMenuItems = useCallback(() => {
+    setMenuLoading(true)
+    setMenuError(null)
+    void api.listOperatorMenuItems()
+      .then(setMenuItems)
+      .catch((reason: unknown) => setMenuError(messageOf(reason)))
+      .finally(() => setMenuLoading(false))
+  }, [])
+
+  useEffect(() => {
+    loadMenuItems()
+  }, [loadMenuItems])
 
   useEffect(() => {
     let current = true
@@ -474,131 +519,169 @@ function OperatorDashboard() {
     }
   }
 
-  if (loading) return <section className="dashboard"><div className="loading-panel">Carregando configurações…</div></section>
-  if (error && !configurations.length) return <section className="dashboard"><div className="notice notice-error" role="alert">{error}</div></section>
-  if (!configurations.length) return <section className="dashboard"><div className="empty-state">Não há canais disponíveis para configurar.</div></section>
+  if (loading && operatorTab === 'parcerias') return <section className="dashboard"><div className="loading-panel">Carregando configurações…</div></section>
 
   const categories = [...new Set(draft?.products.map((item) => item.category || 'Outros') ?? [])].sort()
   return (
     <section className="dashboard">
       <div className="dashboard-heading">
-        <div><span className="eyebrow">ÁREA DO QUIOSQUE</span><h1>Parcerias e canais</h1>
-          <p>Escolha onde vender e configure a oferta do seu quiosque.</p></div>
+        <div>
+          <span className="eyebrow">ÁREA DO QUIOSQUE</span>
+          <h1>{operatorTab === 'cardapio' ? 'Meu Cardápio' : 'Parcerias e canais'}</h1>
+          <p>
+            {operatorTab === 'cardapio'
+              ? 'Gerencie os produtos, preços e fotos exibidos para os clientes.'
+              : 'Escolha onde vender e configure a oferta do seu quiosque.'}
+          </p>
+        </div>
         <span className="dashboard-icon" aria-hidden="true">⚙</span>
       </div>
-      {error && <div className="notice notice-error" role="alert">{error}<button onClick={() => setError(null)} aria-label="Fechar">×</button></div>}
-      {notice && <div className="notice notice-success" role="status">{notice}</div>}
-      <div className="settings-layout">
-        <aside className="settings-nav" aria-label="Canais disponíveis">
-          {configurations.map((item) => (
-            <button key={item.partnershipId} className={selectedId === item.partnershipId ? 'settings-option selected' : 'settings-option'} onClick={() => {
-              setSelectedId(item.partnershipId)
-              setDraft(item)
-              setPreview(null)
-            }}>
-              <span className="channel-icon" aria-hidden="true">◉</span><span><strong>{item.name}</strong><small>{item.channel}</small></span>
-              <span className={item.active ? 'status-dot on' : 'status-dot'} />
-            </button>
-          ))}
-        </aside>
-        {draft && (
-          <form className="settings-form" onSubmit={(event) => void save(event)}>
-            <div className="form-title-row">
-              <div><span className="eyebrow">{draft.channel}</span><h2>{draft.name}</h2></div>
-              <label className="switch-row">
-                <input type="checkbox" checked={draft.active} onChange={(event) => update('active', event.target.checked)} />
-                <span className="switch" aria-hidden="true" /><span>{draft.active ? 'Ativa' : 'Pausada'}</span>
-              </label>
-            </div>
-            {!draft.configured && <p className="notice notice-info">Configure e salve esta parceria para habilitar pedidos neste canal.</p>}
 
-            <section className="form-section">
-              <h3>Produtos e filtros</h3>
-              <p className="muted">Selecione os itens que seu quiosque oferece neste canal.</p>
-              <div className="product-check-list">
-                {draft.products.map((item) => {
-                  const checked = draft.productIds.includes(item.id)
-                  const categoryExcluded = draft.filters.categories.length > 0 && !draft.filters.categories.includes(item.category || 'Outros')
-                  const packagingExcluded = draft.filters.onlyReturnable && !item.returnablePackaging
-                  return (
-                    <label className="product-check" key={item.id}>
-                      <input type="checkbox" checked={checked} onChange={() => update('productIds', checked ? draft.productIds.filter((id) => id !== item.id) : [...draft.productIds, item.id])} />
-                      <span className="check-detail"><strong>{item.nome}</strong><small>{item.category || 'Outros'} · {currency(item.preco)}{item.returnablePackaging ? ' · retornável' : ''}</small>
-                        {checked && (categoryExcluded || packagingExcluded) && <small className="field-error">{categoryExcluded ? 'Excluído pelo filtro de categoria.' : 'Excluído pelo filtro de embalagem retornável.'}</small>}
-                      </span>
-                      {!item.disponivel && <small className="muted">Indisponível no cardápio</small>}
-                    </label>
-                  )
-                })}
-              </div>
-              <fieldset className="filter-box">
-                <legend>Categorias deste canal</legend>
-                <p className="muted">Sem categorias selecionadas, todas são aceitas.</p>
-                <div className="inline-options">
-                  {categories.map((category) => (
-                    <label className="checkbox-line compact" key={category}>
-                      <input type="checkbox" checked={draft.filters.categories.includes(category)} onChange={() => {
-                        const selected = draft.filters.categories.includes(category)
-                        update('filters', { ...draft.filters, categories: selected
-                          ? draft.filters.categories.filter((value) => value !== category)
-                          : [...draft.filters.categories, category] })
-                      }} />
-                      <span>{category}</span>
-                    </label>
-                  ))}
-                  {!categories.length && <span className="muted">Sem categorias cadastradas.</span>}
-                </div>
-                <label className="checkbox-line">
-                  <input type="checkbox" checked={draft.filters.onlyReturnable} onChange={(event) => update('filters', { ...draft.filters, onlyReturnable: event.target.checked })} />
-                  <span>Somente produtos com embalagem retornável</span>
-                </label>
-              </fieldset>
-            </section>
-
-            <section className="form-section">
-              <h3>Política de taxas</h3>
-              <div className="field-grid">
-                <Field label="Comissão (%)" type="number" min="0" max="30" step="0.01" value={draft.commissionPercent} onChange={(value) => update('commissionPercent', numberValue(value))} required />
-                <Field label="Taxa de entrega (R$)" type="number" min="0" step="0.01" value={draft.deliveryFee} onChange={(value) => update('deliveryFee', numberValue(value))} required />
-                <label className="field"><span>Quem paga a taxa?</span>
-                  <select value={draft.deliveryFeePayer} onChange={(event) => update('deliveryFeePayer', event.target.value as 'CLIENT' | 'KIOSK')}>
-                    <option value="CLIENT">Cliente</option><option value="KIOSK">Quiosque</option>
-                  </select>
-                </label>
-              </div>
-              <small className="muted">A comissão é calculada sobre o subtotal. Nenhuma cobrança ou repasse real é processado.</small>
-            </section>
-
-            <section className="form-section">
-              <h3>Restrições de pedido</h3>
-              <div className="field-grid">
-                <Field label="Pedido mínimo (R$)" type="number" min="0" step="0.01" value={draft.minimumOrder} onChange={(value) => update('minimumOrder', numberValue(value))} required />
-                <Field label="Máximo de unidades por pedido" type="number" min="1" step="1" value={draft.maxItemsPerOrder} onChange={(value) => update('maxItemsPerOrder', Math.floor(numberValue(value)))} required />
-                <Field label="Início do atendimento" type="time" value={draft.acceptFrom.slice(0, 5)} onChange={(value) => update('acceptFrom', value)} required />
-                <Field label="Fim do atendimento" type="time" value={draft.acceptUntil.slice(0, 5)} onChange={(value) => update('acceptUntil', value)} required />
-                <Field label="Preparo (minutos)" type="number" min="0" step="1" value={draft.prepMinutes} onChange={(value) => update('prepMinutes', Math.floor(numberValue(value)))} required />
-              </div>
-              <small className="muted">Horários em America/Sao_Paulo. Se o fim for anterior ao início, o atendimento atravessa a meia-noite.</small>
-            </section>
-
-            <section className="preview-card">
-              <div><span className="eyebrow">SIMULAÇÃO</span><h3>Prévia de um pedido</h3><p>Usa os preços e o cálculo atual do servidor.</p></div>
-              <button type="button" className="button button-outline" onClick={() => void runPreview()}>Calcular exemplo</button>
-              {preview && <div className="preview-values">
-                <span>Subtotal<strong>{currency(preview.subtotal)}</strong></span>
-                <span>Comissão ({preview.commissionPercent}%)<strong>− {currency(preview.commissionAmount)}</strong></span>
-                <span>Entrega · {preview.deliveryFeePayer === 'CLIENT' ? 'cliente' : 'quiosque'}<strong>{currency(preview.deliveryFee)}</strong></span>
-                <span>Total do cliente<strong>{currency(preview.customerTotal)}</strong></span>
-                <span>Líquido estimado do quiosque<strong>{currency(preview.kioskNet)}</strong></span>
-                <small>{preview.note}</small>
-              </div>}
-            </section>
-            <div className="form-actions">
-              <button className="button button-primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar configuração'}</button>
-            </div>
-          </form>
-        )}
+      <div className="operator-tabs">
+        <button
+          type="button"
+          className={operatorTab === 'cardapio' ? 'tab-btn active' : 'tab-btn'}
+          onClick={() => setOperatorTab('cardapio')}
+        >
+          🍽️ Cardápio
+        </button>
+        <button
+          type="button"
+          className={operatorTab === 'parcerias' ? 'tab-btn active' : 'tab-btn'}
+          onClick={() => setOperatorTab('parcerias')}
+        >
+          🤝 Parcerias
+        </button>
       </div>
+
+      {operatorTab === 'cardapio' ? (
+        <MenuManager
+          menuItems={menuItems}
+          onRefresh={loadMenuItems}
+          loading={menuLoading}
+          error={menuError}
+        />
+      ) : (
+        <>
+          {error && <div className="notice notice-error" role="alert">{error}<button onClick={() => setError(null)} aria-label="Fechar">×</button></div>}
+          {notice && <div className="notice notice-success" role="status">{notice}</div>}
+          {!configurations.length ? (
+            <div className="empty-state">Não há canais disponíveis para configurar.</div>
+          ) : (
+            <div className="settings-layout">
+              <aside className="settings-nav" aria-label="Canais disponíveis">
+                {configurations.map((item) => (
+                  <button key={item.partnershipId} className={selectedId === item.partnershipId ? 'settings-option selected' : 'settings-option'} onClick={() => {
+                    setSelectedId(item.partnershipId)
+                    setDraft(item)
+                    setPreview(null)
+                  }}>
+                    <span className="channel-icon" aria-hidden="true">◉</span><span><strong>{item.name}</strong><small>{item.channel}</small></span>
+                    <span className={item.active ? 'status-dot on' : 'status-dot'} />
+                  </button>
+                ))}
+              </aside>
+              {draft && (
+                <form className="settings-form" onSubmit={(event) => void save(event)}>
+                  <div className="form-title-row">
+                    <div><span className="eyebrow">{draft.channel}</span><h2>{draft.name}</h2></div>
+                    <label className="switch-row">
+                      <input type="checkbox" checked={draft.active} onChange={(event) => update('active', event.target.checked)} />
+                      <span className="switch" aria-hidden="true" /><span>{draft.active ? 'Ativa' : 'Pausada'}</span>
+                    </label>
+                  </div>
+                  {!draft.configured && <p className="notice notice-info">Configure e salve esta parceria para habilitar pedidos neste canal.</p>}
+
+                  <section className="form-section">
+                    <h3>Produtos e filtros</h3>
+                    <p className="muted">Selecione os itens que seu quiosque oferece neste canal.</p>
+                    <div className="product-check-list">
+                      {draft.products.map((item) => {
+                        const checked = draft.productIds.includes(item.id)
+                        const categoryExcluded = draft.filters.categories.length > 0 && !draft.filters.categories.includes(item.category || 'Outros')
+                        const packagingExcluded = draft.filters.onlyReturnable && !item.returnablePackaging
+                        return (
+                          <label className="product-check" key={item.id}>
+                            <input type="checkbox" checked={checked} onChange={() => update('productIds', checked ? draft.productIds.filter((id) => id !== item.id) : [...draft.productIds, item.id])} />
+                            <span className="check-detail"><strong>{item.nome}</strong><small>{item.category || 'Outros'} · {currency(item.preco)}{item.returnablePackaging ? ' · retornável' : ''}</small>
+                              {checked && (categoryExcluded || packagingExcluded) && <small className="field-error">{categoryExcluded ? 'Excluído pelo filtro de categoria.' : 'Excluído pelo filtro de embalagem retornável.'}</small>}
+                            </span>
+                            {!item.disponivel && <small className="muted">Indisponível no cardápio</small>}
+                          </label>
+                        )
+                      })}
+                    </div>
+                    <fieldset className="filter-box">
+                      <legend>Categorias deste canal</legend>
+                      <p className="muted">Sem categorias selecionadas, todas são aceitas.</p>
+                      <div className="inline-options">
+                        {categories.map((category) => (
+                          <label className="checkbox-line compact" key={category}>
+                            <input type="checkbox" checked={draft.filters.categories.includes(category)} onChange={() => {
+                              const selected = draft.filters.categories.includes(category)
+                              update('filters', { ...draft.filters, categories: selected
+                                ? draft.filters.categories.filter((value) => value !== category)
+                                : [...draft.filters.categories, category] })
+                            }} />
+                            <span>{category}</span>
+                          </label>
+                        ))}
+                        {!categories.length && <span className="muted">Sem categorias cadastradas.</span>}
+                      </div>
+                      <label className="checkbox-line">
+                        <input type="checkbox" checked={draft.filters.onlyReturnable} onChange={(event) => update('filters', { ...draft.filters, onlyReturnable: event.target.checked })} />
+                        <span>Somente produtos com embalagem retornável</span>
+                      </label>
+                    </fieldset>
+                  </section>
+
+                  <section className="form-section">
+                    <h3>Política de taxas</h3>
+                    <div className="field-grid">
+                      <Field label="Comissão (%)" type="number" min="0" max="30" step="0.01" value={draft.commissionPercent} onChange={(value) => update('commissionPercent', numberValue(value))} required />
+                      <Field label="Taxa de entrega (R$)" type="number" min="0" step="0.01" value={draft.deliveryFee} onChange={(value) => update('deliveryFee', numberValue(value))} required />
+                      <label className="field"><span>Quem paga a taxa?</span>
+                        <select value={draft.deliveryFeePayer} onChange={(event) => update('deliveryFeePayer', event.target.value as 'CLIENT' | 'KIOSK')}>
+                          <option value="CLIENT">Cliente</option><option value="KIOSK">Quiosque</option>
+                        </select>
+                      </label>
+                    </div>
+                    <small className="muted">A comissão é calculada sobre o subtotal. Nenhuma cobrança ou repasse real é processado.</small>
+                  </section>
+
+                  <section className="form-section">
+                    <h3>Restrições de pedido</h3>
+                    <div className="field-grid">
+                      <Field label="Pedido mínimo (R$)" type="number" min="0" step="0.01" value={draft.minimumOrder} onChange={(value) => update('minimumOrder', numberValue(value))} required />
+                      <Field label="Máximo de unidades por pedido" type="number" min="1" step="1" value={draft.maxItemsPerOrder} onChange={(value) => update('maxItemsPerOrder', Math.floor(numberValue(value)))} required />
+                      <Field label="Início do atendimento" type="time" value={draft.acceptFrom.slice(0, 5)} onChange={(value) => update('acceptFrom', value)} required />
+                      <Field label="Fim do atendimento" type="time" value={draft.acceptUntil.slice(0, 5)} onChange={(value) => update('acceptUntil', value)} required />
+                      <Field label="Preparo (minutos)" type="number" min="0" step="1" value={draft.prepMinutes} onChange={(value) => update('prepMinutes', Math.floor(numberValue(value)))} required />
+                    </div>
+                    <small className="muted">Horários em America/Sao_Paulo. Se o fim for anterior ao início, o atendimento atravessa a meia-noite.</small>
+                  </section>
+
+                  <section className="preview-card">
+                    <div><span className="eyebrow">SIMULAÇÃO</span><h3>Prévia de um pedido</h3><p>Usa os preços e o cálculo atual do servidor.</p></div>
+                    <button type="button" className="button button-outline" onClick={() => void runPreview()}>Calcular exemplo</button>
+                    {preview && <div className="preview-values">
+                      <span>Subtotal<strong>{currency(preview.subtotal)}</strong></span>
+                      <span>Comissão ({preview.commissionPercent}%)<strong>− {currency(preview.commissionAmount)}</strong></span>
+                      <span>Entrega · {preview.deliveryFeePayer === 'CLIENT' ? 'cliente' : 'quiosque'}<strong>{currency(preview.deliveryFee)}</strong></span>
+                      <span>Total do cliente<strong>{currency(preview.customerTotal)}</strong></span>
+                      <span>Líquido estimado do quiosque<strong>{currency(preview.kioskNet)}</strong></span>
+                      <small>{preview.note}</small>
+                    </div>}
+                  </section>
+                  <div className="form-actions">
+                    <button className="button button-primary" disabled={busy}>{busy ? 'Salvando…' : 'Salvar configuração'}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </section>
   )
 }

@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -28,11 +29,19 @@ public class OrderResponse {
     private boolean embalagemSustentavel;
     private PaymentMethod formaPagamento;
     private boolean pago;
+    private String pixTxId;
+    private String pixCopiaECola;
+    private String pixQrCodeBase64;
+    private Instant pixExpiracao;
     /** Pin do cliente em formato GeoJSON: {"type":"Point","coordinates":[longitude,latitude]} */
     private GeoJsonPoint pinCliente;
     private String pontoReferenciaId;
     private String descricaoLocal;
     private String fotoLocalUrl;
+    private GeoJsonPoint localizacaoEntregador;
+    private Instant atualizadoEntregadorEm;
+    private boolean alertaProximidadeEnviado;
+    private List<Order.OrderMessage> mensagens;
     private OrderStatus status;
     private Order.StatusTimeline timeline;
 
@@ -49,10 +58,18 @@ public class OrderResponse {
                 order.isEmbalagemSustentavel(),
                 order.getFormaPagamento(),
                 order.isPago(),
+                order.getPixTxId(),
+                order.getPixCopiaECola(),
+                order.getPixQrCodeBase64(),
+                order.getPixExpiracao(),
                 order.getPinCliente(),
                 order.getPontoReferenciaId(),
                 order.getDescricaoLocal(),
                 order.getFotoLocalUrl(),
+                order.getLocalizacaoEntregador(),
+                order.getAtualizadoEntregadorEm(),
+                order.isAlertaProximidadeEnviado(),
+                order.getMensagens() == null ? List.of() : List.copyOf(order.getMensagens()),
                 order.getStatus(),
                 order.getTimeline()
         );

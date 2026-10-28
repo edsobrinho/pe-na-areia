@@ -63,6 +63,20 @@ class UploadControllerTest {
     }
 
     @Test
+    void uploadFotoProdutoRetorna200ComSecureUrl() throws Exception {
+        when(storageService.enviarFotoProduto(any()))
+                .thenReturn("https://res.cloudinary.com/demo/image/upload/foto-produto.png");
+
+        mockMvc.perform(multipart("/uploads/menu-item-photo").file(png()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.secureUrl")
+                        .value("https://res.cloudinary.com/demo/image/upload/foto-produto.png"));
+
+        verify(storageService).enviarFotoProduto(any());
+    }
+
+    @Test
     void uploadSemArquivoRetorna400Padronizado() throws Exception {
         mockMvc.perform(multipart("/uploads/location-photo"))
                 .andExpect(status().isBadRequest())

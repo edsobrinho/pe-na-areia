@@ -43,4 +43,21 @@ public class UploadController {
             @RequestPart("file") MultipartFile file) {
         return ResponseEntity.ok(new UploadResponse(storageService.enviarFotoLocal(file)));
     }
+
+    @PostMapping(value = "/menu-item-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Envia a foto de um item do cardapio (multipart/form-data, campo 'file') e retorna a URL publica")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Foto enviada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Arquivo ausente, vazio ou em formato nao suportado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "413", description = "Arquivo maior que o limite de 5MB",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "Servico de upload indisponivel (Cloudinary nao configurado)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<UploadResponse> enviarFotoProduto(
+            @Parameter(description = "Arquivo de imagem (JPEG, PNG ou WebP), ate 5MB", required = true)
+            @RequestPart("file") MultipartFile file) {
+        return ResponseEntity.ok(new UploadResponse(storageService.enviarFotoProduto(file)));
+    }
 }

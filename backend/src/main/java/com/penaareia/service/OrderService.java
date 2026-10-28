@@ -1,16 +1,20 @@
 package com.penaareia.service;
 
 import com.penaareia.dto.CreateOrderRequest;
+import com.penaareia.dto.OrderTrackingDtos.PixChargeResponse;
+import com.penaareia.dto.OrderTrackingDtos.PixWebhookRequest;
 import com.penaareia.model.Kiosk;
 import com.penaareia.model.KioskPartnership;
 import com.penaareia.model.Order;
+import com.penaareia.model.OrderStatus;
+import com.penaareia.model.PaymentMethod;
 import com.penaareia.model.ReferencePoint;
 import com.penaareia.model.User;
 import com.penaareia.repository.KioskRepository;
 import com.penaareia.repository.OrderRepository;
 import com.penaareia.repository.ReferencePointRepository;
 import com.penaareia.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +24,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class OrderService {
 
     private static final double MAX_DISTANCE_TO_REFERENCE_METERS = 500.0;
@@ -31,6 +34,37 @@ public class OrderService {
     private final ReferencePointRepository referencePointRepository;
     private final PartnershipPricingService pricingService;
     private final PartnershipService partnershipService;
+    private final PixPaymentGateway pixPaymentGateway;
+    private final OrderEventStreamService streamService;
+
+    public OrderService(OrderRepository orderRepository,
+                        UserRepository userRepository,
+                        KioskRepository kioskRepository,
+                        ReferencePointRepository referencePointRepository,
+                        PartnershipPricingService pricingService,
+                        PartnershipService partnershipService) {
+        this(orderRepository, userRepository, kioskRepository, referencePointRepository,
+                pricingService, partnershipService, new PixPaymentGateway(), new OrderEventStreamService());
+    }
+
+    @Autowired
+    public OrderService(OrderRepository orderRepository,
+                        UserRepository userRepository,
+                        KioskRepository kioskRepository,
+                        ReferencePointRepository referencePointRepository,
+                        PartnershipPricingService pricingService,
+                        PartnershipService partnershipService,
+                        PixPaymentGateway pixPaymentGateway,
+                        OrderEventStreamService streamService) {
+        this.orderRepository = orderRepository;
+        this.userRepository = userRepository;
+        this.kioskRepository = kioskRepository;
+        this.referencePointRepository = referencePointRepository;
+        this.pricingService = pricingService;
+        this.partnershipService = partnershipService;
+        this.pixPaymentGateway = pixPaymentGateway != null ? pixPaymentGateway : new PixPaymentGateway();
+        this.streamService = streamService != null ? streamService : new OrderEventStreamService();
+    }
 
     /**
      * Cria um pedido com validacao em cascata:
@@ -150,10 +184,61 @@ public class OrderService {
         order.setPontoReferenciaId(posto.getId());
         order.setDescricaoLocal(request.getDescricaoLocal());
         order.setFotoLocalUrl(request.getFotoLocalUrl());
-        order.transitionTo(com.penaareia.model.OrderStatus.PAGO);
-        order.transitionTo(com.penaareia.model.OrderStatus.EM_PREPARO);
+
+        if (request.getFormaPagamento() == PaymentMethod.PIX) {
+            PixPaymentGateway.PixCharge charge = pixPaymentGateway.gerarCobranca(order);
+            order.setPixTxId(charge.txId());
+            order.setPixCopiaECola(charge.copiaECola());
+            order.setPixQrCodeBase64(charge.qrCodeBase64());
+            order.setPixExpiracao(charge.expiracao());
+        }
+
+        order.transitionTo(OrderStatus.PAGO);
+        order.transitionTo(OrderStatus.EM_PREPARO);
 
         return orderRepository.save(order);
+    }
+
+    public PixChargeResponse gerarCobrancaPix(String orderId, String callerId) {
+        Order order = buscarPorId(orderId);
+        if (!callerId.equals(order.getUserId())) {
+            throw new BusinessRuleException("Somente o cliente deste pedido pode consultar a cobrança Pix.");
+        }
+        if (order.getPixCopiaECola() == null || order.getPixTxId() == null) {
+            PixPaymentGateway.PixCharge charge = pixPaymentGateway.gerarCobranca(order);
+            order.setPixTxId(charge.txId());
+            order.setPixCopiaECola(charge.copiaECola());
+            order.setPixQrCodeBase64(charge.qrCodeBase64());
+            order.setPixExpiracao(charge.expiracao());
+            order = orderRepository.save(order);
+        }
+        return new PixChargeResponse(
+                order.getId(),
+                order.getPixTxId(),
+                order.getPixCopiaECola(),
+                order.getPixQrCodeBase64(),
+                order.getPixExpiracao(),
+                order.isPago());
+    }
+
+    public Order confirmarPagamentoPixWebhook(PixWebhookRequest request) {
+        Order order = null;
+        if (request.orderId() != null && !request.orderId().isBlank()) {
+            order = orderRepository.findById(request.orderId()).orElse(null);
+        }
+        if (order == null && request.txId() != null && !request.txId().isBlank()) {
+            order = orderRepository.findByPixTxId(request.txId()).orElse(null);
+        }
+        if (order == null) {
+            throw new ResourceNotFoundException("Pedido não encontrado para o txId informado: " + request.txId());
+        }
+        if (order.getStatus() == OrderStatus.CRIADO || !order.isPago()) {
+            order.transitionTo(OrderStatus.PAGO);
+            order.transitionTo(OrderStatus.EM_PREPARO);
+            order = orderRepository.save(order);
+            streamService.publish(order);
+        }
+        return order;
     }
 
     private static double distanceMeters(double lat1, double lng1, double lat2, double lng2) {

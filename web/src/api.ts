@@ -2,6 +2,8 @@ import type {
   AuthSession,
   CreatedOrder,
   Kiosk,
+  MenuItem,
+  MenuItemPayload,
   Partnership,
   PartnershipConfiguration,
   PartnershipOffer,
@@ -102,6 +104,26 @@ export const api = {
       body: json({ items }),
     }),
   listReferencePoints: () => request<ReferencePoint[]>('/reference-points'),
+  listOperatorMenuItems: () => request<MenuItem[]>('/kiosk/me/menu-items'),
+  createMenuItem: (payload: MenuItemPayload) =>
+    request<MenuItem>('/kiosk/me/menu-items', { method: 'POST', body: json(payload) }),
+  updateMenuItem: (id: string, payload: MenuItemPayload) =>
+    request<MenuItem>(`/kiosk/me/menu-items/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: json(payload),
+    }),
+  deleteMenuItem: (id: string) =>
+    request<void>(`/kiosk/me/menu-items/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  setMenuItemAvailability: (id: string, disponivel: boolean) =>
+    request<MenuItem>(`/kiosk/me/menu-items/${encodeURIComponent(id)}/availability`, {
+      method: 'PATCH',
+      body: json({ disponivel }),
+    }),
+  uploadMenuItemPhoto: async (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request<{ secureUrl: string }>('/uploads/menu-item-photo', { method: 'POST', body: form })
+  },
   uploadLocationPhoto: async (file: File) => {
     const form = new FormData()
     form.append('file', file)
@@ -119,6 +141,7 @@ export const api = {
     descricaoLocal: string
     fotoLocalUrl?: string
   }) => request<CreatedOrder>('/orders', { method: 'POST', body: json(input) }),
+  getOrder: (id: string) => request<CreatedOrder>(`/orders/${encodeURIComponent(id)}`),
   createPartnership: (name: string, channel: string) =>
     request<Partnership>('/admin/partnerships', {
       method: 'POST',

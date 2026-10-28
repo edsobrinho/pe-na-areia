@@ -22,6 +22,17 @@ export interface MenuItem {
   disponivel: boolean
   category: string
   returnablePackaging: boolean
+  fotoUrl?: string | null
+}
+
+export interface MenuItemPayload {
+  nome: string
+  descricao?: string
+  preco: number
+  disponivel?: boolean
+  category?: string
+  returnablePackaging?: boolean
+  fotoUrl?: string | null
 }
 
 export interface Kiosk {
@@ -97,6 +108,15 @@ export interface CreatedOrder {
   valorTotal: number
   status: string
   partnershipId: string
+  pago?: boolean
+  pixTxId?: string | null
+  pixCopiaECola?: string | null
+  pixQrCodeBase64?: string | null
+  alertaProximidadeEnviado?: boolean
+  localizacaoEntregador?: {
+    type: 'Point'
+    coordinates: [number, number]
+  } | null
 }
 
 export interface BeachLocation {

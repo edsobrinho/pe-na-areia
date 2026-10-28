@@ -2,7 +2,7 @@ name: pe-na-areia
 
 services:
   mongodb:
-    image: mongo:7.0
+    image: mongo:7
     restart: unless-stopped
     command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
@@ -20,6 +20,26 @@ services:
       retries: 10
       start_period: 10s
 
+  cloudinary-mock:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./cloudinary-mock:/app:ro
+      - cloudinary-data:/tmp/cloudinary-storage
+    environment:
+      PORT: "8099"
+      PUBLIC_BASE_URL: "http://localhost:8099"
+      STORAGE_DIR: "/tmp/cloudinary-storage"
+    command: ["node", "server.mjs"]
+    ports:
+      - "127.0.0.1:8099:8099"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8099/health | grep -q UP"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build:
       context: ..
@@ -28,16 +48,21 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+      cloudinary-mock:
+        condition: service_healthy
     environment:
       MONGODB_URI: mongodb://mongodb:27017/pe_na_areia?replicaSet=rs0
       MONGODB_DATABASE: pe_na_areia
       JWT_SECRET: ${JWT_SECRET:-local-only-change-this-jwt-secret-before-using-it-elsewhere}
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-pe-na-areia-local}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-local-key-123456}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-local-secret-123456}
+      CLOUDINARY_UPLOAD_PREFIX: ${CLOUDINARY_UPLOAD_PREFIX:-http://cloudinary-mock:8099}
     ports:
       - "8080:8080"
 
 volumes:
   mongodb-data:
     name: pe-na-areia-mongodb-data
+  cloudinary-data:
+    name: pe-na-areia-cloudinary-data

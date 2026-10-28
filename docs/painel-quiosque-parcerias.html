@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pé na Areia — Painel do quiosque: parcerias</title>
+<style>
+:root{--red:#EA1D2C;--green:#0CB35B;--ink:#1F1F1F;--muted:#6B6B6B;--line:#E4E4E4;--bg:#F3F3F3;--card:#fff;--f:system-ui,-apple-system,'Segoe UI',sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#141414;--card:#222;--ink:#F2F2F2;--muted:#B5B5B5;--line:#333}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f)}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:0 0 10px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px;line-height:1.5}
+.grid{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px}
+.pc{width:100%;text-align:left;background:var(--card);border:2px solid transparent;border-radius:12px;padding:12px;margin-bottom:10px;color:var(--ink);cursor:pointer;font:inherit;font-weight:700;font-size:14px}
+.pc.on{border-color:var(--red)}
+.pc small{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:3px}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:20px;padding:2px 9px;background:#E6E6E6;color:#333;margin-left:6px}
+.tag.ok{background:#DDF5E8;color:#0a7a3e}
+.tag.off{background:#EEE;color:var(--muted)}
+label{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+label:last-child{border-bottom:0}
+input[type=number],select{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;width:110px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:20px;padding:6px 12px;font:inherit;font-size:12.5px;cursor:pointer}
+.chip.on{background:var(--red);border-color:var(--red);color:#fff}
+.sum{display:flex;justify-content:space-between;font-size:14px;padding:5px 0}
+.sum.total{font-weight:800;border-top:1px solid var(--line);margin-top:6px;padding-top:8px}
+.err{color:var(--red);font-size:13px;margin:4px 0}
+.okmsg{color:var(--green);font-weight:700;font-size:13px}
+.muted{color:var(--muted);font-size:12px;line-height:1.5}
+.note{background:#FFF6D6;color:#5a4500;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.5;margin-top:10px}
+@media (prefers-color-scheme:dark){.note{background:#3a3210;color:#f5e6a8}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Painel do quiosque — Parcerias</h1>
+  <p class="sub">Quiosque do Zé. Escolha por quais parceiros você vende, quais produtos entram em cada parceria e as regras de taxa e de pedido. Protótipo: nada é salvo no servidor.</p>
+  <div class="grid">
+    <div><div class="card"><h2>Parcerias</h2><div id="list"></div></div></div>
+    <div id="detail"></div>
+  </div>
+</div>
+
+<script>
+var PRODUTOS=[
+  {id:'p1',nome:'Água de coco gelada',preco:9,cat:'Bebidas',eco:true},
+  {id:'p2',nome:'Suco natural de laranja',preco:14,cat:'Bebidas',eco:true},
+  {id:'p3',nome:'Porção de tapioca',preco:22,cat:'Lanches',eco:false},
+  {id:'p4',nome:'Sorvete artesanal',preco:12,cat:'Sobremesas',eco:true},
+  {id:'p5',nome:'Espetinho de frango',preco:18,cat:'Lanches',eco:false}
+];
+var CATS=['Bebidas','Lanches','Sobremesas'];
+var S={sel:'p_app',parcerias:[
+  {id:'p_app',nome:'Pé na Areia (app)',canal:'App próprio',ativa:true,comissao:12,taxa:4,quemPaga:'cliente',minimo:20,maxItens:10,inicio:8,fim:18,prep:15,
+   produtos:{p1:true,p2:true,p3:true,p4:true,p5:false},soEco:false,cats:[]},
+  {id:'p_clube',nome:'Clube de praia Orla Sul',canal:'Parceria com clube',ativa:true,comissao:8,taxa:4,quemPaga:'quiosque',minimo:0,maxItens:6,inicio:9,fim:17,prep:20,
+   produtos:{p1:true,p2:true,p3:false,p4:true,p5:false},soEco:true,cats:['Bebidas','Sobremesas']},
+  {id:'p_evento',nome:'Eventos de verão',canal:'Evento sazonal',ativa:false,comissao:15,taxa:0,quemPaga:'cliente',minimo:40,maxItens:15,inicio:10,fim:22,prep:10,
+   produtos:{p1:true,p2:true,p3:true,p4:true,p5:true},soEco:false,cats:[]}
+]};
+
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function brl(v){return 'R$ '+v.toFixed(2).replace('.',',');}
+function cur(){return S.parcerias.filter(function(x){return x.id===S.sel;})[0];}
+function eligible(p){
+  return PRODUTOS.filter(function(x){
+    return p.produtos[x.id] && (!p.cats.length || p.cats.indexOf(x.cat)>-1) && (!p.soEco || x.eco);
+  });
+}
+
+function list(){
+  document.getElementById('list').innerHTML=S.parcerias.map(function(p){
+    return '<button class="pc'+(p.id===S.sel?' on':'')+'" data-sel="'+p.id+'">'+esc(p.nome)+
+      '<span class="tag '+(p.ativa?'ok':'off')+'">'+(p.ativa?'ativa':'pausada')+'</span>'+
+      '<small>'+esc(p.canal)+' · '+eligible(p).length+' produtos</small></button>';
+  }).join('');
+}
+
+function num(k,label,v,step){
+  return '<label><span>'+label+'</span><input type="number" min="0" step="'+(step||1)+'" data-num="'+k+'" value="'+v+'"></label>';
+}
+
+function detail(){
+  var p=cur(), el=eligible(p), ex=el.slice(0,p.maxItens), sub=0;
+  ex.forEach(function(x){sub+=x.preco;});
+  var com=sub*p.comissao/100;
+  var cliente=sub+(p.quemPaga==='cliente'?p.taxa:0);
+  var liquido=sub-com-(p.quemPaga==='quiosque'?p.taxa:0);
+
+  var erros=[];
+  if(!p.ativa) erros.push('Parceria pausada: nenhum pedido chega por ela.');
+  if(el.length===0) erros.push('Nenhum produto elegível com os filtros atuais.');
+  if(p.comissao<0||p.comissao>30) erros.push('Comissão fora do intervalo permitido (0% a 30%).');
+  if(p.taxa<0) erros.push('A taxa de entrega não pode ser negativa.');
+  if(el.length>0 && sub<p.minimo) erros.push('Pedido de exemplo abaixo do mínimo de '+brl(p.minimo)+'.');
+
+  var prodRows=PRODUTOS.map(function(x){
+    return '<label><span>'+esc(x.nome)+' <span class="muted">'+brl(x.preco)+' · '+x.cat+(x.eco?' · ♻':'')+'</span></span>'+
+      '<input type="checkbox" data-prod="'+x.id+'"'+(p.produtos[x.id]?' checked':'')+'></label>';
+  }).join('');
+  var catChips=CATS.map(function(c){
+    return '<button class="chip'+(p.cats.indexOf(c)>-1?' on':'')+'" data-cat="'+c+'">'+c+'</button>';
+  }).join('');
+
+  document.getElementById('detail').innerHTML=
+    '<div class="card"><h2>'+esc(p.nome)+'</h2>'+
+      '<p class="muted">Alterações valem apenas para pedidos criados depois de salvar.</p>'+
+      '<label><span>Parceria ativa</span><input type="checkbox" data-toggle="ativa"'+(p.ativa?' checked':'')+'></label></div>'+
+
+    '<div class="card"><h2>Produtos nesta parceria</h2>'+prodRows+
+      '<label><span>Somente embalagem retornável ♻</span><input type="checkbox" data-toggle="soEco"'+(p.soEco?' checked':'')+'></label>'+
+      '<h2 style="margin-top:12px">Categorias (nenhuma marcada = todas)</h2><div class="chips">'+catChips+'</div></div>'+
+
+    '<div class="card"><h2>Política de taxas</h2>'+
+      num('comissao','Comissão da plataforma (%)',p.comissao)+
+      num('taxa','Taxa de entrega (R$)',p.taxa,'0.5')+
+      '<label><span>Taxa de entrega paga por</span><select data-selk="quemPaga">'+
+        '<option value="cliente"'+(p.quemPaga==='cliente'?' selected':'')+'>Cliente</option>'+
+        '<option value="quiosque"'+(p.quemPaga==='quiosque'?' selected':'')+'>Quiosque</option></select></label></div>'+
+
+    '<div class="card"><h2>Restrições do pedido</h2>'+
+      num('minimo','Pedido mínimo (R$)',p.minimo)+
+      num('maxItens','Máximo de itens por pedido',p.maxItens)+
+      num('inicio','Aceita pedidos a partir de (h)',p.inicio)+
+      num('fim','Último horário de pedido (h)',p.fim)+
+      num('prep','Tempo de preparo (min)',p.prep)+'</div>'+
+
+    '<div class="card"><h2>Prévia com pedido de exemplo</h2>'+
+      '<p class="muted">Usa os produtos elegíveis, 1 unidade de cada, até o limite de itens.</p>'+
+      (ex.length? ex.map(function(x){return '<div class="sum"><span>1× '+esc(x.nome)+'</span><span>'+brl(x.preco)+'</span></div>';}).join('') : '')+
+      '<div class="sum"><span>Subtotal</span><span>'+brl(sub)+'</span></div>'+
+      '<div class="sum"><span>Comissão da plataforma ('+p.comissao+'%)</span><span>− '+brl(com)+'</span></div>'+
+      '<div class="sum"><span>Taxa de entrega (paga por '+(p.quemPaga==='cliente'?'cliente':'quiosque')+')</span><span>'+brl(p.taxa)+'</span></div>'+
+      '<div class="sum total"><span>Cliente paga</span><span>'+brl(cliente)+'</span></div>'+
+      '<div class="sum total"><span>Quiosque recebe (líquido)</span><span>'+brl(Math.max(0,liquido))+'</span></div>'+
+      (erros.length? erros.map(function(m){return '<div class="err">⚠ '+esc(m)+'</div>';}).join('')
+                   : '<div class="okmsg">✓ Pedido de exemplo válido por esta parceria.</div>')+
+      '<div class="note">No servidor, preço, comissão, taxa e restrições são recalculados ao criar o pedido, e o pedido guarda um snapshot dessas regras. Nenhum pagamento é processado nesta versão.</div>'+
+    '</div>';
+}
+
+function render(){list();detail();}
+
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-sel],[data-cat]'); if(!t) return;
+  if(t.dataset.sel){ S.sel=t.dataset.sel; render(); return; }
+  var p=cur(), c=t.dataset.cat, i=p.cats.indexOf(c);
+  if(i>-1) p.cats.splice(i,1); else p.cats.push(c);
+  render();
+});
+
+document.addEventListener('change',function(e){
+  var t=e.target, p=cur();
+  if(t.dataset.prod) p.produtos[t.dataset.prod]=t.checked;
+  else if(t.dataset.toggle) p[t.dataset.toggle]=t.checked;
+  else if(t.dataset.num) p[t.dataset.num]=parseFloat(t.value)||0;
+  else if(t.dataset.selk) p[t.dataset.selk]=t.value;
+  else return;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

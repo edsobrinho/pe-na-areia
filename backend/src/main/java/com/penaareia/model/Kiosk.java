@@ -46,14 +46,10 @@ public class Kiosk {
         private boolean disponivel = true;
         private String category = "Outros";
         private boolean returnablePackaging;
+        private String fotoUrl;
 
         public MenuItem(String id, String nome, String descricao, BigDecimal preco, boolean disponivel) {
-            this.id = id;
-            this.nome = nome;
-            this.descricao = descricao;
-            this.preco = preco;
-            this.disponivel = disponivel;
-            this.category = "Outros";
+            this(id, nome, descricao, preco, disponivel, "Outros", false, null);
         }
     }
 }

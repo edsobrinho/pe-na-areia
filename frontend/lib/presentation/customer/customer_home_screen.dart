@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../app/routes.dart';
@@ -13,6 +14,7 @@ import '../../domain/models/order_location.dart';
 import '../../domain/models/order_status.dart';
 import '../../domain/models/partnership.dart';
 import '../../domain/models/payment_method.dart';
+import '../beacon/signal_beacon_screen.dart';
 import '../location_selection/location_selection_controller.dart';
 import '../location_selection/location_selection_screen.dart';
 import '../theme/app_colors.dart';
@@ -38,6 +40,12 @@ class CustomerHomeScreen extends StatefulWidget {
 }
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
+  static const List<String> _quickClientMessages = [
+    'A maré subiu, mudei alguns metros para trás',
+    'Estou de guarda-sol azul levantando o sinalizador',
+    'Estou próximo ao posto selecionado',
+  ];
+
   List<Kiosk> _kiosks = const [];
   List<Partnership> _partnerships = const [];
   Partnership? _selectedPartnership;
@@ -170,6 +178,34 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     } finally {
       if (mounted) setState(() => _refreshingOrder = false);
     }
+  }
+
+  Future<void> _sendQuickClientMessage(String text) async {
+    final order = _order;
+    if (order == null || _refreshingOrder) return;
+    setState(() {
+      _refreshingOrder = true;
+      _error = null;
+    });
+    try {
+      final updated = await widget.orderRepository.sendOrderMessage(
+        orderId: order.id,
+        texto: text,
+      );
+      if (mounted) setState(() => _order = updated);
+    } on ApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      if (mounted) setState(() => _refreshingOrder = false);
+    }
+  }
+
+  Future<void> _copyPixCode(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Código Pix Copia e Cola copiado!')),
+    );
   }
 
   Future<void> _logout() async {
@@ -316,33 +352,112 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   Widget _buildMenuItem(MenuItem item) {
     final quantity = _quantities[item.id] ?? 0;
+    final hasPhoto = item.fotoUrl != null && item.fotoUrl!.isNotEmpty;
     return Card(
-      child: ListTile(
-        title: Text(item.nome),
-        subtitle: Text(
-          '${item.descricao.isEmpty ? '' : '${item.descricao}\n'}'
-          'R\$ ${item.preco.toStringAsFixed(2)}',
-        ),
-        isThreeLine: item.descricao.isNotEmpty,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            IconButton(
-              tooltip: 'Remover ${item.nome}',
-              onPressed: quantity == 0 ? null : () => _changeQuantity(item, -1),
-              icon: const Icon(Icons.remove_circle_outline),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: hasPhoto
+                  ? Image.network(
+                      item.fotoUrl!,
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _menuItemPlaceholder(),
+                    )
+                  : _menuItemPlaceholder(),
             ),
-            Text('$quantity'),
-            IconButton(
-              tooltip: 'Adicionar ${item.nome}',
-              onPressed: () => _changeQuantity(item, 1),
-              icon: const Icon(Icons.add_circle_outline),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.nome,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      if (item.returnablePackaging)
+                        const Tooltip(
+                          message: 'Embalagem retornável',
+                          child: Text('🌱', style: TextStyle(fontSize: 15)),
+                        ),
+                    ],
+                  ),
+                  if (item.descricao.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        item.descricao,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        'R\$ ${item.preco.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Remover ${item.nome}',
+                        onPressed:
+                            quantity == 0 ? null : () => _changeQuantity(item, -1),
+                        icon: const Icon(Icons.remove_circle_outline),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      Text(
+                        '$quantity',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      IconButton(
+                        tooltip: 'Adicionar ${item.nome}',
+                        onPressed: () => _changeQuantity(item, 1),
+                        icon: const Icon(Icons.add_circle_outline),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _menuItemPlaceholder() => Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Center(
+          child: Text('🍽️', style: TextStyle(fontSize: 28)),
+        ),
+      );
 
   Widget _buildCheckout(Kiosk kiosk) {
     final total = kiosk.cardapio.fold<double>(
@@ -369,6 +484,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   Widget _buildOrderTracking(Order order) {
     final location = order.localizacao;
+    final distMetros = order.distanciaEntregadorMetros;
+    final canActivateBeacon = order.podeAtivarSinalizador;
+    final isCourierOnRoute = order.status == OrderStatus.aCaminho ||
+        order.status == OrderStatus.chegouNoLocal;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -397,23 +517,85 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               ],
             ),
             Text('Pedido ${order.id} · ${_statusLabel(order.status)}'),
-            if (order.pago)
-              const Chip(
-                avatar: Icon(Icons.check_circle, color: AppColors.positive),
-                label: Text('Pago'),
+            if (distMetros != null && isCourierOnRoute)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '📍 Entregador a ${distMetros.round()} m de distância na praia',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFC2410C),
+                  ),
+                ),
               ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              children: [
+                if (order.pago)
+                  const Chip(
+                    avatar: Icon(Icons.check_circle, color: AppColors.positive),
+                    label: Text('Pago (Zero dinheiro na areia)'),
+                  ),
+              ],
+            ),
+            if (order.pixCopiaECola != null &&
+                order.pixCopiaECola!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _buildPixPaymentBox(order),
+            ],
             if (location != null) ...[
               const SizedBox(height: 8),
-              _locationMap(location),
+              _locationMap(order, location),
               if (location.descricaoLocal.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text('Ponto escolhido: ${location.descricaoLocal}'),
                 ),
             ],
+            if (canActivateBeacon) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFF7A3D)),
+                ),
+                child: const Text(
+                  '🏖️ Seu entregador está a menos de 60m na areia! Saia do mar e ative o Sinalizador para ser visto.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFC2410C),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF7A3D),
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SignalBeaconScreen(
+                      orderId: order.id,
+                      descricaoLocal: order.localizacao?.descricaoLocal,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.flashlight_on_outlined),
+                label: const Text('🔦 Ativar Sinalizador na Praia'),
+              ),
+            ],
+            if (isCourierOnRoute) ...[
+              const SizedBox(height: 12),
+              _buildClientQuickMessages(order),
+            ],
             const SizedBox(height: 8),
             const Text(
-              'O status é atualizado ao tocar em atualizar. Pagamentos reais e chat não estão disponíveis nesta versão.',
+              'O status e a posição do entregador são atualizados em tempo real.',
               style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ],
@@ -422,8 +604,104 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 
-  Widget _locationMap(OrderLocation location) {
+  Widget _buildPixPaymentBox(Order order) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.teal.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.teal.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.pix, size: 18, color: Colors.teal),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Pix Antecipado · TxID: ${order.pixTxId ?? 'PNA'}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _copyPixCode(order.pixCopiaECola!),
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copiar Pix'),
+                ),
+              ],
+            ),
+            Text(
+              order.pixCopiaECola!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildClientQuickMessages(Order order) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Contato rápido de emergência na areia:',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _quickClientMessages
+                .map(
+                  (msg) => ActionChip(
+                    avatar: const Icon(Icons.chat_bubble_outline, size: 14),
+                    label: Text(msg, style: const TextStyle(fontSize: 11)),
+                    onPressed: _refreshingOrder
+                        ? null
+                        : () => _sendQuickClientMessage(msg),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+          if (order.mensagens.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: order.mensagens.reversed
+                    .take(3)
+                    .map(
+                      (m) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '${m.senderRole == 'CLIENT' ? 'Você' : 'Entregador'}: ${m.texto}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+            ),
+          ],
+        ],
+      );
+
+  Widget _locationMap(Order order, OrderLocation location) {
     final position = LatLng(location.latitude, location.longitude);
+    final courier = order.localizacaoEntregador;
+    final courierLatLng = courier != null
+        ? LatLng(courier.latitude, courier.longitude)
+        : null;
+
     return SizedBox(
       height: 190,
       child: ClipRRect(
@@ -440,6 +718,24 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     : location.descricaoLocal,
               ),
             ),
+            if (courierLatLng != null)
+              Marker(
+                markerId: const MarkerId('entregador-pedido'),
+                position: courierLatLng,
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueAzure,
+                ),
+                infoWindow: const InfoWindow(title: 'Entregador na praia'),
+              ),
+          },
+          polylines: {
+            if (courierLatLng != null)
+              Polyline(
+                polylineId: const PolylineId('rota-areia'),
+                points: [courierLatLng, position],
+                color: const Color(0xFFFF7A3D),
+                width: 4,
+              ),
           },
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -9,6 +11,7 @@ import '../../data/services/location_service.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_status.dart';
 import '../theme/app_colors.dart';
+import 'beach_radar_widget.dart';
 
 class CourierHomeScreen extends StatefulWidget {
   const CourierHomeScreen({
@@ -27,15 +30,67 @@ class CourierHomeScreen extends StatefulWidget {
 }
 
 class _CourierHomeScreenState extends State<CourierHomeScreen> {
+  static const List<String> _quickCourierMessages = [
+    'Estou descendo para a faixa de areia!',
+    'Ative o Sinalizador Laranja no celular para eu te ver',
+    'Estou próximo ao ponto de referência informado',
+  ];
+
   List<Order> _available = const [];
   List<Order> _active = const [];
   bool _loading = true;
   String? _error;
+  double? _courierLat;
+  double? _courierLng;
+  Timer? _liveTrackingTimer;
 
   @override
   void initState() {
     super.initState();
     _refresh();
+    _startPeriodicLiveTracking();
+  }
+
+  @override
+  void dispose() {
+    _liveTrackingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPeriodicLiveTracking() {
+    _liveTrackingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (_active.isNotEmpty && !_loading) {
+        _syncCourierGpsToActiveOrders(silent: true);
+      }
+    });
+  }
+
+  Future<void> _syncCourierGpsToActiveOrders({bool silent = false}) async {
+    try {
+      final pos = await widget.locationService.getCurrentPosition();
+      if (!mounted) return;
+      setState(() {
+        _courierLat = pos.latitude;
+        _courierLng = pos.longitude;
+      });
+      for (final order in _active) {
+        if (order.status == OrderStatus.aCaminho ||
+            order.status == OrderStatus.chegouNoLocal) {
+          await widget.orderRepository.updateCourierLocation(
+            orderId: order.id,
+            latitude: pos.latitude,
+            longitude: pos.longitude,
+          );
+        }
+      }
+      if (!silent) {
+        await _refresh();
+      }
+    } catch (error) {
+      if (!silent && mounted) {
+        setState(() => _error = error.toString());
+      }
+    }
   }
 
   Future<void> _refresh() async {
@@ -65,12 +120,20 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
           order.id,
           OrderStatus.aCaminho,
         ));
+    await _syncCourierGpsToActiveOrders(silent: true);
   }
 
   Future<void> _markArrived(Order order) async {
     await _runAction(() => widget.orderRepository.updateStatus(
           order.id,
           OrderStatus.chegouNoLocal,
+        ));
+  }
+
+  Future<void> _sendQuickMessage(Order order, String text) async {
+    await _runAction(() => widget.orderRepository.sendOrderMessage(
+          orderId: order.id,
+          texto: text,
         ));
   }
 
@@ -220,35 +283,122 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                         child: const Text('Confirmar'),
                       ),
               ),
+              BeachRadarWidget(
+                order: order,
+                courierLatitude: _courierLat,
+                courierLongitude: _courierLng,
+                onUpdateGps: () => _syncCourierGpsToActiveOrders(silent: false),
+              ),
               if (order.localizacao != null) _buildDestinationMap(order),
+              const SizedBox(height: 10),
+              _buildQuickContactSection(order),
             ],
           ),
         ),
       );
 
+  Widget _buildQuickContactSection(Order order) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Avisos rápidos para o cliente na praia:',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _quickCourierMessages
+                .map(
+                  (msg) => ActionChip(
+                    avatar: const Icon(Icons.send, size: 14),
+                    label: Text(msg, style: const TextStyle(fontSize: 11)),
+                    onPressed: _loading
+                        ? null
+                        : () => _sendQuickMessage(order, msg),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+          if (order.mensagens.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: order.mensagens.reversed
+                    .take(3)
+                    .map(
+                      (m) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '${m.senderRole == 'COURIER' ? 'Você' : 'Cliente'}: ${m.texto}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+            ),
+          ],
+        ],
+      );
+
   Widget _buildDestinationMap(Order order) {
     final location = order.localizacao!;
-    final position = LatLng(location.latitude, location.longitude);
+    final destination = LatLng(location.latitude, location.longitude);
+    final cLat = _courierLat ?? order.localizacaoEntregador?.latitude;
+    final cLng = _courierLng ?? order.localizacaoEntregador?.longitude;
+    final courierLatLng =
+        (cLat != null && cLng != null) ? LatLng(cLat, cLng) : null;
+
+    final markers = <Marker>{
+      Marker(
+        markerId: MarkerId('destino-${order.id}'),
+        position: destination,
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueYellow,
+        ),
+        infoWindow: InfoWindow(
+          title: location.descricaoLocal.isEmpty
+              ? 'Local de entrega'
+              : location.descricaoLocal,
+        ),
+      ),
+      if (courierLatLng != null)
+        Marker(
+          markerId: MarkerId('courier-${order.id}'),
+          position: courierLatLng,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
+          infoWindow: const InfoWindow(title: 'Sua posição na areia'),
+        ),
+    };
+
+    final polylines = <Polyline>{
+      if (courierLatLng != null)
+        Polyline(
+          polylineId: PolylineId('radar-line-${order.id}'),
+          points: [courierLatLng, destination],
+          color: const Color(0xFFFF7A3D),
+          width: 4,
+          patterns: [PatternItem.dash(16), PatternItem.gap(10)],
+        ),
+    };
+
     return SizedBox(
       height: 190,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: GoogleMap(
-          initialCameraPosition: CameraPosition(target: position, zoom: 16),
-          markers: {
-            Marker(
-              markerId: MarkerId('destino-${order.id}'),
-              position: position,
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueYellow,
-              ),
-              infoWindow: InfoWindow(
-                title: location.descricaoLocal.isEmpty
-                    ? 'Local de entrega'
-                    : location.descricaoLocal,
-              ),
-            ),
-          },
+          initialCameraPosition: CameraPosition(target: destination, zoom: 16),
+          markers: markers,
+          polylines: polylines,
           myLocationEnabled: false,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,

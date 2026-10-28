@@ -30,6 +30,9 @@ public class CloudinaryConfig {
         if (StringUtils.hasText(properties.getApiSecret())) {
             config.put("api_secret", properties.getApiSecret());
         }
+        if (StringUtils.hasText(properties.getUploadPrefix())) {
+            config.put("upload_prefix", properties.getUploadPrefix());
+        }
         config.put("secure", true);
         return new Cloudinary(config);
     }

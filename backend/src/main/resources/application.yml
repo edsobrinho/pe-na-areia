@@ -41,13 +41,12 @@ springdoc:
     path: /api-docs
 
 cloudinary:
-  # Credenciais do upload de fotos (POST /uploads/location-photo).
-  # Defina as variaveis de ambiente CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY
-  # e CLOUDINARY_API_SECRET - nunca versione credenciais reais.
-  # Sem credenciais, o endpoint responde 503 (servico de upload indisponivel).
+  # Credenciais do upload de fotos (POST /uploads/location-photo e /uploads/menu-item-photo).
+  # Em ambiente Docker local, CLOUDINARY_UPLOAD_PREFIX aponta para o container cloudinary-mock.
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
+  upload-prefix: ${CLOUDINARY_UPLOAD_PREFIX:}
 
 app:
   cors:
