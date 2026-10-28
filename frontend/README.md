@@ -41,6 +41,26 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 - `10.0.2.2` aponta para o computador host no emulador Android.
 - No simulador iOS ou desktop, utilize `http://localhost:8080` ou o IP da máquina na rede local.
 
+### Instalação Manual (`.apk`) no Celular Físico via Wi-Fi + DNS Local + Docker
+
+1. **Passo 1 — DNS de Rede Local (`sslip.io`)**: Descubra o IP Wi-Fi do seu PC (`Get-NetIPAddress -AddressFamily IPv4`) — por exemplo, `192.168.0.3` — e utilize o domínio curinga `http://api.pe-na-areia.192.168.0.3.sslip.io:8080` (ou configure um Host Override no DNS do seu roteador).
+2. **Passo 2 — Firewall do Windows**: No PowerShell como Administrador, libere as portas `8080` (Backend) e `8099` (Cloudinary Mock):
+   ```powershell
+   New-NetFirewallRule -DisplayName "Pe na Areia Docker LAN" -Direction Inbound -LocalPort 8080,8099 -Protocol TCP -Action Allow
+   ```
+3. **Passo 3 — Subir o Docker para a Rede Local**:
+   ```powershell
+   $env:CLOUDINARY_PUBLIC_BASE_URL="http://cdn.pe-na-areia.192.168.0.3.sslip.io:8099"
+   $env:APP_CORS_ORIGINS="http://localhost:*,http://127.0.0.1:*,http://*.sslip.io:*,http://192.168.*:*"
+   docker compose -f infrastructure/docker-compose.yml up -d
+   ```
+4. **Passo 4 — Gerar e Instalar o `.apk`**:
+   ```powershell
+   cd frontend
+   flutter build apk --release --dart-define=API_BASE_URL=http://api.pe-na-areia.192.168.0.3.sslip.io:8080
+   ```
+   Instale o arquivo gerado (`build/app/outputs/flutter-apk/app-release.apk`) via `adb install -r build\app\outputs\flutter-apk\app-release.apk` ou enviando-o para o celular via WhatsApp/Drive.
+
 ### Configuração da Chave do Google Maps
 
 Ative o **Maps SDK for Android** e/ou **Maps SDK for iOS** no Google Cloud Console:

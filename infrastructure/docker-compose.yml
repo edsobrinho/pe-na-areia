@@ -29,11 +29,11 @@ services:
       - cloudinary-data:/tmp/cloudinary-storage
     environment:
       PORT: "8099"
-      PUBLIC_BASE_URL: "http://localhost:8099"
+      PUBLIC_BASE_URL: "${CLOUDINARY_PUBLIC_BASE_URL:-http://localhost:8099}"
       STORAGE_DIR: "/tmp/cloudinary-storage"
     command: ["node", "server.mjs"]
     ports:
-      - "127.0.0.1:8099:8099"
+      - "8099:8099"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8099/health | grep -q UP"]
       interval: 5s
