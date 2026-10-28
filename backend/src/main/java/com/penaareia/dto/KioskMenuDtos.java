@@ -1,5 +1,6 @@
 package com.penaareia.dto;
 
+import com.penaareia.model.Kiosk;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -100,7 +101,55 @@ public class KioskMenuDtos {
             String fotoCapaUrl,
             String logoUrl,
             Boolean aceitaEmbalagemSustentavel,
-            Boolean destaquePopular
+            Boolean destaquePopular,
+            String nome,
+            String cnpj,
+            String cep,
+            String logradouro,
+            String numero,
+            String complemento,
+            String bairro,
+            String cidade,
+            String uf,
+            String pontoReferenciaId
+    ) {
+        public UpdateStorefrontRequest(String descricaoCurta,
+                                       String fotoCapaUrl,
+                                       String logoUrl,
+                                       Boolean aceitaEmbalagemSustentavel,
+                                       Boolean destaquePopular) {
+            this(descricaoCurta, fotoCapaUrl, logoUrl, aceitaEmbalagemSustentavel, destaquePopular,
+                    null, null, null, null, null, null, null, null, null, null);
+        }
+    }
+
+    public record PartnerOnboardingRequest(
+            @NotBlank(message = "O nome do quiosque/restaurante é obrigatório.")
+            @Size(min = 2, max = 100, message = "O nome deve ter entre 2 e 100 caracteres.")
+            String nome,
+            String descricaoCurta,
+            String logoUrl,
+            String fotoCapaUrl,
+            Boolean aceitaEmbalagemSustentavel,
+            Boolean destaquePopular,
+            String cnpj,
+            String cep,
+            String logradouro,
+            String numero,
+            String complemento,
+            String bairro,
+            String cidade,
+            String uf,
+            String pontoReferenciaId
+    ) {
+    }
+
+    public record PartnerOnboardingResponse(
+            String token,
+            String userId,
+            String name,
+            String role,
+            Kiosk kiosk
     ) {
     }
 }

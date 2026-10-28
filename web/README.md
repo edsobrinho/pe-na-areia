@@ -1,76 +1,105 @@
-# Pé na Areia · Portal Web (React 19 + TypeScript)
+# Pé na Areia · Portal do Parceiro / Quiosque / Restaurante (React 19 + TypeScript + Vite)
 
-Portal web do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **TypeScript** e **Vite 8**. A aplicação atende:
-- **Clientes (`CLIENT`)** que realizam pedidos diretamente na faixa de areia da praia de Santos, pagam com **Pix Copia e Cola** e marcam o pin no mapa;
-- **Operadores de Quiosques (`KIOSK_OPERATOR`)** que gerenciam o **cardápio completo com upload de fotos (`MenuManager`)** e configuram taxas, horários e ofertas por canal de parceria;
-- **Administradores (`ADMIN`)** que gerenciam os canais de venda globais e vinculam operadores aos quiosques.
+Portal web B2B do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **TypeScript** e **Vite 8** com arquitetura de layouts e componentes reutilizáveis. A aplicação é dedicada a:
+- **Parceiros, Quiosques e Restaurantes (`KIOSK_OPERATOR`)**: Auto-cadastro do estabelecimento, envio de **logomarca e foto de capa**, cadastro de **endereço tradicional e posto de referência na orla (sem necessidade de mapa)**, gestão de **produtos agrupados nas devidas categorias** com upload de fotos no Cloudinary e configuração de canais de parceria e repasse;
+- **Administradores (`ADMIN`)**: Governança global dos canais de venda e vínculo de operadores aos quiosques.
+
+*(Nota: A jornada de pedidos do banhista na areia, mapa interativo e Farol Visual vive exclusivamente no App Mobile Flutter em `frontend/`).*
 
 ---
 
 ## 📌 Sumário
 
 - [Visão Geral e Funcionalidades](#-visão-geral-e-funcionalidades)
+- [Arquitetura de Layouts e Componentes Reutilizáveis](#-arquitetura-de-layouts-e-componentes-reutilizáveis)
 - [Tecnologias Utilizadas](#-tecnologias-utilizadas)
 - [Pré-requisitos](#-pré-requisitos)
 - [Configuração de Ambiente](#-configuração-de-ambiente)
 - [Como Executar e Testar](#-como-executar-e-testar)
-- [Variáveis de Ambiente](#-variáveis-de-ambiente)
-- [Perfis de Acesso](#-perfis-de-acesso)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
+- [Perfis de Acesso e Fluxo de Onboarding](#-perfis-de-acesso-e-fluxo-de-onboarding)
 - [Integração com o Backend e Cloudinary Docker](#-integração-com-o-backend-e-cloudinary-docker)
-- [Resolução de Problemas](#-resolução-de-problemas)
 
 ---
 
 ## 🎯 Visão Geral e Funcionalidades
 
-### 1. Área do Cliente (`Pedir`)
-- **Catálogo Visual por Canal de Parceria:** Escolha do canal de venda ativo, exibição dos quiosques parceiros e cardápio ilustrado com as **fotos reais dos produtos (`fotoUrl`)** e selo de embalagem retornável/sustentável.
-- **Carrinho e Validações de Checkout:** Cálculo automático de subtotal e taxa de entrega conforme o pagador configurado no canal (`CLIENT` ou `KIOSK`), validação de pedido mínimo, limite de itens e horário de atendimento.
-- **Localização Interativa via Google Maps (`MapPicker`):** Seleção do pin exato na areia com detecção automática do Posto de Salvamento mais próximo (`/reference-points/nearby`), descrição textual validada (até 140 caracteres) e upload de foto do guarda-sol (`/uploads/location-photo`).
-- **Card de Pagamento Pix Antecipado ("Zero Dinheiro na Areia"):** Quando o pedido é criado com `PIX`, exibe o payload **Pix Copia e Cola** (`pixCopiaECola`) com botão de cópia rápida, imagem do QR Code Base64, identificador `pixTxId` e botão para gerar/atualizar cobrança (`POST /orders/{id}/pix-charge`).
+### 1. Auto-Cadastro e Onboarding do Parceiro / Quiosque / Restaurante (`PartnerAuthPanel`)
+- **Cadastro Direto como Parceiro (`POST /auth/register` + `POST /kiosk/me/onboarding`)**: O parceiro cria sua conta informando responsável, WhatsApp com máscara `(13) 99999-9999`, nome do Quiosque/Restaurante, endereço tradicional e Posto de Salvamento de referência, sendo promovido automaticamente para `KIOSK_OPERATOR` com seu estabelecimento pronto para operar.
+- **1. Identidade Visual & Logomarca (`StorefrontIdentityForm`)**:
+  - Upload da **Logomarca Circular (`logoUrl`)** e da **Foto de Capa (`fotoCapaUrl`)** integrados ao Cloudinary (`POST /uploads/menu-item-photo`) com preview imediato.
+  - Edição do nome fantasia, CNPJ (`maskCNPJ`), descrição curta da vitrine e switches de **♻️ Embalagem Sustentável** e **⭐ Destaque em "Quiosques Populares na Orla"**.
+- **2. Endereço Tradicional e Localização Costeira Sem Mapa (`TraditionalAddressForm`)**:
+  - Campos de **CEP** (`00000-000` com preenchimento automático via ViaCEP), **Logradouro / Avenida da Orla**, **Número / Nº do Quiosque**, **Complemento**, **Bairro** e **Cidade/UF** (`Santos/SP`).
+  - Seleção do **Posto de Salvamento de Referência** (`Posto 1` ao `Posto 7` via `GET /reference-points`), que vincula automaticamente a coordenada geoespacial (`GeoJsonPoint`) no backend sem exigir Google Maps no navegador.
+- **3. Produtos nas Devidas Categorias (`MenuManager` + `CategoryTabs` + `MenuItemFormDialog`)**:
+  - Navegação e filtragem rápida por abas de **Categorias Costeiras** (*Água de Coco*, *Porções*, *Frutos do Mar*, *Pastéis*, *Bebidas*, *Cervejas & Drinks*, *Açaí & Gelados*, *Espetinhos*, *Lanches*, *Sobremesas*, *Combos Guarda-Sol*, *Outros*) com contador de itens por categoria.
+  - Atalho contextual **`+ Novo em "<Categoria>"`** que já abre o modal pré-selecionado na categoria ativa.
+  - Upload de foto do produto, preço em BRL, marcação de **"⭐ Mais Pedido na Areia (`destaque`)"**, **"🌱 Embalagem Retornável"** e chave de disponibilidade imediata.
+- **4. Canais de Parceria & Simulador de Repasse (`PartnershipConfigPanel`)**:
+  - Parametrização de comissão (`0%–30%`), taxa de entrega na areia, pagador (`CLIENT` ou `KIOSK`), pedido mínimo, tempo estimado de preparo e janela de funcionamento.
+  - **Simulador de Repasse (`POST /kiosk/me/partnerships/{id}/preview`)**: Cálculo prévio de subtotal, comissão da plataforma, total do cliente e valor líquido do quiosque.
 
-### 2. Área do Operador (`Meu Quiosque`)
-Disponível para usuários com a role `KIOSK_OPERATOR`, dividida em duas seções integradas:
-- **Gestão Completa do Cardápio com Fotos (`MenuManager` + `MenuItemFormDialog`):**
-  - Listagem de todos os itens do quiosque (`GET /kiosk/me/menu`) com miniatura da foto, preço formatado em BRL, categoria, status de disponibilidade e indicador de embalagem retornável.
-  - Criação (`POST /kiosk/me/menu`), edição (`PUT /kiosk/me/menu/{itemId}`) e exclusão (`DELETE /kiosk/me/menu/{itemId}`) de produtos.
-  - **Upload de Foto do Produto (`POST /uploads/menu-item-photo`):** Seleção de imagem JPEG, PNG ou WebP (até 5 MB) com preview imediato e armazenamento no Cloudinary (ou container `cloudinary-mock` em Docker).
-- **Configuração de Canais de Parceria e Simulador de Repasse:**
-  - Parametrização por canal de venda: comissão (`0%–30%`), taxa de entrega e pagador da taxa (`CLIENT` ou `KIOSK`).
-  - Configuração de pedido mínimo, limite de itens, janela de abertura/fechamento e tempo estimado de preparo.
-  - Ativação/desativação de itens do cardápio no canal e filtros por categoria/embalagem retornável.
-  - **Simulador de Repasse:** Cálculo prévio (`POST /kiosk/me/partnerships/{partnershipId}/preview`) de subtotal, comissão da plataforma, total pago pelo cliente e valor líquido do quiosque.
-
-### 3. Área Administrativa (`Administração`)
+### 2. Área Administrativa (`AdminPanel`)
 - Disponível para usuários com a role `ADMIN`.
-- Criação e ativação/pausa de canais de parceria globais (`/admin/partnerships`).
-- Associação de contas de usuários existentes como operadores responsáveis por quiosques específicos (`PATCH /admin/kiosk-operators`).
+- Criação de novos canais de parceria globais (`POST /admin/partnerships`).
+- Associação manual de operadores a quiosques existentes (`PATCH /admin/kiosk-operators`).
+
+---
+
+## 🧩 Arquitetura de Layouts e Componentes Reutilizáveis
+
+```text
+web/src/
+├── components/
+│   ├── layout/
+│   │   ├── AppShell.tsx                # Layout mestre com Topbar, abas contextuais e sessão
+│   │   ├── PageHeader.tsx              # Cabeçalho padronizado de página (eyebrow, título, subtítulo e ações)
+│   │   └── SectionCard.tsx             # Card container reutilizável para formulários e seções
+│   ├── ui/
+│   │   ├── AlertBanner.tsx             # Banner unificado de feedback (erro / sucesso)
+│   │   ├── Badge.tsx                   # Pílula de status/indicador reutilizável
+│   │   ├── Button.tsx                  # Botão padronizado (primary, secondary, danger, ghost)
+│   │   ├── EmptyState.tsx              # Estado vazio com ícone, descrição e call-to-action
+│   │   ├── ImageUploadField.tsx        # Upload reutilizável para Cloudinary com preview (circle, banner, square)
+│   │   ├── InputField.tsx              # Input acessível com label, dica e mensagem de erro
+│   │   └── SelectField.tsx             # Select fortemente tipado com opções, dica e erro
+│   ├── MenuItemFormDialog.tsx          # Modal de criação/edição de produto por categoria com foto
+│   └── MenuManager.tsx                 # Painel CRUD completo do catálogo filtrado por categoria
+├── features/
+│   ├── auth/
+│   │   └── PartnerAuthPanel.tsx        # Auto-cadastro de Parceiro/Quiosque com endereço tradicional + Login
+│   ├── storefront/
+│   │   ├── StorefrontIdentityForm.tsx  # Cadastro de Logomarca, Foto de Capa, CNPJ e Vitrine
+│   │   └── TraditionalAddressForm.tsx  # Endereço tradicional (CEP, Avenida, Nº, Bairro, Cidade/UF + Posto)
+│   ├── menu/
+│   │   └── CategoryTabs.tsx            # Abas reutilizáveis das 12 categorias costeiras com contadores
+│   ├── partnerships/
+│   │   └── PartnershipConfigPanel.tsx  # Configuração de taxas, produtos elegíveis e Simulador de Repasse
+│   └── admin/
+│       └── AdminPanel.tsx              # Governança global de parcerias e operadores (role ADMIN)
+├── utils/
+│   ├── masks.ts                        # Máscaras de CEP, CNPJ, CPF, Telefone e Moeda BRL
+│   ├── validators.ts                   # Validadores brasileiros
+│   └── validators.test.ts              # 26 testes unitários automatizados
+├── api.ts                              # Cliente HTTP REST tipado
+├── types.ts                            # Contratos TypeScript (Kiosk, PartnerOnboardingPayload, MenuItem, etc.)
+└── App.tsx                             # Orquestrador principal do Portal do Parceiro
+```
 
 ---
 
 ## 💻 Tecnologias Utilizadas
 
-- **[React 19](https://react.dev/)** — Interfaces reativas e componentes modulares.
+- **[React 19](https://react.dev/)** — Interfaces reativas baseadas em componentes reutilizáveis.
 - **[TypeScript](https://www.typescriptlang.org/)** — Tipagem estática ponta a ponta.
-- **[Vite 8](https://vite.dev/)** — Build e servidor de desenvolvimento com HMR.
-- **[@googlemaps/js-api-loader](https://www.npmjs.com/package/@googlemaps/js-api-loader)** — Integração com a Google Maps JavaScript API.
-- **[Oxlint](https://oxc.rs/)** — Linter rápido para TypeScript e React.
-- **Node Test Runner (`node:test`)** — Suíte de testes unitários para máscaras, validações e regras de formulário.
-
----
-
-## 📋 Pré-requisitos
-
-- **Node.js**: versão `20.x` LTS ou superior.
-- **Backend Pé na Areia + Cloudinary Mock** em execução via Docker Compose (`http://localhost:8080` e `http://localhost:8099`). Consulte o [README principal](../README.md).
-- **Chave de API do Google Maps** *(opcional para navegação no catálogo e gestão de cardápio/quiosque; necessária para confirmar o pin no checkout web)*.
+- **[Vite 8](https://vite.dev/)** — Build otimizado e servidor de desenvolvimento com HMR.
+- **Node Test Runner (`node:test`)** — Suíte de 26 testes unitários para máscaras e validadores brasileiros.
 
 ---
 
 ## ⚙️ Configuração de Ambiente
 
-Na pasta `web`, crie o arquivo `.env.local` a partir de `.env.example`:
+Na pasta `web`, crie o arquivo `.env.local` a partir de `.env.example` (não há necessidade de chave do Google Maps):
 
 ```powershell
 Set-Location web
@@ -82,9 +111,6 @@ Conteúdo do `.env.local`:
 ```env
 # URL base da API Spring Boot do Pé na Areia
 VITE_API_BASE_URL=http://localhost:8080
-
-# Chave da Google Maps JavaScript API (necessária para marcação do pin de entrega)
-VITE_GOOGLE_MAPS_API_KEY=sua_chave_google_maps_aqui
 ```
 
 ---
@@ -96,87 +122,9 @@ No diretório `web`:
 ```powershell
 Set-Location web
 npm.cmd install
-```
-
-### 1. Executar os testes automatizados (26 testes)
-```powershell
 npm.cmd test
-```
-
-### 2. Subir em modo de desenvolvimento
-```powershell
+npm.cmd run build
 npm.cmd run dev
 ```
+
 Acesse em: **[http://localhost:5173](http://localhost:5173)**
-
-### 3. Gerar build para produção
-```powershell
-npm.cmd run build
-```
-
-### 4. Análise estática de código (Lint)
-```powershell
-npm.cmd run lint
-```
-
----
-
-## 🔑 Variáveis de Ambiente
-
-| Variável | Obrigatória | Padrão | Descrição |
-| :--- | :--- | :--- | :--- |
-| `VITE_API_BASE_URL` | Não | `http://localhost:8080` | Endpoint base da API REST do backend. |
-| `VITE_GOOGLE_MAPS_API_KEY` | Sim (p/ checkout) | *(vazio)* | Chave de API da Google Cloud com a **Maps JavaScript API** ativada. |
-
----
-
-## 👤 Perfis de Acesso
-
-O fluxo de autenticação utiliza tokens JWT armazenados em `sessionStorage`:
-
-- **Cliente (`CLIENT`)**: Criado livremente na tela inicial pelo formulário **"Cadastre-se"**.
-- **Operador de Quiosque (`KIOSK_OPERATOR`)**: Associado a um quiosque por um Administrador na aba **Administração** (ou via `PATCH /admin/kiosk-operators`). Tem acesso à aba **Meu quiosque** (gerenciamento de cardápio com fotos e configuração de parcerias).
-- **Administrador (`ADMIN`)**: Possui acesso à aba **Administração** para criar parcerias e atribuir operadores.
-
----
-
-## 📂 Estrutura do Projeto
-
-```text
-web/
-├── public/                        # Arquivos estáticos públicos
-├── src/
-│   ├── assets/                    # Ilustrações e vetores
-│   ├── components/
-│   │   ├── MenuItemFormDialog.tsx # Modal de criação/edição de item com upload de foto pro Cloudinary
-│   │   └── MenuManager.tsx        # Painel CRUD completo do cardápio do quiosque
-│   ├── utils/
-│   │   ├── validation.ts          # Funções de validação e máscaras (telefone, moeda, e-mail, etc.)
-│   │   └── validation.test.ts     # 26 testes unitários de validação e máscaras
-│   ├── api.ts                     # Cliente HTTP REST (auth, catálogo, cardápio, uploads, Pix, admin)
-│   ├── App.css                    # Estilização responsiva do portal
-│   ├── App.tsx                    # Componente principal (Pedir, Meu Quiosque, Administração)
-│   ├── MapPicker.tsx              # Seletor de pin no Google Maps + postos de referência
-│   ├── main.tsx                   # Ponto de entrada React
-│   └── types.ts                   # Contratos TypeScript (MenuItem, OrderResponse, PixChargeResponse, etc.)
-├── .env.example                   # Modelo de variáveis de ambiente
-├── package.json                   # Dependências e scripts npm
-└── vite.config.ts                 # Configuração do Vite
-```
-
----
-
-## 🌐 Integração com o Backend e Cloudinary Docker
-
-Quando o backend é iniciado via `docker compose -f infrastructure/docker-compose.yml up -d`, os uploads de fotos feitos no `MenuItemFormDialog` (`POST /uploads/menu-item-photo`) e no checkout do cliente (`POST /uploads/location-photo`) são enviados automaticamente para o container `cloudinary-mock` na porta `8099`, retornando URLs públicas acessíveis diretamente pelo navegador (`http://localhost:8099/pe-na-areia-local/image/upload/...`).
-
----
-
-## 🛠️ Resolução de Problemas
-
-1. **Erro `401` / `403` ou falha de conexão:**
-   - Verifique se os containers `backend`, `mongodb` e `cloudinary-mock` estão rodando com `docker compose -f infrastructure/docker-compose.yml ps`.
-2. **Fotos de produtos ou do local não aparecem:**
-   - Certifique-se de que o container `cloudinary-mock` está ativo na porta `8099` (`http://localhost:8099/health`).
-3. **A aba "Meu quiosque" não aparece:**
-   - Faça login com um usuário que possua o perfil `KIOSK_OPERATOR` vinculado a um quiosque ativo.

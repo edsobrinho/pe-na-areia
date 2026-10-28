@@ -191,4 +191,47 @@ class KioskServiceTest {
         assertThat(atualizado.isDestaquePopular()).isTrue();
         verify(repository).save(kiosk);
     }
+
+    @Test
+    void onboardPartnerCriaQuiosqueComEnderecoTradicionalEPromoveUsuarioParaKioskOperator() {
+        User user = new User();
+        user.setId("user-new");
+        user.setNome("Carlos Parceiro");
+        user.setEmail("carlos@quiosque.com");
+        user.setRole("CLIENT");
+        when(userRepository.findById("user-new")).thenReturn(Optional.of(user));
+        when(repository.save(any(Kiosk.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var req = new com.penaareia.dto.KioskMenuDtos.PartnerOnboardingRequest(
+                "Quiosque Maresia Posto 4",
+                "Porções de peixe e água de coco",
+                "https://res.cloudinary.com/demo/image/upload/v1/logo-maresia.png",
+                "https://res.cloudinary.com/demo/image/upload/v1/capa-maresia.png",
+                true,
+                true,
+                "12.345.678/0001-90",
+                "11045-500",
+                "Av. Vicente de Carvalho",
+                "Quiosque 42",
+                "Em frente ao Canal 4",
+                "Boqueirão",
+                "Santos",
+                "SP",
+                Fixtures.POSTO_ID
+        );
+
+        var resp = service.onboardPartner("user-new", req);
+
+        assertThat(resp.role()).isEqualTo("KIOSK_OPERATOR");
+        assertThat(resp.kiosk().getNome()).isEqualTo("Quiosque Maresia Posto 4");
+        assertThat(resp.kiosk().getCep()).isEqualTo("11045-500");
+        assertThat(resp.kiosk().getLogradouro()).isEqualTo("Av. Vicente de Carvalho");
+        assertThat(resp.kiosk().getNumero()).isEqualTo("Quiosque 42");
+        assertThat(resp.kiosk().getBairro()).isEqualTo("Boqueirão");
+        assertThat(resp.kiosk().getCidade()).isEqualTo("Santos");
+        assertThat(resp.kiosk().getUf()).isEqualTo("SP");
+        assertThat(user.getRole()).isEqualTo("KIOSK_OPERATOR");
+        assertThat(user.getKioskId()).isEqualTo(resp.kiosk().getId());
+    }
 }

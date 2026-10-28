@@ -2,6 +2,8 @@ package com.penaareia.controller;
 
 import com.penaareia.dto.KioskMenuDtos.CreateMenuItemRequest;
 import com.penaareia.dto.KioskMenuDtos.MenuItemAvailabilityRequest;
+import com.penaareia.dto.KioskMenuDtos.PartnerOnboardingRequest;
+import com.penaareia.dto.KioskMenuDtos.PartnerOnboardingResponse;
 import com.penaareia.dto.KioskMenuDtos.UpdateMenuItemRequest;
 import com.penaareia.dto.KioskMenuDtos.UpdateStorefrontRequest;
 import com.penaareia.model.Kiosk;
@@ -22,20 +24,32 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "Cardápio e Vitrine do Quiosque", description = "Gestão de itens do cardápio e vitrine pelo operador do quiosque")
+@Tag(name = "Cardápio e Vitrine do Quiosque", description = "Gestão de itens do cardápio, vitrine e onboarding do parceiro/quiosque")
 public class KioskMenuController {
 
     private final KioskService kioskService;
 
+    @PostMapping("/kiosk/me/onboarding")
+    @Operation(summary = "Cadastra/vincula um novo Quiosque/Restaurante para o parceiro autenticado e retorna sessão KIOSK_OPERATOR")
+    public ResponseEntity<PartnerOnboardingResponse> onboardPartner(
+            @Valid @RequestBody PartnerOnboardingRequest request,
+            Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new ForbiddenException("Autenticação necessária para cadastrar seu quiosque/restaurante.");
+        }
+        PartnerOnboardingResponse response = kioskService.onboardPartner(authentication.getName(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @GetMapping("/kiosk/me/storefront")
-    @Operation(summary = "Consulta os dados de vitrine do quiosque do operador autenticado")
+    @Operation(summary = "Consulta os dados de vitrine e endereço do quiosque do operador autenticado")
     public Kiosk getStorefront(Authentication authentication) {
         requireOperator(authentication);
         return kioskService.getStorefrontForOperator(authentication.getName());
     }
 
     @PutMapping("/kiosk/me/storefront")
-    @Operation(summary = "Atualiza os dados de vitrine (foto de capa, logo, descrição curta e destaque popular) do quiosque")
+    @Operation(summary = "Atualiza os dados de vitrine (foto de capa, logo, descrição curta, endereço tradicional e posto de referência) do quiosque")
     public Kiosk updateStorefront(
             @Valid @RequestBody UpdateStorefrontRequest request,
             Authentication authentication) {

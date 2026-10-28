@@ -1318,3 +1318,10 @@ textarea:focus-visible {
   .menu-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+.partner-main-container {
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}

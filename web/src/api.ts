@@ -1,13 +1,13 @@
 import type {
   AuthSession,
-  CreatedOrder,
   Kiosk,
   KioskStorefrontPayload,
   MenuItem,
   MenuItemPayload,
+  PartnerOnboardingPayload,
+  PartnerOnboardingResponse,
   Partnership,
   PartnershipConfiguration,
-  PartnershipOffer,
   PricingPreview,
   ReferencePoint,
 } from './types'
@@ -70,17 +70,19 @@ const json = (value: unknown) => JSON.stringify(value)
 export const api = {
   login: (email: string, password: string) =>
     request<AuthSession>('/auth/login', { method: 'POST', body: json({ email, password }) }),
-  registerClient: (name: string, email: string, phone: string, password: string) =>
+  registerUser: (name: string, email: string, phone: string, password: string) =>
     request<AuthSession>('/auth/register', {
       method: 'POST',
       body: json({ name, email, phone, password, role: 'CLIENT' }),
     }),
+  onboardPartner: (payload: PartnerOnboardingPayload) =>
+    request<PartnerOnboardingResponse>('/kiosk/me/onboarding', {
+      method: 'POST',
+      body: json(payload),
+    }),
   listPartnerships: () => request<Partnership[]>('/partnerships'),
-  listKiosks: (partnershipId: string) =>
-    request<Kiosk[]>(`/kiosks?partnershipId=${encodeURIComponent(partnershipId)}`),
   listAllKiosks: () => request<Kiosk[]>('/kiosks'),
-  listKioskOffers: (kioskId: string) =>
-    request<PartnershipOffer[]>(`/kiosks/${encodeURIComponent(kioskId)}/partnerships`),
+  listReferencePoints: () => request<ReferencePoint[]>('/reference-points'),
   listOperatorPartnerships: () => request<PartnershipConfiguration[]>('/kiosk/me/partnerships'),
   saveOperatorPartnership: (id: string, configuration: PartnershipConfiguration) =>
     request<PartnershipConfiguration>(`/kiosk/me/partnerships/${encodeURIComponent(id)}`, {
@@ -104,7 +106,6 @@ export const api = {
       method: 'POST',
       body: json({ items }),
     }),
-  listReferencePoints: () => request<ReferencePoint[]>('/reference-points'),
   getOperatorStorefront: () => request<Kiosk>('/kiosk/me/storefront'),
   updateOperatorStorefront: (payload: KioskStorefrontPayload) =>
     request<Kiosk>('/kiosk/me/storefront', { method: 'PUT', body: json(payload) }),
@@ -128,31 +129,6 @@ export const api = {
     form.append('file', file)
     return request<{ secureUrl: string }>('/uploads/menu-item-photo', { method: 'POST', body: form })
   },
-  uploadLocationPhoto: async (file: File) => {
-    const form = new FormData()
-    form.append('file', file)
-    return request<{ secureUrl: string }>('/uploads/location-photo', { method: 'POST', body: form })
-  },
-  createOrder: (input: {
-    userId: string
-    kioskId: string
-    partnershipId: string
-    itens: Array<{ menuItemId: string; quantidade: number }>
-    formaPagamento: 'PIX' | 'CARTAO'
-    embalagemSustentavel: boolean
-    pinCliente: { latitude: number; longitude: number }
-    pontoReferenciaId: string
-    descricaoLocal: string
-    fotoLocalUrl?: string
-    referenciaBarraca?: string
-    complementoLocal?: string
-    fotoVisaoPostoUrl?: string
-    fotoOutroReferencialUrl?: string
-    contatoNome?: string
-    contatoTelefone?: string
-    etiquetaLocal?: string
-  }) => request<CreatedOrder>('/orders', { method: 'POST', body: json(input) }),
-  getOrder: (id: string) => request<CreatedOrder>(`/orders/${encodeURIComponent(id)}`),
   createPartnership: (name: string, channel: string) =>
     request<Partnership>('/admin/partnerships', {
       method: 'POST',

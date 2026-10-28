@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react'
+import { COASTAL_CATEGORIES } from '../features/menu/CategoryTabs'
 import type { MenuItem, MenuItemPayload } from '../types'
 
 interface MenuItemFormDialogProps {
   item: MenuItem | null
+  defaultCategory?: string
   onClose: () => void
   onSave: (payload: MenuItemPayload, photoFile: File | null) => Promise<void>
   busy: boolean
 }
 
-const CATEGORIES = ['Bebidas', 'Lanches', 'Porções', 'Frutos do Mar', 'Açaí & Gelados', 'Sobremesas', 'Outros']
-
-export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemFormDialogProps) {
+export function MenuItemFormDialog({
+  item,
+  defaultCategory,
+  onClose,
+  onSave,
+  busy,
+}: MenuItemFormDialogProps) {
   const [nome, setNome] = useState(item?.nome ?? '')
-  const [category, setCategory] = useState(item?.category || 'Outros')
+  const [category, setCategory] = useState(
+    item?.category || (defaultCategory && defaultCategory !== 'ALL' ? defaultCategory : 'Porções'),
+  )
   const [preco, setPreco] = useState(item ? String(item.preco) : '')
   const [descricao, setDescricao] = useState(item?.descricao ?? '')
   const [returnablePackaging, setReturnablePackaging] = useState(item?.returnablePackaging ?? false)
@@ -75,15 +83,15 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
         <button className="dialog-close" aria-label="Fechar" onClick={onClose} disabled={busy}>
           ×
         </button>
-        <span className="eyebrow">{item ? 'EDITAR PRODUTO' : 'NOVO PRODUTO'}</span>
-        <h2 id="menu-item-dialog-title">{item ? `Editar ${item.nome}` : 'Adicionar ao cardápio'}</h2>
+        <span className="eyebrow">{item ? 'EDITAR PRODUTO' : 'NOVO PRODUTO POR CATEGORIA'}</span>
+        <h2 id="menu-item-dialog-title">{item ? `Editar ${item.nome}` : 'Cadastrar produto no cardápio'}</h2>
 
         <form className="form-stack" onSubmit={(event) => void handleSubmit(event)}>
           <label className="field">
             <span>Nome do produto *</span>
             <input
               type="text"
-              placeholder="Ex: Açaí com granola"
+              placeholder="Ex: Porção de Camarão Empanado"
               value={nome}
               onChange={(event) => setNome(event.target.value)}
               required
@@ -93,9 +101,9 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
 
           <div className="form-row">
             <label className="field">
-              <span>Categoria</span>
+              <span>Categoria do Cardápio *</span>
               <select value={category} onChange={(event) => setCategory(event.target.value)}>
-                {CATEGORIES.map((cat) => (
+                {COASTAL_CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
@@ -109,7 +117,7 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
                 type="number"
                 step="0.01"
                 min="0.01"
-                placeholder="Ex: 15.00"
+                placeholder="Ex: 45.00"
                 value={preco}
                 onChange={(event) => setPreco(event.target.value)}
                 required
@@ -118,9 +126,9 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
           </div>
 
           <label className="field">
-            <span>Descrição (opcional)</span>
+            <span>Descrição do Prato / Bebida (opcional)</span>
             <textarea
-              placeholder="Ex: 300ml com frutas frescas"
+              placeholder="Ex: 400g acompanhado de molho tártaro e limão"
               value={descricao}
               onChange={(event) => setDescricao(event.target.value)}
               maxLength={240}
@@ -129,7 +137,7 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
 
           <div className="photo-field">
             <label className="field">
-              <span>Foto do produto (opcional)</span>
+              <span>Foto do produto (JPG, PNG ou WebP até 5MB)</span>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -151,7 +159,7 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
               checked={destaque}
               onChange={(event) => setDestaque(event.target.checked)}
             />
-            <span>⭐ Destacar como "Mais Pedido" no topo da vitrine do quiosque</span>
+            <span>⭐ Destacar como "Mais Pedido na Areia" no topo da vitrine</span>
           </label>
 
           <label className="checkbox-line">

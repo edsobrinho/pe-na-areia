@@ -42,6 +42,16 @@ public class Kiosk {
     private Double avaliacaoMedia = 4.8;
     private boolean destaquePopular = true;
 
+    // --- Endereço Tradicional do Parceiro/Quiosque/Restaurante (Sem Mapa) ---
+    private String cnpj;
+    private String cep;
+    private String logradouro;
+    private String numero;
+    private String complemento;
+    private String bairro;
+    private String cidade = "Santos";
+    private String uf = "SP";
+
     public Kiosk(String id,
                  String nome,
                  String pontoReferenciaId,
@@ -51,6 +61,24 @@ public class Kiosk {
                  boolean ativo) {
         this(id, nome, pontoReferenciaId, localizacao, cardapio,
                 aceitaEmbalagemSustentavel, ativo, null, null, null, 4.8, true);
+    }
+
+    public Kiosk(String id,
+                 String nome,
+                 String pontoReferenciaId,
+                 GeoJsonPoint localizacao,
+                 List<MenuItem> cardapio,
+                 boolean aceitaEmbalagemSustentavel,
+                 boolean ativo,
+                 String fotoCapaUrl,
+                 String logoUrl,
+                 String descricaoCurta,
+                 Double avaliacaoMedia,
+                 boolean destaquePopular) {
+        this(id, nome, pontoReferenciaId, localizacao, cardapio,
+                aceitaEmbalagemSustentavel, ativo, fotoCapaUrl, logoUrl,
+                descricaoCurta, avaliacaoMedia, destaquePopular,
+                null, null, null, null, null, null, "Santos", "SP");
     }
 
     @Data

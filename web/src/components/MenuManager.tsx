@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { api, ApiError } from '../api'
-import type { Kiosk, MenuItem, MenuItemPayload } from '../types'
+import { CategoryTabs } from '../features/menu/CategoryTabs'
+import type { MenuItem, MenuItemPayload } from '../types'
+import { SectionCard } from './layout/SectionCard'
 import { MenuItemFormDialog } from './MenuItemFormDialog'
+import { AlertBanner } from './ui/AlertBanner'
+import { Button } from './ui/Button'
+import { EmptyState } from './ui/EmptyState'
 
 interface MenuManagerProps {
   menuItems: MenuItem[]
@@ -20,36 +25,17 @@ function messageOf(reason: unknown): string {
 }
 
 export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManagerProps) {
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
   const [busy, setBusy] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
-  // Storefront state (Vitrine do Quiosque no App do Cliente)
-  const [storefrontOpen, setStorefrontOpen] = useState(false)
-  const [storefront, setStorefront] = useState<Kiosk | null>(null)
-  const [descricaoCurta, setDescricaoCurta] = useState('')
-  const [fotoCapaUrl, setFotoCapaUrl] = useState('')
-  const [logoUrl, setLogoUrl] = useState('')
-  const [destaquePopular, setDestaquePopular] = useState(true)
-  const [aceitaSustentavel, setAceitaSustentavel] = useState(true)
-
-  useEffect(() => {
-    void api
-      .getOperatorStorefront()
-      .then((kiosk) => {
-        setStorefront(kiosk)
-        setDescricaoCurta(kiosk.descricaoCurta ?? '')
-        setFotoCapaUrl(kiosk.fotoCapaUrl ?? '')
-        setLogoUrl(kiosk.logoUrl ?? '')
-        setDestaquePopular(kiosk.destaquePopular ?? true)
-        setAceitaSustentavel(kiosk.aceitaEmbalagemSustentavel ?? true)
-      })
-      .catch(() => {
-        // Ignorado caso ainda não carregado
-      })
-  }, [])
+  const filteredItems = useMemo(() => {
+    if (selectedCategory === 'ALL') return menuItems
+    return menuItems.filter((item) => (item.category || 'Outros') === selectedCategory)
+  }, [menuItems, selectedCategory])
 
   const handleOpenCreate = () => {
     setEditingItem(null)
@@ -61,48 +47,6 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
     setEditingItem(item)
     setLocalError(null)
     setDialogOpen(true)
-  }
-
-  const handleSaveStorefront = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setBusy(true)
-    setLocalError(null)
-    setNotice(null)
-    try {
-      const updated = await api.updateOperatorStorefront({
-        descricaoCurta: descricaoCurta.trim(),
-        fotoCapaUrl: fotoCapaUrl.trim() || null,
-        logoUrl: logoUrl.trim() || null,
-        aceitaEmbalagemSustentavel: aceitaSustentavel,
-        destaquePopular,
-      })
-      setStorefront(updated)
-      setNotice('Vitrine do quiosque atualizada com sucesso para o App do Cliente.')
-      setStorefrontOpen(false)
-    } catch (reason: unknown) {
-      setLocalError(messageOf(reason))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleUploadStorefrontImage = async (
-    file: File | null,
-    target: 'capa' | 'logo',
-  ) => {
-    if (!file) return
-    setBusy(true)
-    setLocalError(null)
-    try {
-      const uploaded = await api.uploadMenuItemPhoto(file)
-      if (target === 'capa') setFotoCapaUrl(uploaded.secureUrl)
-      else setLogoUrl(uploaded.secureUrl)
-      setNotice('Imagem enviada para o Cloudinary com sucesso!')
-    } catch (reason: unknown) {
-      setLocalError(messageOf(reason))
-    } finally {
-      setBusy(false)
-    }
   }
 
   const handleSave = async (payload: MenuItemPayload, photoFile: File | null) => {
@@ -123,10 +67,10 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
 
       if (editingItem) {
         await api.updateMenuItem(editingItem.id, finalPayload)
-        setNotice(`Produto "${finalPayload.nome}" atualizado com sucesso.`)
+        setNotice(`Produto "${finalPayload.nome}" atualizado na categoria "${finalPayload.category}".`)
       } else {
         await api.createMenuItem(finalPayload)
-        setNotice(`Produto "${finalPayload.nome}" adicionado ao cardápio.`)
+        setNotice(`Produto "${finalPayload.nome}" cadastrado na categoria "${finalPayload.category}".`)
       }
 
       setDialogOpen(false)
@@ -171,129 +115,47 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
   }
 
   return (
-    <div className="menu-manager">
-      <div className="menu-manager-header">
-        <div>
-          <h2>Itens do Cardápio ({menuItems.length})</h2>
-          <p className="muted">
-            Cadastre seus produtos com foto, marque os mais pedidos e personalize a vitrine do seu quiosque no app.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="button button-outline"
-            onClick={() => setStorefrontOpen((prev) => !prev)}
-            disabled={busy}
-          >
-            🏖️ {storefrontOpen ? 'Ocultar Vitrine do Quiosque' : 'Configurar Vitrine no App'}
-          </button>
-          <button type="button" className="button button-primary" onClick={handleOpenCreate} disabled={busy}>
-            + Adicionar Item
-          </button>
-        </div>
-      </div>
+    <SectionCard
+      eyebrow="Catálogo de Produtos por Categoria"
+      title={`Produtos Cadastrados (${menuItems.length})`}
+      description="Organize os pratos, porções e bebidas do seu restaurante/quiosque nas devidas categorias com fotos reais e selo de destaque."
+      headerAction={
+        <Button type="button" variant="primary" onClick={handleOpenCreate} disabled={busy}>
+          {selectedCategory === 'ALL'
+            ? '+ Novo Produto'
+            : `+ Novo em "${selectedCategory}"`}
+        </Button>
+      }
+    >
+      <CategoryTabs
+        items={menuItems}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+      />
 
-      {storefrontOpen && (
-        <form
-          className="card"
-          style={{ marginBottom: 18, padding: 16, border: '1px solid #d7e3e0', borderRadius: 12 }}
-          onSubmit={(event) => void handleSaveStorefront(event)}
-        >
-          <h3 style={{ marginTop: 0 }}>🏖️ Vitrine do Quiosque no App do Cliente ({storefront?.nome ?? 'Meu Quiosque'})</h3>
-          <p className="muted" style={{ marginBottom: 12 }}>
-            Essas informações aparecem na Home de Descoberta, em "Quiosques Populares na Orla" e no topo da Loja do Quiosque.
-          </p>
-          <label className="field">
-            <span>Especialidades / Descrição curta na orla</span>
-            <input
-              type="text"
-              maxLength={160}
-              placeholder="Ex: Porções de frutos do mar, água de coco e petiscos no Posto 4"
-              value={descricaoCurta}
-              onChange={(e) => setDescricaoCurta(e.target.value)}
-            />
-          </label>
-          <div className="form-row" style={{ marginTop: 10 }}>
-            <label className="field">
-              <span>URL da Foto de Capa (ou envie arquivo abaixo)</span>
-              <input
-                type="text"
-                placeholder="https://..."
-                value={fotoCapaUrl}
-                onChange={(e) => setFotoCapaUrl(e.target.value)}
-              />
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => void handleUploadStorefrontImage(e.target.files?.[0] ?? null, 'capa')}
-              />
-            </label>
-            <label className="field">
-              <span>URL do Logo / Avatar do Quiosque</span>
-              <input
-                type="text"
-                placeholder="https://..."
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-              />
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => void handleUploadStorefrontImage(e.target.files?.[0] ?? null, 'logo')}
-              />
-            </label>
-          </div>
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 10 }}>
-            <label className="checkbox-line">
-              <input
-                type="checkbox"
-                checked={destaquePopular}
-                onChange={(e) => setDestaquePopular(e.target.checked)}
-              />
-              <span>🔥 Exibir em "Quiosques Populares na Orla" no App</span>
-            </label>
-            <label className="checkbox-line">
-              <input
-                type="checkbox"
-                checked={aceitaSustentavel}
-                onChange={(e) => setAceitaSustentavel(e.target.checked)}
-              />
-              <span>♻️ Quiosque aceita Embalagem Sustentável / Retornável</span>
-            </label>
-          </div>
-          <div className="form-actions" style={{ marginTop: 12 }}>
-            <button type="submit" className="button button-primary" disabled={busy}>
-              {busy ? 'Salvando…' : 'Salvar Vitrine'}
-            </button>
-          </div>
-        </form>
-      )}
-
-      {(error || localError) && (
-        <div className="notice notice-error" role="alert">
-          {localError ?? error}
-          <button onClick={() => setLocalError(null)} aria-label="Fechar">
-            ×
-          </button>
-        </div>
-      )}
-
-      {notice && (
-        <div className="notice notice-success" role="status">
-          {notice}
-        </div>
-      )}
+      <AlertBanner type="error" message={localError ?? error} onDismiss={() => setLocalError(null)} />
+      <AlertBanner type="success" message={notice} onDismiss={() => setNotice(null)} />
 
       {loading ? (
         <div className="loading-panel">Carregando cardápio…</div>
-      ) : menuItems.length === 0 ? (
-        <div className="empty-state">
-          Nenhum item cadastrado no cardápio ainda. Clique em "+ Adicionar Item" para começar.
-        </div>
+      ) : filteredItems.length === 0 ? (
+        <EmptyState
+          icon="🍽️"
+          title={
+            selectedCategory === 'ALL'
+              ? 'Nenhum produto cadastrado no cardápio'
+              : `Nenhum produto na categoria "${selectedCategory}"`
+          }
+          description="Clique no botão abaixo para cadastrar seu primeiro produto com foto nesta categoria."
+          action={
+            <Button type="button" variant="primary" onClick={handleOpenCreate}>
+              + Cadastrar Produto Agora
+            </Button>
+          }
+        />
       ) : (
         <div className="menu-grid">
-          {menuItems.map((item) => (
+          {filteredItems.map((item) => (
             <article className="menu-card" key={item.id}>
               <div className="menu-card-photo">
                 {item.fotoUrl ? (
@@ -319,7 +181,11 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
                     </span>
                   )}
                 </div>
-                {item.descricao && <p className="muted" style={{ fontSize: 12, margin: '4px 0' }}>{item.descricao}</p>}
+                {item.descricao && (
+                  <p className="muted" style={{ fontSize: 12, margin: '4px 0' }}>
+                    {item.descricao}
+                  </p>
+                )}
                 <div className="menu-card-price">{currency(item.preco)}</div>
                 <div className="menu-card-actions">
                   <label className="availability-toggle">
@@ -363,6 +229,7 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
       {dialogOpen && (
         <MenuItemFormDialog
           item={editingItem}
+          defaultCategory={selectedCategory}
           busy={busy}
           onClose={() => {
             if (!busy) {
@@ -373,6 +240,6 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
           onSave={handleSave}
         />
       )}
-    </div>
+    </SectionCard>
   )
 }

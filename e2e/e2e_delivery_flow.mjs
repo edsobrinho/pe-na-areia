@@ -191,12 +191,47 @@ const updateStorefront = await aparelhoOp.call('PUT', '/kiosk/me/storefront', {
   logoUrl: 'http://localhost:8099/pe-na-areia-local/image/upload/v1/logo-quiosque.png',
   aceitaEmbalagemSustentavel: true,
   destaquePopular: true,
+  cep: '11045-500',
+  logradouro: 'Av. Vicente de Carvalho',
+  numero: 'Quiosque 42',
+  complemento: 'Calçadão em frente ao Canal 4',
+  bairro: 'Boqueirão',
+  cidade: 'Santos',
+  uf: 'SP',
+  pontoReferenciaId: POSTO5_ID,
 });
-check('Operador configura Vitrine do Quiosque (Storefront v2.1) via PUT /kiosk/me/storefront (200)',
+check('Operador configura Vitrine e Endereço Tradicional do Quiosque (sem mapa) via PUT /kiosk/me/storefront (200)',
   updateStorefront.status === 200 &&
   updateStorefront.data?.destaquePopular === true &&
-  updateStorefront.data?.fotoCapaUrl?.includes('capa-quiosque.png'),
+  updateStorefront.data?.fotoCapaUrl?.includes('capa-quiosque.png') &&
+  updateStorefront.data?.cep === '11045-500' &&
+  updateStorefront.data?.logradouro === 'Av. Vicente de Carvalho',
   JSON.stringify(updateStorefront.data));
+
+// Valida auto-cadastro de novo Parceiro/Quiosque via POST /kiosk/me/onboarding (sem mapa)
+const novoParceiro = device('painel-web-novo-parceiro');
+await novoParceiro.register({
+  name: 'Parceiro Novo', email: `parceiro.novo.${stamp}@exemplo.com`, phone: '13990000088',
+  password: 'senha123', role: 'CLIENT',
+});
+const onboardRes = await novoParceiro.call('POST', '/kiosk/me/onboarding', {
+  nome: 'Restaurante Orla do Gonzaga',
+  descricaoCurta: 'Peixes grelhados e porções na areia',
+  logoUrl: 'http://localhost:8099/pe-na-areia-local/image/upload/v1/logo-gonzaga.png',
+  cep: '11060-001',
+  logradouro: 'Av. Presidente Wilson',
+  numero: '150',
+  bairro: 'Gonzaga',
+  cidade: 'Santos',
+  uf: 'SP',
+  pontoReferenciaId: POSTO5_ID,
+});
+check('Auto-cadastro de Parceiro/Restaurante via POST /kiosk/me/onboarding cria quiosque com endereço tradicional e promove para KIOSK_OPERATOR (201)',
+  onboardRes.status === 201 &&
+  onboardRes.data?.role === 'KIOSK_OPERATOR' &&
+  onboardRes.data?.kiosk?.nome === 'Restaurante Orla do Gonzaga' &&
+  onboardRes.data?.kiosk?.logradouro === 'Av. Presidente Wilson',
+  JSON.stringify(onboardRes.data));
 
 console.log('== it_02 Catálogo e Vitrine no aparelho do cliente (Telas 2, 3 e 4) ==');
 const channels = await aparecimentoA.call('GET', '/partnerships');
