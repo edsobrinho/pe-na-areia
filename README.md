@@ -1,273 +1,195 @@
-# Pé na Areia
+# Pé na Areia 🏖️
 
-Aplicativo de pedidos e entregas para a orla de Santos. O cliente escolhe itens
-de quiosques parceiros e marca no mapa o ponto exato da praia onde deseja
-receber o pedido; o entregador consulta esse destino e confirma a entrega por
-GPS. Este repositório reúne o app Flutter, o portal web React, a API Java e a
-infraestrutura local.
+Plataforma full-stack de pedidos e logística de última milha para entrega na faixa de areia da orla de Santos/SP. O cliente escolhe produtos com foto de quiosques parceiros, paga antecipadamente via **Pix Copia e Cola / QR Code**, fixa o **pin exato do seu guarda-sol no mapa** e utiliza o **Farol Visual de Tela Cheia** quando o entregador se aproxima; o entregador navega pela areia usando o **Modo Bússola / Radar Pedestre**, transmite sua localização em tempo real e confirma a entrega validada por GPS (raio de 60 metros).
 
-Leia o [PRD do Pé na Areia](PRD.md) para conhecer o problema, os usuários,
-requisitos, regras de negócio, critérios de aceite e evolução planejada do
-produto.
+Leia os documentos de produto para detalhes de arquitetura e regras de negócio:
+- [PRD Principal v2.0](PRD.md) — Logística na faixa de areia, Farol Visual, Radar Pedestre, Live Tracking SSE, Canal Rápido e Pix com Webhook.
+- [PRD v1.1 — Parcerias e Gestão de Cardápio por Quiosque](PRD-v1.1-parcerias-quiosques.md) — CRUD de cardápio com fotos, canais de venda, comissões e snapshot de preços.
 
-## Estrutura
+---
+
+## Estrutura do Repositório
 
 ```text
 pe-na-areia/
-├── backend/         Java 21, Spring Boot, MongoDB, JWT e Cloudinary
-├── frontend/        Flutter para Android e iOS
-├── web/             React 19, TypeScript e Vite para clientes e quiosques
-└── infrastructure/ Docker Compose e imagem local do backend
+├── backend/                     # Java 21, Spring Boot 3.3, MongoDB GeoJSON, SSE, JWT, Pix e Cloudinary
+├── frontend/                    # App Mobile Flutter 3.29+ (Cliente e Entregador)
+├── web/                         # Portal Web React 19 + TypeScript + Vite (Cliente, Operador e Admin)
+├── infrastructure/              # Docker Compose (MongoDB rs0, Cloudinary Mock e Backend)
+│   ├── docker-compose.yml
+│   └── cloudinary-mock/         # Emulador local compatível com o SDK oficial do Cloudinary
+└── e2e/
+    └── e2e_delivery_flow.mjs    # Suíte End-to-End automatizada (44 asserções full-stack)
 ```
 
-## Principais funcionalidades
+---
 
-### Para clientes
+## Principais Funcionalidades Implementadas
 
-- Criar conta e entrar como cliente; a sessão JWT é guardada com segurança no
-  dispositivo e usada nas chamadas autenticadas.
-- Consultar quiosques parceiros e seus cardápios, escolher itens e quantidades,
-  selecionar um canal de venda, informar PIX ou cartão como forma registrada e
-  optar por embalagem sustentável quando disponível.
-- Escolher o ponto de entrega em um mapa Google Maps interativo: tocar no mapa
-  ou arrastar o marcador vermelho, consultar postos de referência próximos,
-  informar uma descrição e, opcionalmente, anexar uma foto do local.
-- Criar o pedido com o destino selecionado e acompanhar status, valor e pin;
-  a consulta do status é atualizada manualmente no app.
+### 1. Para Clientes (App Flutter e Portal Web)
+- **Autenticação e Validações:** Cadastro e login JWT (`CLIENT`) com validação e máscaras de entrada (e-mail, nome, senha, telefone brasileiro `(XX) XXXXX-XXXX` e limite de 140 caracteres na descrição do ponto).
+- **Catálogo Visual por Parceria:** Escolha do canal de venda (`partnershipId`), visualização de quiosques ativos e cardápios com **fotos reais dos produtos (`fotoUrl`)**, filtro de disponibilidade e preferência por embalagem sustentável/retornável.
+- **Pin Interativo na Faixa de Areia:** Seleção do ponto exato no Google Maps, sugestão automática do Posto de Salvamento mais próximo (validado até 500 m no servidor), descrição textual do guarda-sol e upload de foto do local (`POST /uploads/location-photo`).
+- **Pagamento Antecipado Pix ("Zero Dinheiro na Areia"):** Geração automática de **Pix Copia e Cola** (payload EMV BR Code), QR Code e identificador de transação (`pixTxId`), com atualização via Webhook (`POST /webhooks/pix`).
+- **Live Tracking em Tempo Real e Alerta de 60m:** Acompanhamento da posição do entregador via **Server-Sent Events (`GET /orders/{id}/stream`)** e cálculo de distância restante. Quando o entregador entra no raio de **60 metros**, o cliente recebe alerta imediato (*"🏖️ Seu entregador está na areia a menos de 60m! Saia do mar e ative o Sinalizador"*).
+- **🔦 Farol Visual Inteligente de Tela Cheia (`SignalBeaconScreen`):** Botão habilitado automaticamente quando o status do pedido é `CHEGOU_NO_LOCAL` **ou** quando está `A_CAMINHO` a **`<= 60 metros`**. Ao tocar, o celular entra em tela cheia imersiva alternando cores solares de alto contraste (**Laranja Neon `#FF7A3D`**, **Amarelo Solar `#FFD600`** e **Branco**), com cronômetro regressivo de 3 minutos e código curto do pedido para localização imediata na multidão.
+- **💬 Canal Rápido de Contato na Praia:** Atalhos de 1 toque (*"🌊 A maré subiu, mudei alguns metros para trás"*, *"🔦 Estou levantando o Sinalizador na tela"*) e botão direto para **WhatsApp** com mensagem pré-formatada, habilitados exclusivamente enquanto o pedido está `A_CAMINHO` ou `CHEGOU_NO_LOCAL`.
 
-### Para entregadores
+### 2. Para Entregadores (App Flutter)
+- **Painel de Entregas:** Consulta de pedidos prontos (`EM_PREPARO`) com paginação por cursor e entregas ativas sob responsabilidade do entregador.
+- **🧭 Modo Bússola / Radar Pedestre na Areia (`BeachRadarWidget` + `BeachCompass`):**
+  - Como rotas veiculares do Google Maps não entram na faixa de areia, o app calcula em tempo real a **distância direta em metros (Haversine)**, o **azimute em graus (`0°–360°`)** e a **direção cardeal/colateral em português** (ex.: *"A 45 m a Sudeste (135°) do Posto 4"*).
+  - Desenha uma **linha tracejada direta (`Polyline`)** no mapa conectando o entregador ao pin do cliente.
+  - Exibe em destaque a **foto do guarda-sol/local com zoom interativo** ao tocar e a descrição textual do cliente.
+- **Telemetria GPS Automática:** Enquanto houver entrega `A_CAMINHO`, o app envia periodicamente a coordenada atual para `PATCH /orders/{id}/courier-location`.
+- **Confirmação de Entrega por Geofencing (60m):** O backend valida a posição GPS do entregador no momento da confirmação (`POST /orders/{id}/confirm-delivery`) e bloqueia tentativas fora do raio de 60 metros do pin do cliente.
 
-- Criar conta ou entrar com perfil de entregador.
-- Consultar pedidos disponíveis e entregas já atribuídas, incluindo o destino
-  marcado em amarelo no mapa.
-- Aceitar uma entrega, indicar chegada ao local e confirmar a conclusão usando
-  a posição GPS atual do dispositivo.
+### 3. Para Operadores de Quiosque e Administradores (Portal Web React)
+- **Gestão Completa do Cardápio com Fotos (`MenuManager`):** Operadores (`KIOSK_OPERATOR`) cadastram, editam e excluem itens do cardápio (`GET/POST/PUT/DELETE /kiosk/me/menu`) com upload de foto integrado ao Cloudinary (`POST /uploads/menu-item-photo`).
+- **Configuração de Canais de Parceria:** Parametrização de comissões (`0%–30%`), taxa de entrega, pagador da taxa (`CLIENT` ou `KIOSK`), pedido mínimo, limite de itens, janela de atendimento e simulador de repasse líquido.
+- **Administração (`ADMIN`):** Criação e ativação/pausa de canais de parceria globais e associação de usuários como operadores de quiosques.
 
-### Regras e serviços do sistema
+---
 
-- O backend calcula o total usando os preços cadastrados no cardápio e valida
-  quiosque, usuário, itens, posto de referência e localização.
-- Os canais de venda têm ofertas e regras próprias por quiosque; o backend
-  valida elegibilidade, horários, pedido mínimo e limite de unidades e grava
-  um snapshot imutável da configuração e dos valores no pedido.
-- Comissões e taxas são calculadas e registradas para cada pedido, mas não há
-  cobrança ou repasse real nesta versão.
-- O backend requer Java 21 e habilita virtual threads suportadas pelo Spring
-  Boot para o processamento bloqueante das requisições.
-- O pin deve estar a até 500 m do posto de referência escolhido.
-- A confirmação da entrega só é aceita quando o GPS do entregador está dentro
-  do raio configurado (60 m por padrão) do pin do cliente.
-- A API usa JWT, MongoDB e armazenamento de fotos no Cloudinary; a
-  documentação OpenAPI fica disponível em `/docs`.
+## Infraestrutura Local em Docker (MongoDB + Cloudinary Mock + Backend)
 
-### Migração do backend para Java 21
+Requisitos: **Docker** com **Docker Compose v2**.
 
-- O backend usa toolchain Java 21 e Gradle Wrapper 9.7.1 (`backend/gradlew`
-  ou `backend/gradlew.bat`); o build de contêiner também compila e executa com
-  Java 21.
-- Virtual threads estão habilitadas por `spring.threads.virtual.enabled`.
-  Elas são adequadas ao modelo Spring MVC usado aqui, que realiza chamadas
-  bloqueantes a MongoDB e a serviços externos. O código não cria threads
-  virtuais manualmente: o Spring gerencia as requisições.
-- Os DTOs já usam `record`, e os `switch` existentes já usam expressões e
-  sintaxe moderna; essas estruturas foram preservadas.
-- Não foram forçados `Sequenced Collections` ou pattern matching para `switch`:
-  o backend não tem acessos de coleção primeiro/último nem hierarquias de tipos
-  que tornem essas construções mais claras. String Templates e Structured
-  Concurrency ainda eram recursos preview no Java 21 e não foram habilitados
-  em produção.
+A infraestrutura local sobe três containers orquestrados com healthchecks:
+1. **`mongodb` (`mongo:7`)**: Replica Set de nó único (`rs0`) na porta `27017`, necessário para transações multi-documento do Spring Data MongoDB.
+2. **`cloudinary-mock` (`node:22-alpine`)**: Servidor local na porta `8099` 100% compatível com o SDK oficial `cloudinary-http44` do Java (`POST /v1_1/:cloudName/image/upload` e `GET /:cloudName/image/upload/v1/...`), permitindo testar uploads de fotos do local e do cardápio sem depender de conta externa na nuvem.
+3. **`backend` (`eclipse-temurin:21`)**: API Spring Boot na porta `8080`, pré-configurada com `CLOUDINARY_UPLOAD_PREFIX=http://cloudinary-mock:8099`.
 
-### Limites da versão atual
-
-- PIX e cartão são opções registradas no pedido; **não há processamento de
-  pagamento**. O backend atual marca o pedido como pago e em preparo ao criá-lo.
-- A atualização do status no app é manual; não há atualização em tempo real nem
-  rastreamento contínuo da posição do entregador.
-- Chat e sinal de ajuda aparecem apenas no protótipo navegável, não como
-  serviços reais conectados à API.
-- O protótipo inicial usa dados demonstrativos. Para testar os fluxos reais,
-  use **Entrar** e autentique uma conta cliente ou entregador.
-
-## Backend e infraestrutura local
-
-Requisitos: Docker com Docker Compose v2. Os comandos abaixo devem ser
-executados na raiz do repositório. Copie o exemplo de configuração apenas se
-ainda não existir um `.env` local. O Compose sobe o MongoDB como replica set de
-nó único e só inicia a API depois que o banco estiver saudável:
+Na raiz do repositório, execute no PowerShell:
 
 ```powershell
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 docker compose --env-file .env -f infrastructure/docker-compose.yml up --build -d
 ```
 
-O arquivo `.env` é local e ignorado pelo Git. O valor de `JWT_SECRET` do
-exemplo é apenas para desenvolvimento; substitua-o por um segredo forte de pelo
-menos 32 caracteres antes de usar em qualquer ambiente compartilhado. As
-variáveis `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` e
-`CLOUDINARY_API_SECRET` são opcionais para iniciar a API, mas necessárias para
-uploads de fotos; sem elas, esse endpoint responde com serviço indisponível.
-
-Confira o estado dos serviços e os logs:
+Verifique o status dos 3 containers:
 
 ```powershell
 docker compose --env-file .env -f infrastructure/docker-compose.yml ps
-docker compose --env-file .env -f infrastructure/docker-compose.yml logs -f backend
 ```
 
-Após a inicialização, a API fica disponível em `http://localhost:8080`, a
-documentação em `http://localhost:8080/docs` e o MongoDB em
-`mongodb://localhost:27017/pe_na_areia?replicaSet=rs0`. Os dados persistem no
-volume Docker `pe-na-areia-mongodb-data`. O seed dos postos de salvamento é
-executado automaticamente na inicialização.
+Serviços disponíveis após a inicialização:
+- **API Backend:** `http://localhost:8080`
+- **Documentação OpenAPI / Swagger UI:** `http://localhost:8080/docs`
+- **Cloudinary Mock Healthcheck:** `http://localhost:8099/health`
+- **MongoDB Replica Set:** `mongodb://localhost:27017/pe_na_areia?replicaSet=rs0`
+
+Para encerrar os containers mantendo os dados do volume:
 
 ```powershell
 docker compose --env-file .env -f infrastructure/docker-compose.yml down
 ```
 
-O comando `down` mantém os dados do banco; para removê-los também, use
-`docker compose --env-file .env -f infrastructure/docker-compose.yml down -v`.
+### Executar o Teste End-to-End (E2E)
 
-Para desenvolvimento sem Docker, instale Java 21. No PowerShell:
+Com os containers Docker rodando, execute a suíte E2E completa (que valida cadastro, parceria, upload de foto no Cloudinary Docker, criação de pedido com Pix, Live Tracking na areia, alerta de 60m, mensagens rápidas, geofencing de entrega e CRUD de cardápio com foto):
 
 ```powershell
+node e2e/e2e_delivery_flow.mjs
+```
+
+Resultado esperado: `PASS: 44  FAIL: 0`.
+
+---
+
+## Executando Cada Camada em Desenvolvimento
+
+### 1. Backend (Java 21 + Spring Boot)
+
+Para rodar o backend diretamente no host (com `mongodb` e `cloudinary-mock` no Docker):
+
+```powershell
+docker compose --env-file .env -f infrastructure/docker-compose.yml up -d mongodb cloudinary-mock
 Set-Location backend
 .\gradlew.bat bootRun
 ```
 
-No host, o backend usa por padrão
-`mongodb://localhost:27017/pe_na_areia?replicaSet=rs0&directConnection=true`.
-Para iniciar somente o MongoDB pelo Compose antes do `bootRun`, execute na raiz
-do repositório:
-
-```powershell
-docker compose --env-file .env -f infrastructure/docker-compose.yml up -d mongodb
-```
-
-O Gradle Wrapper do backend e o wrapper Android do frontend usam Gradle 9.7.1.
-
-Para outros ambientes, configure `MONGODB_URI` para um replica set ou cluster
-compatível com transações. Em bancos já existentes, crie os novos índices de
-paginação com `_id` e remova, após confirmar que os novos foram criados, os
-índices antigos `status_created_desc_idx` e
-`courier_status_created_desc_idx` da coleção `orders`.
-
-Para rodar os testes:
+Para rodar a suíte de testes JUnit 5 e validar a cobertura JaCoCo:
 
 ```powershell
 Set-Location backend
 .\gradlew.bat test
+.\gradlew.bat check jacocoTestReport
 ```
 
-## Frontend
+### 2. App Mobile (Flutter 3.29+)
 
-Requisitos: Flutter 3.29+ e uma chave de API do Google Maps configurada para
-Android/iOS.
-
-Ao abrir, o app mostra um protótipo navegável com abas para o mapa dos fluxos,
-cliente e entregador. **Entrar** abre os fluxos autenticados conectados à API:
-o cliente escolhe itens, fixa o pin no Google Maps e cria/acompanhada o pedido;
-o entregador consulta o destino no mapa e confirma a entrega por GPS. Pagamentos
-reais, chat e sinal de ajuda ainda não são fornecidos pela API. Consulte o
-[guia do frontend](frontend/README.md) para configurar a chave do Google Maps.
+Consulte o [README do Frontend](frontend/README.md) para detalhes de configuração da chave do Google Maps em Android/iOS.
 
 ```powershell
 Set-Location frontend
 flutter pub get
+flutter analyze
+flutter test
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
 
-`10.0.2.2` aponta para o computador host no emulador Android. No simulador iOS
-ou em um dispositivo físico, use o endereço acessível do servidor.
+### 3. Portal Web (React 19 + TypeScript + Vite)
 
-### Portal web
-
-O portal React atende clientes e operadores de quiosque sem substituir o app
-Flutter. Requer Node.js compatível com Vite. Copie `web/.env.example` para
-`web/.env.local`, configure a URL da API e uma chave restrita do Google Maps
-JavaScript API, e então execute:
+Consulte o [README do Portal Web](web/README.md) para o guia completo de variáveis de ambiente e perfis de acesso.
 
 ```powershell
 Set-Location web
+if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
 npm.cmd install
+npm.cmd test
+npm.cmd run build
 npm.cmd run dev
 ```
 
-O portal fica em `http://localhost:5173`. Sem `VITE_GOOGLE_MAPS_API_KEY`, o
-catálogo e a administração continuam disponíveis, mas o checkout web fica
-desabilitado porque não é possível confirmar o pin. Restrinja a chave do Maps
-por referenciador HTTP e habilite a Maps JavaScript API; não versione chaves
-reais.
+O portal web ficará acessível em **`http://localhost:5173`**.
 
-Clientes podem criar a própria conta. Contas de operador não são criadas pelo
-cadastro público: um administrador autenticado associa uma conta existente a
-um quiosque. Para preparar o primeiro administrador, crie uma conta CLIENT e
-altere seu campo `role` para `ADMIN` por um processo confiável de administração
-do MongoDB; depois, entre novamente para receber um JWT com esse perfil. O
-administrador pode criar canais e atribuir operadores pela área
-**Administração**. Configure `APP_CORS_ORIGINS` com a lista separada por vírgula
-dos domínios web permitidos em cada ambiente.
+---
 
-## Endpoints
+## Referência Completa de Endpoints da API
 
 | Método | Rota | Acesso | Descrição |
-| --- | --- | --- | --- |
-| POST | `/auth/register` | Público | Cadastra CLIENT ou COURIER e retorna JWT |
-| POST | `/auth/login` | Público | Autentica e retorna JWT |
-| GET | `/partnerships` | Público | Lista canais de venda ativos |
-| GET | `/reference-points` | Público | Lista os postos ativos |
-| GET | `/reference-points/nearby?lat=&lng=&raioKm=` | Público | Sugere postos próximos (lat -90..90, lng -180..180, raio 0.1..5 km) |
-| GET | `/kiosks?partnershipId=` | Público | Lista quiosques e produtos elegíveis no canal |
-| GET | `/kiosks/{id}/partnerships` | Público | Lista ofertas, taxas e restrições por quiosque |
-| GET | `/kiosk/me/partnerships` | KIOSK_OPERATOR | Lista configurações do quiosque associado |
-| PUT | `/kiosk/me/partnerships/{partnershipId}` | KIOSK_OPERATOR | Atualiza produtos, filtros, taxas e restrições |
-| POST | `/kiosk/me/partnerships/{partnershipId}/preview` | KIOSK_OPERATOR | Calcula uma prévia sem criar pedido |
-| POST | `/admin/partnerships` | ADMIN | Cria canal de venda |
-| PUT | `/admin/partnerships/{partnershipId}` | ADMIN | Ativa ou pausa canal global |
-| PATCH | `/admin/kiosk-operators` | ADMIN | Associa conta existente a um quiosque |
-| GET | `/orders/available?size=50&cursor=` | COURIER | Lista pedidos prontos; usa `X-Next-Cursor` para buscar a próxima página (máximo 100) |
-| GET | `/orders/courier/active?size=50&cursor=` | COURIER | Lista entregas em rota; usa `X-Next-Cursor` para buscar a próxima página (máximo 100) |
-| POST | `/orders` | CLIENT | Exige `partnershipId`; valida oferta e grava snapshot/preços no servidor |
-| GET | `/orders/{id}` | Dono ou entregador atribuído | Consulta o pedido |
-| PATCH | `/orders/{id}/status` | Dono ou COURIER atribuído | Avança o status conforme as regras |
-| POST | `/orders/{id}/confirm-delivery` | COURIER atribuído | Confirma a entrega dentro do raio GPS |
-| POST | `/uploads/location-photo` | Autenticado | Envia foto do local ao Cloudinary |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/auth/register` | Público | Cadastra `CLIENT` ou `COURIER` e retorna token JWT |
+| `POST` | `/auth/login` | Público | Autentica usuário e retorna token JWT + perfil |
+| `GET` | `/partnerships` | Público | Lista canais de venda ativos |
+| `GET` | `/reference-points` | Público | Lista postos de salvamento/referência ativos na orla |
+| `GET` | `/reference-points/nearby?lat=&lng=&raioKm=` | Público | Sugere postos próximos ao pin (`raioKm` entre `0.1` e `5.0`) |
+| `GET` | `/kiosks?partnershipId=` | Público | Lista quiosques ativos e cardápios elegíveis no canal |
+| `GET` | `/kiosks/{id}/partnerships` | Público | Lista ofertas, taxas e restrições por quiosque |
+| `GET` | `/kiosk/me/menu` | `KIOSK_OPERATOR` | Lista todos os itens do cardápio do quiosque do operador |
+| `POST` | `/kiosk/me/menu` | `KIOSK_OPERATOR` | Cria novo item no cardápio (com `fotoUrl`, preço, categoria, etc.) |
+| `PUT` | `/kiosk/me/menu/{itemId}` | `KIOSK_OPERATOR` | Atualiza item existente do cardápio |
+| `DELETE` | `/kiosk/me/menu/{itemId}` | `KIOSK_OPERATOR` | Remove item do cardápio |
+| `GET` | `/kiosk/me/partnerships` | `KIOSK_OPERATOR` | Lista configurações de canais do quiosque associado |
+| `PUT` | `/kiosk/me/partnerships/{partnershipId}` | `KIOSK_OPERATOR` | Atualiza produtos, filtros, taxas e restrições do canal |
+| `POST` | `/kiosk/me/partnerships/{partnershipId}/preview` | `KIOSK_OPERATOR` | Simula valores de subtotal, comissão e líquido do quiosque |
+| `POST` | `/admin/partnerships` | `ADMIN` | Cria novo canal de parceria global |
+| `PUT` | `/admin/partnerships/{partnershipId}` | `ADMIN` | Ativa ou pausa canal global |
+| `PATCH` | `/admin/kiosk-operators` | `ADMIN` | Associa conta de usuário existente a um quiosque (`KIOSK_OPERATOR`) |
+| `POST` | `/uploads/location-photo` | Autenticado | Envia foto do guarda-sol/local para `pe-na-areia/locais` no Cloudinary |
+| `POST` | `/uploads/menu-item-photo` | `KIOSK_OPERATOR` | Envia foto de produto para `pe-na-areia/cardapio` no Cloudinary |
+| `POST` | `/orders` | `CLIENT` | Cria pedido na areia, grava snapshot de preços e gera cobrança Pix |
+| `GET` | `/orders/available?size=50&cursor=` | `COURIER` | Lista pedidos prontos (`EM_PREPARO`) disponíveis para aceite |
+| `GET` | `/orders/courier/active?size=50&cursor=` | `COURIER` | Lista entregas ativas atribuídas ao entregador |
+| `GET` | `/orders/{id}` | Dono ou `COURIER` | Consulta detalhes do pedido, coordenadas, Pix e mensagens |
+| `GET` | `/orders/{id}/stream` | Dono ou `COURIER` | Stream **Server-Sent Events (SSE)** em tempo real do pedido |
+| `PATCH` | `/orders/{id}/status` | Dono ou `COURIER` | Avança ou cancela status do pedido conforme regras do workflow |
+| `PATCH` | `/orders/{id}/courier-location` | `COURIER` atribuído | Atualiza GPS do entregador em tempo real e avalia alerta de 60m |
+| `POST` | `/orders/{id}/messages` | Dono ou `COURIER` | Envia mensagem rápida contextual (`A_CAMINHO` / `CHEGOU_NO_LOCAL`) |
+| `GET` | `/orders/{id}/messages` | Dono ou `COURIER` | Lista mensagens rápidas trocadas no pedido |
+| `POST` | `/orders/{id}/pix-charge` | Dono (`CLIENT`) | Gera ou regenera cobrança Pix dinâmica para pedido não pago |
+| `POST` | `/webhooks/pix` | Webhook (`X-Webhook-Secret`) | Confirma pagamento Pix (`txId`/`orderId`) e avança status para `PAGO` |
+| `POST` | `/orders/{id}/confirm-delivery` | `COURIER` atribuído | Confirma entrega validando GPS do entregador dentro de 60m do pin |
 
-O pedido é criado como pago e em preparo. O fluxo de status permitido é
-`CRIADO → PAGO → EM_PREPARO → A_CAMINHO →
-CHEGOU_NO_LOCAL → ENTREGUE`. O pedido só pode ser cancelado antes de sair para
-entrega; a confirmação final exige a localização atual do entregador dentro do
-raio definido por `app.delivery.confirmation-radius-meters` (60 m por padrão).
-O JWT expira em 24 horas por padrão; configure `JWT_EXPIRATION_MS` para alterar
-esse prazo.
+---
 
-### Observabilidade e cobertura do backend
+## Observabilidade, Segurança e Qualidade
 
-Cada requisição HTTP gera um log JSON ao terminar, com método, rota Spring
-normalizada, status, duração, `requestId`, `traceId` e `spanId`. A amostragem de
-traces está configurada em 100%. O backend aceita `X-Request-Id` somente quando
-o valor é um UUID válido; caso contrário, gera um identificador e o devolve no
-header da resposta. Rotas não resolvidas são registradas como `UNMATCHED`.
-
-Um aspecto também registra início, conclusão e falhas dos métodos públicos de
-Controller, Service, Repository e Security. Eventos seguem nomes estáveis em
-`snake_case`, sem registrar argumentos, retornos ou mensagens de exceção. O
-nível é `INFO` para sucesso, `WARN` para falhas esperadas 4xx e `ERROR` para
-falhas inesperadas/5xx. Assim, os eventos das camadas executadas durante uma
-requisição compartilham os identificadores de correlação do MDC.
-
-Os logs não incluem corpo, query string, credenciais, valores de headers ou
-mensagens de exceção. Exemplo de conclusão HTTP:
-
-```json
-{"timestamp":"2026-10-27T15:00:00.000Z","level":"INFO","logger":"com.penaareia.config.HttpRequestLoggingFilter","message":"api_requisicao_concluida","service":"pe-na-areia-backend","requestId":"8f14e45f-ea5e-47d3-9c2a-0b1c2d3e4f50","traceId":"11223344556677889900aabbccddeeff","spanId":"1122334455667788","httpMethod":"GET","httpPath":"/orders/{id}","httpStatus":200,"durationMs":12}
-```
-
-O `check` do Gradle exige cobertura JaCoCo mínima de 80% em linhas e branches.
-Para executar os testes, validar os limites e gerar os relatórios HTML/XML:
-
-```powershell
-Set-Location backend
-.\gradlew.bat check jacocoTestReport
-```
-
-O relatório HTML fica em `backend/build/reports/jacoco/test/html/index.html`.
+- **Logs Estruturados e Tracing:** Cada requisição HTTP emite log JSON com `requestId`, `traceId`, `spanId`, rota normalizada, status e duração (`HttpRequestLoggingFilter` + `ApplicationLayerLoggingAspect`), sem vazar payloads sensíveis ou credenciais.
+- **Java 21 & Virtual Threads:** Configurado com `spring.threads.virtual.enabled=true` para alta vazão em chamadas I/O ao MongoDB, Cloudinary e gateway Pix.
+- **Cobertura de Testes Automatizados:**
+  - **Backend:** JUnit 5 + JaCoCo com exigência mínima de 80% de cobertura (`.\gradlew.bat test`).
+  - **Frontend Flutter:** 124 testes unitários e de widget cobrindo modelos, mappers, validações, bússola geodésica e farol visual (`flutter test`).
+  - **Portal Web React:** 26 testes automatizados cobrindo validações, máscaras e regras de negócio (`npm test`).
+  - **E2E Full-Stack:** 44 verificações integradas contra os containers Docker (`node e2e/e2e_delivery_flow.mjs`).

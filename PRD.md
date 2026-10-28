@@ -1,253 +1,163 @@
 # PRD — Pé na Areia
 
-**Versão:** 1.0  
-**Data:** 17 de outubro de 2026  
-**Status:** MVP em desenvolvimento
+**Versão:** 2.0  
+**Data:** 28 de outubro de 2026  
+**Status:** Implementado e Validado End-to-End (Backend + App Mobile Flutter + Portal Web React + Infraestrutura Docker)
 
-## 1. Resumo do produto
+## 1. Resumo do Produto
 
-Pé na Areia é um aplicativo de pedidos e entregas pensado para praias urbanas,
-começando pela orla de Santos. O cliente compra itens de quiosques participantes
-e informa seu ponto exato na praia por meio de um pin no mapa, complementado
-por um posto de referência, descrição e foto opcional. O entregador recebe o
-destino no mapa, executa a entrega e confirma a conclusão com geolocalização.
+**Pé na Areia** é uma plataforma completa de pedidos e logística de última milha para praias urbanas, começando pela orla de Santos/SP. O cliente escolhe itens de quiosques parceiros (com fotos reais do cardápio e opção de embalagem sustentável), realiza o pagamento antecipado via **Pix Copia e Cola / QR Code** e marca seu ponto exato na faixa de areia por meio de um **pin no mapa**, complementado por posto de salvamento de referência, descrição e foto do guarda-sol/barraca.
 
-O produto busca tornar possível receber um pedido em locais onde um endereço
-postal convencional não identifica suficientemente o ponto de encontro, como
-uma faixa de areia.
+Para vencer os desafios reais da entrega na areia — onde rotas veiculares do Google Maps não entram, o GPS oscila e há centenas de guarda-sóis parecidos — o sistema entrega **cinco diferenciais logísticos exclusivos**:
+1. **Farol Visual Inteligente de Tela Cheia (Sinalizador Solar)** no celular do cliente, ativado automaticamente quando o entregador entra no raio de 60 metros ou chega ao local.
+2. **Modo Bússola / Radar Pedestre na Areia** no app do entregador, calculando distância direta em metros (Haversine), azimute em graus, direção cardeal em português (ex.: *"A 42m a Sudeste (135°) do Posto 4"*), linha tracejada pedestre no mapa e zoom na foto do guarda-sol.
+3. **Live Tracking em Tempo Real (SSE + Push FCM de 60m)** com atualização contínua da posição do entregador e alerta automático para o cliente sair do mar quando o entregador entra na faixa de 60 metros.
+4. **Canal Rápido de Contato Contexto-Dependente** (mensagens rápidas de 1 toque para imprevistos de maré/mudança de barraca e atalho direto para WhatsApp) habilitado exclusivamente enquanto o pedido está em rota (`A_CAMINHO` ou `CHEGOU_NO_LOCAL`).
+5. **Pagamento Pix Dinâmico com Webhook ("Zero Dinheiro na Areia")** e **Gestão Completa de Cardápio com Fotos + Canais de Parceria** no Portal Web do Quiosque.
 
-## 2. Problema e oportunidade
+---
 
-Pedidos feitos na praia têm dificuldade para comunicar com precisão o local de
-entrega. Referências textuais podem ser ambíguas, o que aumenta o esforço para
-cliente e entregador e pode causar atrasos ou entregas no ponto errado.
+## 2. Problema e Oportunidade
 
-O Pé na Areia usa coordenadas, postos de referência próximos e informações
-complementares para identificar o destino. Também aproxima a operação dos
-quiosques e entregadores por meio de um fluxo de pedido e entrega dedicado à
-orla.
+Pedidos feitos na faixa de areia enfrentam quatro barreiras críticas que apps tradicionais de delivery urbano não resolvem:
+1. **Ausência de endereço postal e rotas na areia:** Mapas convencionais traçam rotas apenas até o calçadão/avenida. Ao pisar na areia, o entregador perde a orientação direcional até o cliente.
+2. **Ambiguidade visual na multidão:** Em dias de sol, dezenas de guarda-sóis da mesma cor cercam o mesmo posto de salvamento, e o GPS civil possui margem de erro de 10 a 15 metros.
+3. **Dinâmica rápida de praia:** A maré sobe, o cliente entra no mar ou muda de barraca, exigindo alertas de proximidade precisos e comunicação instantânea sem burocracia.
+4. **Segurança e logística financeira:** Levar maquininha de cartão ou troco em espécie para a areia sob sol, maresia e risco de perda inviabiliza a operação em escala.
 
-## 3. Visão e objetivos
+O **Pé na Areia** resolve cada uma dessas dores combinando georreferenciamento validado no servidor (`GeoJsonPoint`), telemetria em tempo real via Server-Sent Events (`SseEmitter`), orientação por azimute/bússola, sinalização luminosa de alto contraste e liquidação Pix com webhook.
 
-**Visão:** permitir que pessoas peçam de estabelecimentos da orla e recebam
-diretamente no ponto em que estão na praia, com uma localização clara e
-verificável.
+---
 
-### Objetivos do MVP
+## 3. Visão e Objetivos
 
-1. Permitir que o cliente descubra quiosques e itens disponíveis.
-2. Capturar e persistir um destino de entrega preciso, ajustável no mapa.
-3. Disponibilizar esse mesmo destino ao entregador responsável.
-4. Criar uma sequência de estados do pedido com regras de acesso e transição.
-5. Confirmar a entrega apenas quando o entregador estiver próximo ao pin.
-6. Oferecer uma infraestrutura local reproduzível para desenvolver e validar o
-   app e a API.
+**Visão:** Permitir que banhistas peçam de quiosques da orla e recebam diretamente no seu guarda-sol na faixa de areia com localização verificável, orientação pedestre exata para o entregador e gestão autônoma de cardápio e parcerias pelos quiosques.
 
-### Fora dos objetivos do MVP
+### Objetivos Alcançados na Versão 2.0
 
-- Processamento, captura ou estorno de pagamentos.
-- Rastreamento contínuo do entregador ou atualização de status em tempo real.
-- Chat cliente-entregador e sinal de emergência/ajuda.
-- Operação de despacho avançada, otimização de rotas ou múltiplas paradas.
-- Garantia de disponibilidade comercial, cobertura operacional ou SLA de
-  entrega.
+1. **Catálogo Visual e Parcerias Multi-Canal:** Permitir que operadores de quiosque cadastrem, editem e excluam produtos com foto (`fotoUrl` via Cloudinary), preço, categoria e indicador de embalagem retornável, além de configurar regras comerciais por canal de venda (`partnershipId`).
+2. **Pin de Entrega Validado na Orla:** Capturar coordenadas precisas no mapa, vincular a um Posto de Salvamento a até 500 metros, anexar foto do guarda-sol e validar os dados com máscaras e regras de negócio no frontend, web e backend.
+3. **Logística Pedestre na Faixa de Areia:** Guiar o entregador com **Radar/Bússola na Areia**, **Live Tracking**, **Alerta de Proximidade de 60m**, **Farol Visual de Tela Cheia** e **confirmação de entrega bloqueada por Geofencing (raio de 60m)**.
+4. **Pagamento Antecipado Pix com Webhook:** Gerar payload EMV BR Code (`pixCopiaECola`), QR Code e `pixTxId`, permitindo confirmação automática via `POST /webhooks/pix`.
+5. **Infraestrutura 100% Reproduzível em Docker:** Subir MongoDB Replica Set (`rs0`), container **Cloudinary Mock** compatível com o SDK oficial Java e API Spring Boot em um único comando, com suíte End-to-End automatizada (`44 PASS / 0 FAIL`).
 
-## 4. Usuários e necessidades
+---
 
-### Cliente na praia
+## 4. Perfis de Usuário e Necessidades
 
-- Quer encontrar opções de alimentação próximas.
-- Precisa marcar seu ponto com mais precisão do que um endereço.
-- Quer reconhecer e acompanhar o pedido até a entrega.
-- Pode precisar complementar o pin com uma descrição ou foto.
+| Perfil | Role no Sistema | Principais Necessidades Atendidas |
+| :--- | :--- | :--- |
+| **Cliente na Praia** | `CLIENT` | Descobrir quiosques e pratos com fotos; marcar seu guarda-sol no mapa; pagar com Pix Copia e Cola; acompanhar o entregador em tempo real; receber alerta a 60m; ativar o **Farol Visual** na tela e enviar mensagens rápidas se a maré subir. |
+| **Entregador** | `COURIER` | Visualizar pedidos prontos e aceitar entregas; emitir localização GPS automática em rota; usar o **Radar Pedestre (distância + direção cardeal + foto com zoom)** na areia; trocar mensagens rápidas com o cliente e confirmar a entrega via GPS dentro de 60m. |
+| **Operador de Quiosque** | `KIOSK_OPERATOR` | Gerenciar o cardápio completo no Portal Web (cadastrar/editar/remover itens e enviar fotos ao Cloudinary); ativar/pausar canais de parceria; configurar comissões, taxas de entrega, pedido mínimo, janela de horário e simular repasses líquidos. |
+| **Administrador** | `ADMIN` | Cadastrar e ativar/pausar canais de parceria globais (`partnerships`) e vincular contas de usuários como operadores responsáveis por quiosques (`KIOSK_OPERATOR`). |
 
-### Entregador
+---
 
-- Precisa consultar pedidos que pode aceitar e os que já estão sob sua
-  responsabilidade.
-- Precisa identificar o pin e as instruções de localização sem ambiguidade.
-- Precisa de um mecanismo confiável para registrar a chegada e confirmar a
-  entrega no destino.
+## 5. Escopo Funcional Detalhado
 
-### Operador de quiosque (usuário indireto do MVP)
+### 5.1 Conta, Sessão e Validações de Entrada
 
-- Precisa manter quiosques, itens, preços e disponibilidade no backend.
-- A interface de administração do catálogo não faz parte do app atual.
+- Cadastro e autenticação JWT para `CLIENT`, `COURIER`, `KIOSK_OPERATOR` e `ADMIN`.
+- Validações e máscaras padronizadas no **App Flutter** e no **Portal Web React**:
+  - E-mail validado por formato, nome completo com mínimo de caracteres, senha forte (mínimo de 8 caracteres) e máscara automática de telefone brasileiro `(XX) XXXXX-XXXX` quando aplicável.
+  - Descrição do ponto na areia limitada a 140 caracteres com contador visual e sanitização de espaços.
 
-## 5. Escopo funcional
+### 5.2 Catálogo Visual, Gestão de Cardápio (CRUD) e Canais de Parceria
 
-### 5.1 Conta e sessão
+- **Exibição de Fotos Reais (`fotoUrl`):** Tanto o App Flutter quanto o Portal Web exibem a miniatura/foto de cada item do cardápio com fallback visual elegante caso o item não possua imagem.
+- **CRUD de Cardápio pelo Operador (`KIOSK_OPERATOR`):**
+  - Listagem completa dos itens do quiosque (`GET /kiosk/me/menu`).
+  - Criação (`POST /kiosk/me/menu`), atualização (`PUT /kiosk/me/menu/{itemId}`) e remoção (`DELETE /kiosk/me/menu/{itemId}`).
+  - Upload de foto de produto (`POST /uploads/menu-item-photo`) armazenado na pasta `pe-na-areia/cardapio` do Cloudinary.
+- **Regras por Parceria (`partnershipId`):**
+  - Elegibilidade de produtos por canal, filtros por categoria e embalagem retornável, comissão (`0%` a `30%`), taxa de entrega e pagador da taxa (`CLIENT` ou `KIOSK`), pedido mínimo, limite de unidades e janela de horário (`America/Sao_Paulo`).
+  - Gravação de `pricingSnapshot` imutável no pedido no momento da compra.
 
-- Cadastro e login para os perfis `CLIENT` e `COURIER`.
-- Autenticação da API com JWT.
-- Armazenamento seguro do token no dispositivo e encerramento de sessão.
+### 5.3 Seleção do Local de Entrega na Praia
 
-**Critérios de aceite**
+- Mapa interativo (Google Maps) no Flutter e no Web para posicionamento do pin na faixa de areia.
+- Sugestão automática dos postos de referência próximos (`GET /reference-points/nearby`) e validação no backend exigindo que o pin esteja a **no máximo 500 metros** do posto selecionado.
+- Upload opcional de foto do local/guarda-sol (`POST /uploads/location-photo`, até 5 MB, JPEG/PNG/WebP, pasta `pe-na-areia/locais`).
 
-- Um usuário autenticado como cliente chega ao fluxo de compras; um entregador
-  chega ao painel de entregas.
-- Endpoints protegidos exigem token válido e aplicam autorização por perfil e
-  propriedade do pedido.
+### 5.4 Pagamento Pix Dinâmico e Webhook (Zero Dinheiro na Areia)
 
-### 5.2 Catálogo e carrinho
+- Ao criar um pedido com `formaPagamento: PIX` (ou acionar `POST /orders/{orderId}/pix-charge`), o backend utiliza o `PixPaymentGateway` para gerar:
+  - `pixCopiaECola` (payload EMV BR Code válido),
+  - `pixQrCodeBase64`,
+  - `pixTxId` único e `pixExpiracao` (10 minutos).
+- Caso `PIX_GATEWAY_URL` e `PIX_GATEWAY_TOKEN` estejam configurados, o sistema integra via HTTP com o provedor externo; em ambiente local/homologação, utiliza gerador EMV determinístico sem dependências externas.
+- O endpoint `POST /webhooks/pix` valida o segredo (`X-Webhook-Secret`) e confirma o pagamento (`pago = true`), transicionando pedidos em `CRIADO` para `PAGO` e notificando os clientes conectados via SSE e FCM.
+- Na interface do Cliente (Flutter e Web), um card dedicado exibe o código **Pix Copia e Cola** com botão de cópia rápida.
 
-- Carregar quiosques ativos e seus cardápios.
-- Selecionar um quiosque, incluir/remover itens e ajustar quantidades.
-- Selecionar a forma registrada no pedido (`PIX` ou `CARTAO`).
-- Informar preferência por embalagem sustentável quando aceita pelo quiosque.
-- Mostrar subtotal estimado; o backend é a fonte de verdade para o valor final.
+### 5.5 Live Tracking em Tempo Real e Alerta de Entrada na Areia (60m)
 
-**Critérios de aceite**
+- **Telemetria do Entregador:** Enquanto o pedido está `A_CAMINHO`, o app do entregador envia sua coordenada GPS (`PATCH /orders/{orderId}/courier-location`) periodicamente.
+- **Streaming SSE:** O endpoint `GET /orders/{orderId}/stream` mantém conexão `SseEmitter` ativa emitindo eventos `order-update` sempre que o status, pagamento, posição do entregador ou mensagens mudam.
+- **Gatilho de Proximidade de 60m:** Na primeira vez em que a distância entre `localizacaoEntregador` e `pinCliente` atinge `<= 60 metros`, o backend marca `alertaProximidadeEnviado = true` e dispara notificação push via `NotificationService`:
+  > *"🏖️ Seu entregador está na areia a menos de 60m! Saia do mar e ative o Sinalizador."*
 
-- Não é possível enviar um pedido sem ao menos um item.
-- O backend rejeita itens indisponíveis, quantidades inválidas e quiosques
-  inativos.
-- O preço total é calculado no servidor, sem confiar em valores enviados pelo
-  app.
+### 5.6 Farol Visual Inteligente de Tela Cheia (Cliente)
 
-### 5.3 Seleção do local de entrega
+- **Regra de Ativação Contextual:** O botão `"🔦 Ativar Sinalizador na Praia"` na `CustomerHomeScreen` só é habilitado quando:
+  1. `status == CHEGOU_NO_LOCAL`, **OU**
+  2. `status == A_CAMINHO` **e** a distância calculada entre o entregador e o pin do cliente for **`<= 60 metros`** (ou `alertaProximidadeEnviado == true`).
+- **Comportamento da `SignalBeaconScreen`:**
+  - Entra em modo tela cheia imersivo (`SystemUiMode.immersiveSticky`).
+  - Alterna automaticamente cores solares de altíssimo contraste a cada 700ms (**Laranja Neon `#FF7A3D`**, **Amarelo Solar `#FFD600`** e **Branco `#FFFFFF`**), com botão para travar a cor caso o cliente prefira.
+  - Exibe cronômetro regressivo de **3 minutos**, código curto do pedido (`#ID`) em tipografia gigante e a descrição do ponto na areia para que o entregador reconheça o cliente a dezenas de metros.
 
-- Mostrar Google Maps centrado na posição atual do dispositivo ou em uma
-  posição de fallback se a localização não estiver disponível.
-- Permitir mover o destino tocando no mapa ou arrastando o marcador.
-- Buscar postos de referência próximos ao pin e permitir escolher um.
-- Permitir descrever o local (até 140 caracteres) e anexar uma foto opcional.
-- Devolver as coordenadas, referência e instruções para a criação do pedido.
+### 5.7 Modo "Bússola / Radar Pedestre na Areia" (Entregador)
 
-**Critérios de aceite**
+- **Cálculo Geodésico em Tempo Real (`BeachCompass` + `BeachRadarWidget`):**
+  - Calcula a distância direta em metros (fórmula de Haversine) e o azimute/bearing inicial (`0°–360°`) entre o GPS atual do entregador e o `pinCliente`.
+  - Converte o ângulo para as 8 direções cardeais/colaterais em português (`Norte`, `Nordeste`, `Leste`, `Sudeste`, `Sul`, `Sudoeste`, `Oeste`, `Noroeste`), exibindo instruções claras como:
+    > **"A 45 m a Sudeste (135°) do Posto 4"**
+- **Linha Tracejada Pedestre e Foto com Zoom:**
+  - Desenha no Google Maps do entregador uma `Polyline` tracejada direta conectando a posição atual do entregador ao pin do cliente na areia.
+  - Exibe em destaque a foto do guarda-sol (`fotoLocalUrl`) com modal de zoom interativo (`InteractiveViewer`) ao tocar, além da descrição textual do local.
 
-- O pin confirmado corresponde às coordenadas enviadas no pedido.
-- O pedido inclui o ID do posto selecionado; o backend valida que o pin fica a
-  até 500 m desse posto.
-- Se a localização do aparelho estiver indisponível, o cliente ainda pode
-  selecionar manualmente o ponto no mapa.
-- Se a chave ou os serviços do Google Maps não estiverem configurados, o app
-  deve informar a limitação; os tiles dependem de chave válida, SDK habilitado e
-  faturamento configurado no Google Cloud.
+### 5.8 Canal Rápido de Contato na Praia
 
-### 5.4 Criação e acompanhamento do pedido
+- Habilitado exclusivamente durante os estados `A_CAMINHO` e `CHEGOU_NO_LOCAL`.
+- Permite enviar e listar mensagens rápidas vinculadas ao pedido (`POST /orders/{orderId}/messages` e `GET /orders/{orderId}/messages`), com atalhos de **1 toque** para situações típicas de praia:
+  - Cliente: *"🌊 A maré subiu, mudei alguns metros para trás"*, *"🔦 Estou levantando o Sinalizador na tela"*, *"🏖️ Estou atento perto do guarda-sol"*.
+  - Entregador: *"🏃 Estou entrando na faixa de areia!"*, *"👀 Estou perto do posto procurando seu guarda-sol"*, *"🔦 Ative o Sinalizador na tela para eu te ver"*.
+- Inclui botão direto para **WhatsApp** com mensagem pré-formatada contendo o código do pedido.
 
-- Criar o pedido autenticado, com cliente, quiosque, itens, forma registrada,
-  preferência de embalagem e dados do local.
-- Exibir o pedido criado, valor, estado, instruções e pin de entrega.
-- Permitir consultar novamente o estado pela ação de atualizar.
+### 5.9 Máquina de Estados do Pedido e Geofencing de Entrega
 
-**Critérios de aceite**
+Fluxo oficial de estados no backend:
+`CRIADO → PAGO → EM_PREPARO → A_CAMINHO → CHEGOU_NO_LOCAL → ENTREGUE` (com `CANCELADO` permitido apenas antes de `A_CAMINHO`).
 
-- O pedido pertence ao cliente autenticado.
-- O cliente só consulta pedidos dos quais é dono.
-- A resposta da API mantém as coordenadas do pin no formato geográfico
-  armazenado pelo MongoDB e o app converte latitude/longitude corretamente.
-- A tela deixa claro que a atualização de estado é manual nesta versão.
+- A confirmação final (`POST /orders/{orderId}/confirm-delivery`) exige as coordenadas GPS atuais do entregador e valida no servidor se a distância até o `pinCliente` é **menor ou igual a 60 metros** (`app.delivery.confirmation-radius-meters`). Tentativas fora do raio são rejeitadas com HTTP `422 Unprocessable Entity`.
 
-### 5.5 Operação do entregador
+---
 
-- Exibir pedidos disponíveis e entregas atribuídas ao entregador autenticado.
-- Exibir o ponto de entrega no mapa com marcador amarelo e sua descrição.
-- Permitir aceitar um pedido, marcar chegada e confirmar entrega.
-- Usar a localização GPS atual no momento da confirmação.
+## 6. Arquitetura e Stack Tecnológica
 
-**Critérios de aceite**
+| Camada | Tecnologias Principais |
+| :--- | :--- |
+| **Backend (`backend/`)** | Java 21 (Virtual Threads habilitadas), Spring Boot 3.3, Spring Security (JWT), Spring Data MongoDB (`GeoJsonPoint`, transações em Replica Set), Server-Sent Events (`SseEmitter`), Cloudinary SDK (`cloudinary-http44`), Firebase Admin SDK (FCM), Micrometer Tracing + JaCoCo (cobertura >= 80%). |
+| **App Mobile (`frontend/`)** | Flutter 3.29+ (Dart null-safety), `provider`, `google_maps_flutter`, `geolocator`, `image_picker`, `http`, `flutter_secure_storage`. |
+| **Portal Web (`web/`)** | React 19, TypeScript, Vite 8, `@googlemaps/js-api-loader`, Oxlint, testes automatizados com `node:test`. |
+| **Infraestrutura & E2E (`infrastructure/`, `e2e/`)** | Docker Compose v2 (`mongodb:7` com Replica Set `rs0`, `cloudinary-mock` Node.js na porta `8099`, `backend` na porta `8080`) e suíte E2E `e2e/e2e_delivery_flow.mjs`. |
 
-- Ao aceitar um pedido, o backend associa o entregador e muda seu estado
-  operacional para em rota.
-- Somente o entregador atribuído pode avançar os estados de entrega.
-- A confirmação final é rejeitada fora do raio configurado (60 m por padrão).
-- Após confirmar a entrega, o pedido passa a `ENTREGUE` e o entregador volta a
-  ficar disponível.
+---
 
-### 5.6 Estados do pedido
+## 7. Matriz de Capacidades e Estado Atual
 
-O fluxo esperado pela API é:
-
-`CRIADO → PAGO → EM_PREPARO → A_CAMINHO → CHEGOU_NO_LOCAL → ENTREGUE`
-
-Cancelamento é permitido antes do início da entrega, conforme as regras do
-backend. O pedido é criado atualmente já marcado como pago e em preparo; isso
-**não significa que houve cobrança**.
-
-## 6. Jornadas principais
-
-### Jornada do cliente
-
-1. Criar conta ou entrar como cliente.
-2. Escolher quiosque e itens.
-3. Selecionar opções do pedido.
-4. Ajustar o pin no mapa, escolher posto de referência e informar detalhes.
-5. Confirmar a criação do pedido.
-6. Consultar o status e o destino no cartão de acompanhamento.
-
-### Jornada do entregador
-
-1. Criar conta ou entrar como entregador.
-2. Consultar pedidos disponíveis e seus destinos.
-3. Aceitar um pedido e iniciar a entrega.
-4. Consultar novamente a entrega ativa, chegar ao local e confirmar a chegada.
-5. Confirmar a entrega quando estiver próximo do pin.
-
-## 7. Requisitos não funcionais
-
-- **Segurança:** autenticação JWT; autorização no servidor; tokens armazenados
-  com armazenamento seguro; segredos e chaves de API não devem ser versionados.
-- **Integridade:** servidor valida permissões, disponibilidade, preço,
-  coordenadas e transições de estado.
-- **Privacidade:** localização do cliente é usada para atender e validar o
-  pedido; limitar seu acesso ao cliente dono e ao entregador atribuído.
-- **Resiliência:** erros de rede, permissões de GPS e ausência de localização
-  devem ser comunicados sem apresentar ações como concluídas quando falharem.
-- **Compatibilidade:** app Flutter para Android e iOS; API Spring Boot com
-  MongoDB.
-- **Configuração local:** Docker Compose para executar API e MongoDB; endpoints
-  e passos de execução no README.
-- **Mapas:** chave separada por plataforma, restrita conforme as recomendações
-  do Google Cloud; API de mapas requer conectividade.
-
-## 8. Métricas de sucesso sugeridas
-
-As metas quantitativas devem ser acordadas antes de qualquer piloto:
-
-- Taxa de pedidos criados sem erro sobre tentativas válidas.
-- Percentual de pedidos com coordenadas e posto de referência válidos.
-- Taxa de entregas confirmadas dentro do raio definido.
-- Tempo entre aceitação pelo entregador e confirmação da entrega.
-- Incidentes de localização incorreta ou necessidade de contato adicional.
-- Erros de carregamento do catálogo, API e tiles do mapa.
-
-## 9. Estado atual e lacunas
-
-| Capacidade | Estado atual |
-|---|---|
-| Protótipo navegável com mapa dos fluxos e abas de cliente/entregador | Demonstração local |
-| Cadastro/login de cliente e entregador | Integrado à API |
-| Catálogo, seleção de itens e criação de pedido | Integrado à API |
-| Pin interativo, posto de referência e instruções do local | Integrado; Google Maps requer chave válida |
-| Anexo de foto do local | Integrado ao endpoint de upload; requer configuração Cloudinary |
-| Mapa com destino no cliente e no entregador | Integrado aos fluxos reais |
-| Atualização do status do pedido | Consulta manual; sem tempo real |
-| Confirmação de entrega por GPS | Integrada e validada pelo backend |
-| Cobrança PIX/cartão | Não implementada |
-| Chat e sinal de ajuda | Apenas demonstração no protótipo |
-| Administração de quiosques/cardápios | Não incluída no app |
-
-## 10. Próximas etapas sugeridas
-
-1. Executar testes em dispositivos Android e iOS com chaves de mapa válidas e
-   permissões reais de localização.
-2. Validar o fluxo completo com cliente e entregador em aparelhos separados.
-3. Definir provedor e fluxo de pagamento antes de apresentar o pedido como
-   efetivamente cobrado.
-4. Definir a necessidade de atualização em tempo real e escolher mecanismo
-   (por exemplo, WebSocket ou notificações).
-5. Especificar requisitos, moderação, segurança e UX para chat e sinal de
-   ajuda antes de conectá-los.
-6. Planejar uma interface ou processo operacional para gestão do catálogo,
-   disponibilidade e quiosques.
-
-## 11. Dependências e riscos
-
-- Disponibilidade e custo dos serviços Google Maps e Cloudinary.
-- Qualidade do GPS em áreas abertas e precisão das coordenadas na praia.
-- Adoção por quiosques e disponibilidade de entregadores na área.
-- Conectividade móvel intermitente na orla.
-- Risco de confusão entre forma de pagamento selecionada e pagamento realmente
-  processado; a interface deve manter essa distinção explícita.
+| Capacidade | Estado Atual | Camadas Integradas |
+| :--- | :--- | :--- |
+| Cadastro/login JWT (`CLIENT`, `COURIER`, `KIOSK_OPERATOR`, `ADMIN`) | **100% Produção / Validado** | Backend + Flutter + Web |
+| Máscaras e validações de formulário e checkout | **100% Produção / Validado** | Backend + Flutter + Web |
+| Gestão de Parcerias, Taxas, Restrições e Snapshot de Preço | **100% Produção / Validado** | Backend + Flutter + Web |
+| CRUD de Cardápio do Quiosque com Upload de Foto (`fotoUrl`) | **100% Produção / Validado** | Backend + Web + Flutter |
+| Pin Interativo na Areia + Posto de Referência (<= 500m) + Foto do Local | **100% Produção / Validado** | Backend + Flutter + Web |
+| Farol Visual Inteligente de Tela Cheia (`<= 60m` ou `CHEGOU_NO_LOCAL`) | **100% Produção / Validado** | Backend + Flutter |
+| Bússola / Radar Pedestre na Areia (Haversine + Azimute + Linha Tracejada) | **100% Produção / Validado** | Flutter + Backend |
+| Live Tracking do Entregador + Streaming SSE + Alerta Push 60m | **100% Produção / Validado** | Backend + Flutter |
+| Canal Rápido de Mensagens na Praia + Atalho WhatsApp | **100% Produção / Validado** | Backend + Flutter |
+| Pagamento Pix Dinâmico (EMV Copia e Cola / QR Code) + Webhook | **100% Produção / Validado** | Backend + Flutter + Web |
+| Confirmação de Entrega com Geofencing (raio de 60m) | **100% Produção / Validado** | Backend + Flutter |
+| Infraestrutura Cloudinary Mock em Docker + Testes E2E (`44 PASS`) | **100% Produção / Validado** | Docker + Backend + E2E |

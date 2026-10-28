@@ -1,6 +1,9 @@
-# Pé na Areia · Portal Web (React)
+# Pé na Areia · Portal Web (React 19 + TypeScript)
 
-Portal web do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **TypeScript** e **Vite**. A aplicação atende clientes que realizam pedidos diretamente na areia da praia de Santos, operadores de quiosques que configuram taxas e cardápios, e administradores que gerenciam os canais de parceria da plataforma.
+Portal web do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **TypeScript** e **Vite 8**. A aplicação atende:
+- **Clientes (`CLIENT`)** que realizam pedidos diretamente na faixa de areia da praia de Santos, pagam com **Pix Copia e Cola** e marcam o pin no mapa;
+- **Operadores de Quiosques (`KIOSK_OPERATOR`)** que gerenciam o **cardápio completo com upload de fotos (`MenuManager`)** e configuram taxas, horários e ofertas por canal de parceria;
+- **Administradores (`ADMIN`)** que gerenciam os canais de venda globais e vinculam operadores aos quiosques.
 
 ---
 
@@ -10,84 +13,71 @@ Portal web do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **Type
 - [Tecnologias Utilizadas](#-tecnologias-utilizadas)
 - [Pré-requisitos](#-pré-requisitos)
 - [Configuração de Ambiente](#-configuração-de-ambiente)
-- [Como Executar a Aplicação](#-como-executar-a-aplicação)
-  - [1. Instalar as dependências](#1-instalar-as-dependências)
-  - [2. Subir em modo de desenvolvimento](#2-subir-em-modo-de-desenvolvimento)
-  - [3. Gerar build para produção](#3-gerar-build-para-produção)
-  - [4. Visualizar o build de produção (Preview)](#4-visualizar-o-build-de-produção-preview)
-  - [5. Análise estática de código (Lint)](#5-análise-estática-de-código-lint)
+- [Como Executar e Testar](#-como-executar-e-testar)
 - [Variáveis de Ambiente](#-variáveis-de-ambiente)
 - [Perfis de Acesso](#-perfis-de-acesso)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
-- [Integração com o Backend e CORS](#-integração-com-o-backend-e-cors)
+- [Integração com o Backend e Cloudinary Docker](#-integração-com-o-backend-e-cloudinary-docker)
 - [Resolução de Problemas](#-resolução-de-problemas)
 
 ---
 
 ## 🎯 Visão Geral e Funcionalidades
 
-O portal web complementa o aplicativo mobile (Flutter) e oferece três interfaces principais baseadas nas permissões do usuário autenticado:
+### 1. Área do Cliente (`Pedir`)
+- **Catálogo Visual por Canal de Parceria:** Escolha do canal de venda ativo, exibição dos quiosques parceiros e cardápio ilustrado com as **fotos reais dos produtos (`fotoUrl`)** e selo de embalagem retornável/sustentável.
+- **Carrinho e Validações de Checkout:** Cálculo automático de subtotal e taxa de entrega conforme o pagador configurado no canal (`CLIENT` ou `KIOSK`), validação de pedido mínimo, limite de itens e horário de atendimento.
+- **Localização Interativa via Google Maps (`MapPicker`):** Seleção do pin exato na areia com detecção automática do Posto de Salvamento mais próximo (`/reference-points/nearby`), descrição textual validada (até 140 caracteres) e upload de foto do guarda-sol (`/uploads/location-photo`).
+- **Card de Pagamento Pix Antecipado ("Zero Dinheiro na Areia"):** Quando o pedido é criado com `PIX`, exibe o payload **Pix Copia e Cola** (`pixCopiaECola`) com botão de cópia rápida, imagem do QR Code Base64, identificador `pixTxId` e botão para gerar/atualizar cobrança (`POST /orders/{id}/pix-charge`).
 
-1. **Área do Cliente (Pedir)**:
-   - Navegação por canais de venda e parcerias ativas.
-   - Consulta ao cardápio de quiosques parceiros com suporte a produtos com embalagens sustentáveis/retornáveis.
-   - Carrinho de compras com validação de regras de pedido mínimo e horários de atendimento.
-   - **Localização interativa via Google Maps**: seleção de pin na praia com detecção automática do posto de salvamento/referência mais próximo na orla de Santos.
-   - Envio de foto do local (upload integrado via Cloudinary no backend) e instruções descritivas.
-   - Registro de pedido com seleção de pagamento (PIX ou Cartão).
+### 2. Área do Operador (`Meu Quiosque`)
+Disponível para usuários com a role `KIOSK_OPERATOR`, dividida em duas seções integradas:
+- **Gestão Completa do Cardápio com Fotos (`MenuManager` + `MenuItemFormDialog`):**
+  - Listagem de todos os itens do quiosque (`GET /kiosk/me/menu`) com miniatura da foto, preço formatado em BRL, categoria, status de disponibilidade e indicador de embalagem retornável.
+  - Criação (`POST /kiosk/me/menu`), edição (`PUT /kiosk/me/menu/{itemId}`) e exclusão (`DELETE /kiosk/me/menu/{itemId}`) de produtos.
+  - **Upload de Foto do Produto (`POST /uploads/menu-item-photo`):** Seleção de imagem JPEG, PNG ou WebP (até 5 MB) com preview imediato e armazenamento no Cloudinary (ou container `cloudinary-mock` em Docker).
+- **Configuração de Canais de Parceria e Simulador de Repasse:**
+  - Parametrização por canal de venda: comissão (`0%–30%`), taxa de entrega e pagador da taxa (`CLIENT` ou `KIOSK`).
+  - Configuração de pedido mínimo, limite de itens, janela de abertura/fechamento e tempo estimado de preparo.
+  - Ativação/desativação de itens do cardápio no canal e filtros por categoria/embalagem retornável.
+  - **Simulador de Repasse:** Cálculo prévio (`POST /kiosk/me/partnerships/{partnershipId}/preview`) de subtotal, comissão da plataforma, total pago pelo cliente e valor líquido do quiosque.
 
-2. **Área do Operador (Meu Quiosque)**:
-   - Disponível para usuários com a role `KIOSK_OPERATOR`.
-   - Parametrização por canal de venda: comissão, taxa de entrega e definição do pagador (cliente ou quiosque).
-   - Configuração de pedido mínimo, limite de itens, horário de abertura/fechamento e tempo estimado de preparo.
-   - Ativação/desativação de itens do cardápio e aplicação de filtros por categoria.
-   - **Simulador de repasse**: cálculo prévio de comissões e valores líquidos do quiosque.
-
-3. **Área Administrativa (Administração)**:
-   - Disponível para usuários com a role `ADMIN`.
-   - Criação e ativação de novos canais de parcerias globais.
-   - Vinculação de contas de usuários como operadores responsáveis por quiosques específicos.
+### 3. Área Administrativa (`Administração`)
+- Disponível para usuários com a role `ADMIN`.
+- Criação e ativação/pausa de canais de parceria globais (`/admin/partnerships`).
+- Associação de contas de usuários existentes como operadores responsáveis por quiosques específicos (`PATCH /admin/kiosk-operators`).
 
 ---
 
 ## 💻 Tecnologias Utilizadas
 
-- **[React 19](https://react.dev/)** — Biblioteca para construção de interfaces reativas.
-- **[TypeScript](https://www.typescriptlang.org/)** — Tipagem estática e segurança em tempo de desenvolvimento.
-- **[Vite 8](https://vite.dev/)** — Ferramenta de build e servidor de desenvolvimento ultrarrápido com Hot Module Replacement (HMR).
-- **[@googlemaps/js-api-loader](https://www.npmjs.com/package/@googlemaps/js-api-loader)** — Carregamento dinâmico e otimizado da Google Maps JavaScript API.
-- **[Oxlint](https://oxc.rs/)** — Linter de alto desempenho focado em JavaScript/TypeScript e boas práticas com React.
+- **[React 19](https://react.dev/)** — Interfaces reativas e componentes modulares.
+- **[TypeScript](https://www.typescriptlang.org/)** — Tipagem estática ponta a ponta.
+- **[Vite 8](https://vite.dev/)** — Build e servidor de desenvolvimento com HMR.
+- **[@googlemaps/js-api-loader](https://www.npmjs.com/package/@googlemaps/js-api-loader)** — Integração com a Google Maps JavaScript API.
+- **[Oxlint](https://oxc.rs/)** — Linter rápido para TypeScript e React.
+- **Node Test Runner (`node:test`)** — Suíte de testes unitários para máscaras, validações e regras de formulário.
 
 ---
 
 ## 📋 Pré-requisitos
 
-Antes de iniciar, certifique-se de possuir instalado em sua máquina:
-
-- **Node.js**: versão `18.x`, `20.x` ou superior (recomendado `20.x` LTS ou mais recente).
-- **Gerenciador de pacotes**: `npm` (incluído com o Node.js), `pnpm` ou `yarn`.
-- **Backend Pé na Areia** em execução (Spring Boot API em `http://localhost:8080`). Consulte o [README principal](../README.md) para subir via Docker Compose.
-- **Chave de API do Google Maps** *(opcional para navegação básica, obrigatória para confirmação de pedidos via mapa)*.
+- **Node.js**: versão `20.x` LTS ou superior.
+- **Backend Pé na Areia + Cloudinary Mock** em execução via Docker Compose (`http://localhost:8080` e `http://localhost:8099`). Consulte o [README principal](../README.md).
+- **Chave de API do Google Maps** *(opcional para navegação no catálogo e gestão de cardápio/quiosque; necessária para confirmar o pin no checkout web)*.
 
 ---
 
 ## ⚙️ Configuração de Ambiente
 
-Na pasta `web`, crie o arquivo `.env.local` a partir do modelo existente `.env.example`:
+Na pasta `web`, crie o arquivo `.env.local` a partir de `.env.example`:
 
-### No Windows (PowerShell):
 ```powershell
 Set-Location web
 if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
 ```
 
-### No Linux / macOS (Bash):
-```bash
-cd web
-cp -n .env.example .env.local
-```
-
-Edite o arquivo `.env.local` conforme as suas necessidades:
+Conteúdo do `.env.local`:
 
 ```env
 # URL base da API Spring Boot do Pé na Areia
@@ -97,60 +87,36 @@ VITE_API_BASE_URL=http://localhost:8080
 VITE_GOOGLE_MAPS_API_KEY=sua_chave_google_maps_aqui
 ```
 
-> [!TIP]
-> Se você não possuir uma chave do Google Maps imediatamente, ainda poderá navegar pelo catálogo, fazer login e acessar o painel de operador/admin. O mapa exibirá um aviso explicativo e a confirmação de checkout que exige pin ficará suspensa até a configuração da chave.
-
 ---
 
-## 🚀 Como Executar a Aplicação
+## 🚀 Como Executar e Testar
 
-Certifique-se de estar no diretório `web`:
+No diretório `web`:
 
 ```powershell
-cd web
+Set-Location web
+npm.cmd install
 ```
 
-### 1. Instalar as dependências
-
-```bash
-npm install
+### 1. Executar os testes automatizados (26 testes)
+```powershell
+npm.cmd test
 ```
 
 ### 2. Subir em modo de desenvolvimento
-
-Inicie o servidor de desenvolvimento do Vite:
-
-```bash
-npm run dev
+```powershell
+npm.cmd run dev
 ```
-
-Por padrão, a aplicação estará acessível em:
-👉 **[http://localhost:5173](http://localhost:5173)**
-
-O servidor suporta atualização automática em tempo real (HMR) a cada arquivo salvo.
+Acesse em: **[http://localhost:5173](http://localhost:5173)**
 
 ### 3. Gerar build para produção
-
-Para validar os tipos com TypeScript e compilar os arquivos otimizados e minificados para o diretório `dist/`:
-
-```bash
-npm run build
+```powershell
+npm.cmd run build
 ```
 
-### 4. Visualizar o build de produção (Preview)
-
-Para testar localmente o resultado compilado exatamente como seria servido em ambiente de produção:
-
-```bash
-npm run preview
-```
-
-### 5. Análise estática de código (Lint)
-
-Para verificar o código em busca de erros de tipagem, regras do React e problemas de sintaxe usando o Oxlint:
-
-```bash
-npm run lint
+### 4. Análise estática de código (Lint)
+```powershell
+npm.cmd run lint
 ```
 
 ---
@@ -158,23 +124,19 @@ npm run lint
 ## 🔑 Variáveis de Ambiente
 
 | Variável | Obrigatória | Padrão | Descrição |
-|---|---|---|---|
+| :--- | :--- | :--- | :--- |
 | `VITE_API_BASE_URL` | Não | `http://localhost:8080` | Endpoint base da API REST do backend. |
 | `VITE_GOOGLE_MAPS_API_KEY` | Sim (p/ checkout) | *(vazio)* | Chave de API da Google Cloud com a **Maps JavaScript API** ativada. |
-
-> [!IMPORTANT]
-> - Em produção, restrinja a chave da API do Google Maps por **HTTP referrers (sites)** (por exemplo: `https://seudominio.com/*` ou `http://localhost:5173/*` para testes locais).
-> - Nunca versione arquivos `.env` ou `.env.local` contendo credenciais ou chaves reais.
 
 ---
 
 ## 👤 Perfis de Acesso
 
-O fluxo de autenticação utiliza tokens JWT gerenciados via `sessionStorage`:
+O fluxo de autenticação utiliza tokens JWT armazenados em `sessionStorage`:
 
-- **Cliente (`CLIENT`)**: Pode criar conta livremente na tela inicial através do formulário de cadastro ("Cadastre-se").
-- **Operador de Quiosque (`KIOSK_OPERATOR`)**: Não é criado no cadastro público. Deve ser associado a um quiosque por um Administrador.
-- **Administrador (`ADMIN`)**: Para cadastrar o primeiro administrador em ambiente local, crie uma conta de cliente comum e altere o atributo `role` para `ADMIN` diretamente no documento correspondente no MongoDB (banco `pe_na_areia`, coleção `users`). Ao fazer login novamente, a interface exibirá a aba **Administração**.
+- **Cliente (`CLIENT`)**: Criado livremente na tela inicial pelo formulário **"Cadastre-se"**.
+- **Operador de Quiosque (`KIOSK_OPERATOR`)**: Associado a um quiosque por um Administrador na aba **Administração** (ou via `PATCH /admin/kiosk-operators`). Tem acesso à aba **Meu quiosque** (gerenciamento de cardápio com fotos e configuração de parcerias).
+- **Administrador (`ADMIN`)**: Possui acesso à aba **Administração** para criar parcerias e atribuir operadores.
 
 ---
 
@@ -182,51 +144,39 @@ O fluxo de autenticação utiliza tokens JWT gerenciados via `sessionStorage`:
 
 ```text
 web/
-├── public/                # Arquivos públicos estáticos (favicon, ícones SVG)
+├── public/                        # Arquivos estáticos públicos
 ├── src/
-│   ├── assets/            # Imagens e vetores (hero banner, ilustrações)
-│   ├── api.ts             # Cliente HTTP, funções da API REST e gerenciamento de sessão
-│   ├── App.css            # Estilização completa do portal (design responsivo da praia)
-│   ├── App.tsx            # Componente raiz contendo as telas (Pedir, Quiosque, Admin)
-│   ├── index.css          # Reset de CSS básico e variáveis de tipografia
-│   ├── main.tsx           # Ponto de entrada do React (DOM mount)
-│   ├── MapPicker.tsx      # Componente com integração ao Google Maps e postos de referência
-│   └── types.ts           # Interfaces e definições de tipos TypeScript do domínio
-├── .env.example           # Exemplo de variáveis de ambiente
-├── .gitignore             # Arquivos e diretórios ignorados pelo Git
-├── .oxlintrc.json         # Configuração de regras do linter Oxlint
-├── index.html             # Modelo HTML principal da aplicação Vite
-├── package.json           # Dependências e scripts do projeto
-├── tsconfig.json          # Configuração base do TypeScript
-├── tsconfig.app.json      # Configuração TypeScript para o código da aplicação
-└── vite.config.ts         # Configuração do Vite e plugins React
+│   ├── assets/                    # Ilustrações e vetores
+│   ├── components/
+│   │   ├── MenuItemFormDialog.tsx # Modal de criação/edição de item com upload de foto pro Cloudinary
+│   │   └── MenuManager.tsx        # Painel CRUD completo do cardápio do quiosque
+│   ├── utils/
+│   │   ├── validation.ts          # Funções de validação e máscaras (telefone, moeda, e-mail, etc.)
+│   │   └── validation.test.ts     # 26 testes unitários de validação e máscaras
+│   ├── api.ts                     # Cliente HTTP REST (auth, catálogo, cardápio, uploads, Pix, admin)
+│   ├── App.css                    # Estilização responsiva do portal
+│   ├── App.tsx                    # Componente principal (Pedir, Meu Quiosque, Administração)
+│   ├── MapPicker.tsx              # Seletor de pin no Google Maps + postos de referência
+│   ├── main.tsx                   # Ponto de entrada React
+│   └── types.ts                   # Contratos TypeScript (MenuItem, OrderResponse, PixChargeResponse, etc.)
+├── .env.example                   # Modelo de variáveis de ambiente
+├── package.json                   # Dependências e scripts npm
+└── vite.config.ts                 # Configuração do Vite
 ```
 
 ---
 
-## 🌐 Integração com o Backend e CORS
+## 🌐 Integração com o Backend e Cloudinary Docker
 
-Para que o portal web consiga realizar requisições à API Spring Boot sem erros de política de mesma origem (CORS):
-
-1. Certifique-se de que o backend esteja rodando (geralmente via Docker Compose na porta `8080`).
-2. Se o backend estiver configurado com a variável de ambiente `APP_CORS_ORIGINS`, inclua a URL do Vite:
-   ```text
-   APP_CORS_ORIGINS=http://localhost:5173
-   ```
-3. A documentação OpenAPI interativa do backend pode ser consultada em **`http://localhost:8080/docs`**.
+Quando o backend é iniciado via `docker compose -f infrastructure/docker-compose.yml up -d`, os uploads de fotos feitos no `MenuItemFormDialog` (`POST /uploads/menu-item-photo`) e no checkout do cliente (`POST /uploads/location-photo`) são enviados automaticamente para o container `cloudinary-mock` na porta `8099`, retornando URLs públicas acessíveis diretamente pelo navegador (`http://localhost:8099/pe-na-areia-local/image/upload/...`).
 
 ---
 
 ## 🛠️ Resolução de Problemas
 
-### 1. `ApiError: Falha na solicitação (403/401)` ou erro de conexão
-- Verifique se o container do backend está em execução: `docker ps`.
-- Confirme se a URL em `VITE_API_BASE_URL` no arquivo `.env.local` coincide com o endereço e porta da API.
-
-### 2. Mapa do Google Maps não carrega ou exibe tela cinza
-- Confirme se você preencheu `VITE_GOOGLE_MAPS_API_KEY` no `.env.local`.
-- Lembre-se de reiniciar o servidor do Vite (`npm run dev`) após alterar qualquer variável de ambiente no `.env.local`.
-- Verifique no console do navegador (F12) se há mensagens de erro da Google (como `ApiNotActivatedMapError` ou restrições de faturamento/referenciador).
-
-### 3. A aba "Meu quiosque" ou "Administração" não aparece
-- Essas abas só são exibidas para usuários autenticados com os perfis `KIOSK_OPERATOR` e `ADMIN`, respectivamente. Faça login com um usuário que possua esses privilégios.
+1. **Erro `401` / `403` ou falha de conexão:**
+   - Verifique se os containers `backend`, `mongodb` e `cloudinary-mock` estão rodando com `docker compose -f infrastructure/docker-compose.yml ps`.
+2. **Fotos de produtos ou do local não aparecem:**
+   - Certifique-se de que o container `cloudinary-mock` está ativo na porta `8099` (`http://localhost:8099/health`).
+3. **A aba "Meu quiosque" não aparece:**
+   - Faça login com um usuário que possua o perfil `KIOSK_OPERATOR` vinculado a um quiosque ativo.

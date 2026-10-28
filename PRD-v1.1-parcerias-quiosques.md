@@ -1,106 +1,127 @@
-# PRD — Pé na Areia · v1.1 (Parcerias e regras por quiosque)
+# PRD — Pé na Areia · v1.1 (Parcerias, Gestão de Cardápio com Fotos e Regras por Quiosque)
 
-**Versão:** 1.1 (rascunho para validação)
-**Base:** PRD v1.0, 17 de outubro de 2026
-**Status:** Proposta
+**Versão:** 1.1 (Consolidado na v2.0)  
+**Base:** [PRD Principal v2.0](PRD.md)  
+**Data de Atualização:** 28 de outubro de 2026  
+**Status:** Implementado e Validado End-to-End
 
-## 1. Mudança proposta
+## 1. Resumo da Evolução
 
-Na v1.0, o catálogo é global: o quiosque tem itens e preços, e todo pedido sai pelo mesmo canal. Esta versão permite que cada quiosque:
+Na versão inicial (v1.0), o catálogo era estático no banco de dados e todo pedido saía por um único fluxo sem gestão pelo restaurante. A **v1.1** (consolidada na v2.0) permite que cada quiosque, por meio do perfil **`KIOSK_OPERATOR`** no Portal Web React:
 
-- escolha as **parcerias** (canais de venda) pelas quais quer receber pedidos;
-- defina, para cada parceria, **quais produtos** vende;
-- configure **filtros**, **política de taxas** e **restrições de pedido** próprias daquela parceria.
+1. **Gerencie seu próprio cardápio com fotos reais (`MenuManager`):**
+   - Cadastre, edite e exclua itens do cardápio (`POST`, `PUT`, `DELETE /kiosk/me/menu`).
+   - Faça upload de fotos dos produtos (`POST /uploads/menu-item-photo`) integradas ao Cloudinary (`pe-na-areia/cardapio`), exibidas tanto no Portal Web quanto no App Mobile Flutter (`fotoUrl`).
+2. **Configure Canais de Parceria (`partnerships`):**
+   - Escolha as **parcerias** (canais de venda) pelas quais quer receber pedidos.
+   - Defina, para cada parceria, **quais produtos** vende (`productIds`).
+   - Configure **filtros**, **política de taxas** e **restrições de pedido** próprias daquela parceria.
+   - Simule em tempo real o repasse líquido com a calculadora integrada (`POST /kiosk/me/partnerships/{partnershipId}/preview`).
 
-## 2. Conceitos
+---
 
-- **Parceria:** vínculo entre um quiosque e um canal de venda (ex.: app Pé na Areia, clube de praia, evento sazonal). Pode estar ativa ou pausada.
-- **Oferta por parceria:** subconjunto dos produtos do cardápio habilitados naquela parceria.
-- **Filtros:** critérios que restringem a oferta (categorias e somente embalagem retornável).
-- **Política de taxas:** comissão da plataforma (%), taxa de entrega (R$) e quem a paga (cliente ou quiosque).
-- **Restrições de pedido:** pedido mínimo, máximo de itens, janela de horário e tempo de preparo.
+## 2. Conceitos do Domínio
 
-## 3. Premissas (a validar)
+- **Cardápio do Quiosque (`cardapio`):** Lista de produtos (`MenuItem`) pertencentes ao quiosque, contendo `id`, `nome`, `descricao`, `fotoUrl`, `preco`, `categoria`, `disponivel` e `embalagemRetornavel`.
+- **Parceria (`Partnership`):** Vínculo entre um quiosque e um canal de venda (ex.: app Pé na Areia, clube de praia, evento sazonal). Pode estar ativa ou pausada globalmente pelo `ADMIN` e individualmente pelo `KIOSK_OPERATOR`.
+- **Oferta por Parceria (`KioskPartnership`):** Subconjunto dos produtos do cardápio habilitados naquela parceria, combinado com taxas e restrições.
+- **Filtros (`PartnershipFilters`):** Critérios que restringem a oferta (`categories` e `onlyReturnable`).
+- **Política de Taxas:** Comissão da plataforma (`commissionPercent` de `0%` a `30%`), taxa de entrega (`deliveryFee >= 0`) e pagador da taxa (`CLIENT` ou `KIOSK`).
+- **Restrições de Pedido:** Pedido mínimo (`minimumOrder`), máximo de unidades (`maxItemsPerOrder`), janela de horário (`acceptFrom` / `acceptUntil` em `America/Sao_Paulo`) e tempo estimado de preparo (`prepMinutes`).
 
-- "Parceiro" é tratado como **canal de venda**. A entrega continua com a operação Pé na Areia. Se o parceiro for um operador logístico, ver a seção 10.
-- Surge o papel **`KIOSK_OPERATOR`**, vinculado a um quiosque. A v1.0 deixava a administração fora do app; esta versão exige ao menos uma tela de configuração. Isso amplia o escopo do MVP.
-- Taxas e comissões são **calculadas e registradas** no servidor. Nenhuma cobrança é feita nesta versão: o pagamento continua fora do escopo.
+---
 
-## 4. Requisitos funcionais
+## 3. Requisitos Funcionais Implementados
 
-- **RF-01** O quiosque vê as parcerias disponíveis e ativa ou pausa cada uma.
-- **RF-02** Por parceria, o quiosque habilita ou desabilita produtos do próprio cardápio.
-- **RF-03** Filtros por parceria: categorias (vazio significa todas) e "somente embalagem retornável".
-- **RF-04** Política de taxas por parceria: comissão entre 0% e 30% (limite a confirmar), taxa de entrega maior ou igual a zero e pagador da taxa (`CLIENT` ou `KIOSK`).
-- **RF-05** Restrições por parceria: pedido mínimo, máximo de itens, horário de início e fim para aceitar pedidos e tempo de preparo.
-- **RF-06** O cliente escolhe a parceria ao pedir e só pode comprar produtos elegíveis nela. O pedido registra a parceria.
-- **RF-07** Prévia com um pedido de exemplo, mostrando subtotal, comissão, valor pago pelo cliente e valor líquido do quiosque.
-- **RF-08** Cada pedido grava um *snapshot* da parceria: percentuais, taxa, restrições e preços vigentes na criação.
+- **RF-01 (Gestão de Cardápio CRUD):** O operador do quiosque lista (`GET /kiosk/me/menu`), cria (`POST /kiosk/me/menu`), edita (`PUT /kiosk/me/menu/{itemId}`) e remove (`DELETE /kiosk/me/menu/{itemId}`) produtos do seu quiosque.
+- **RF-02 (Upload de Fotos de Produtos):** O operador envia fotos JPEG/PNG/WebP de até 5 MB (`POST /uploads/menu-item-photo`), recebendo `secureUrl` do Cloudinary (ou container `cloudinary-mock` em Docker) para associar ao campo `fotoUrl` do item.
+- **RF-03 (Ativação de Parcerias):** O quiosque vê as parcerias disponíveis e ativa ou pausa cada uma.
+- **RF-04 (Seleção de Produtos por Canal):** Por parceria, o quiosque habilita ou desabilita produtos do próprio cardápio.
+- **RF-05 (Filtros por Parceria):** Categorias (vazio significa todas) e flag "somente embalagem retornável".
+- **RF-06 (Política de Taxas por Parceria):** Comissão entre `0%` e `30%`, taxa de entrega `>= 0` e pagador da taxa (`CLIENT` ou `KIOSK`).
+- **RF-07 (Restrições Operacionais):** Pedido mínimo, máximo de itens, horário de início/fim para aceitar pedidos e tempo de preparo em minutos.
+- **RF-08 (Compra Elegível pelo Cliente):** O cliente escolhe a parceria ao pedir (`GET /kiosks?partnershipId=`) e só pode comprar produtos elegíveis nela. O pedido registra `partnershipId`.
+- **RF-09 (Simulador de Prévia):** Prévia com um pedido de exemplo (`POST /kiosk/me/partnerships/{partnershipId}/preview`), mostrando subtotal, comissão, valor pago pelo cliente e valor líquido do quiosque.
+- **RF-10 (Snapshot Imutável):** Cada pedido grava um `pricingSnapshot` imutável da parceria contendo percentuais, taxa, pagador, subtotal, comissão, total do cliente e líquido do quiosque vigentes na criação.
 
-## 5. Regras de negócio
+---
 
-- **RN-01** Um item só é vendável se o quiosque estiver ativo, o produto disponível, o produto habilitado na parceria, a parceria ativa e o item passar nos filtros.
-- **RN-02** Parceria pausada não aceita novos pedidos. Pedidos em andamento continuam.
-- **RN-03** Alterações de taxa, filtro ou restrição valem apenas para pedidos criados depois da alteração.
-- **RN-04** O total é calculado no servidor: soma de preço do servidor × quantidade, mais a taxa de entrega quando o cliente a paga. Comissão e valor líquido do quiosque são calculados e gravados no pedido.
-- **RN-05** O pedido é recusado, com mensagem clara, se: ficar abaixo do mínimo, ultrapassar o máximo de itens, estiver fora da janela de horário, a parceria estiver pausada ou houver item fora da oferta.
-- **RN-06** Comissão fora do intervalo permitido e taxa negativa são rejeitadas na configuração.
-- **RN-07** Quando o quiosque paga a taxa, ela é deduzida do valor líquido dele e não é cobrada do cliente.
-- **RN-08** A janela de horário usa o fuso `America/Sao_Paulo`.
+## 4. Regras de Negócio Validadas no Servidor
 
-## 6. Modelo de dados (proposta MongoDB)
+- **RN-01:** Um item só é vendável se o quiosque estiver ativo, o produto disponível, o produto habilitado na parceria, a parceria ativa (globalmente e no quiosque) e o item passar nos filtros.
+- **RN-02:** Parceria pausada não aceita novos pedidos (`422 Unprocessable Entity`). Pedidos em andamento continuam normalmente.
+- **RN-03:** Alterações de preço no cardápio, taxa, filtro ou restrição valem apenas para pedidos criados depois da alteração.
+- **RN-04:** O total é calculado exclusivamente no servidor: soma de `preço do servidor × quantidade`, mais a taxa de entrega quando `deliveryFeePayer == CLIENT`. Comissão e valor líquido do quiosque são calculados e gravados no pedido.
+- **RN-05:** O pedido é recusado com mensagem clara se ficar abaixo do mínimo, ultrapassar o máximo de itens, estiver fora da janela de horário, a parceria estiver pausada ou houver item fora da oferta.
+- **RN-06:** Comissão fora do intervalo `0%..30%` e taxa negativa são rejeitadas na configuração.
+- **RN-07:** Quando o quiosque paga a taxa (`deliveryFeePayer == KIOSK`), ela é deduzida do valor líquido dele (`kioskNet`) e não é cobrada do cliente.
+- **RN-08:** A janela de horário utiliza sempre o fuso `America/Sao_Paulo`.
 
-```
-kiosks:              { _id, name, active, ownerUserId }
-partnerships:        { _id, name, channel, active }          // catálogo global
-kiosk_partnerships:  {
-  _id, kioskId, partnershipId, active,
-  commissionPercent, deliveryFee, deliveryFeePayer: "CLIENT" | "KIOSK",
-  minimumOrder, maxItemsPerOrder, acceptFrom, acceptUntil, prepMinutes,
+---
+
+## 5. Modelo de Dados no MongoDB
+
+```javascript
+// Coleção: kiosks
+{
+  _id: "kiosk-santos-1",
+  nome: "Quiosque Sol & Mar",
+  postoReferenciaId: "posto-4",
+  ativo: true,
+  aceitaEmbalagemSustentavel: true,
+  cardapio: [
+    {
+      _id: "porcao-camarao",
+      nome: "Porção de Camarão Empanado",
+      descricao: "400g com molho tártaro",
+      fotoUrl: "http://localhost:8099/pe-na-areia-local/image/upload/v1/pe-na-areia/cardapio/...",
+      preco: NumberDecimal("64.90"),
+      categoria: "Porções",
+      disponivel: true,
+      embalagemRetornavel: true
+    }
+  ]
+}
+
+// Coleção: partnerships (catálogo global)
+{ _id: "pe-na-areia-app", name: "App Pé na Areia", channel: "APP", active: true }
+
+// Coleção: kiosk_partnerships — índice único (kioskId, partnershipId)
+{
+  _id: "...",
+  kioskId: "kiosk-santos-1",
+  partnershipId: "pe-na-areia-app",
+  active: true,
+  commissionPercent: NumberDecimal("10.00"),
+  deliveryFee: NumberDecimal("6.00"),
+  deliveryFeePayer: "CLIENT", // "CLIENT" | "KIOSK"
+  minimumOrder: NumberDecimal("20.00"),
+  maxItemsPerOrder: 15,
+  acceptFrom: "08:00",
+  acceptUntil: "20:00",
+  prepMinutes: 20,
   filters: { categories: [], onlyReturnable: false },
-  productIds: [ ... ]
-}                                                           // índice único (kioskId, partnershipId)
-orders: + partnershipId, pricingSnapshot {
-  commissionPercent, deliveryFee, deliveryFeePayer,
-  subtotal, commissionAmount, customerTotal, kioskNet
+  productIds: ["agua-coco", "porcao-camarao"]
 }
 ```
 
-## 7. Endpoints (propostos)
+---
+
+## 6. Endpoints de Cardápio, Parcerias e Administração
 
 | Método | Rota | Acesso | Descrição |
-|---|---|---|---|
-| GET | `/partnerships` | Público | Lista parcerias ativas |
-| GET | `/kiosks/{id}/partnerships` | Público | Oferta por parceria: produtos elegíveis, taxa e restrições |
-| GET | `/kiosk/me/partnerships` | KIOSK_OPERATOR | Configurações do quiosque do operador |
-| PUT | `/kiosk/me/partnerships/{partnershipId}` | KIOSK_OPERATOR | Atualiza parceria, filtros, taxas e restrições |
-| POST | `/orders` | CLIENT | Passa a exigir `partnershipId` |
-
-`GET /kiosks` passa a aceitar `?partnershipId=`, para que o cardápio exibido já respeite a parceria escolhida.
-
-## 8. Critérios de aceite
-
-- Dada uma parceria pausada, quando o cliente tenta pedir por ela, então a API responde com erro de conflito e mensagem explicando o motivo.
-- Ao desabilitar um produto em uma parceria, ele deixa de aparecer nela e continua disponível nas demais.
-- Pedido abaixo do mínimo é rejeitado. O total ignora qualquer valor enviado pelo app.
-- Alterar a taxa depois da criação não altera o pedido já existente (snapshot).
-- A prévia do painel usa a mesma regra de cálculo do servidor e os dois resultados batem em testes automatizados.
-
-## 9. Métricas adicionais
-
-- Percentual de quiosques com ao menos duas parcerias ativas.
-- Ticket médio por parceria.
-- Taxa de pedidos recusados por restrição, como indicador de configuração mal feita.
-
-## 10. Questões em aberto
-
-1. O que exatamente é um "parceiro": canal de venda, operador logístico ou ambos?
-2. Quem define o limite de comissão: a plataforma ou negociação caso a caso?
-3. A taxa de entrega é fixa ou varia por distância, dentro do raio de 500 m do posto?
-4. As restrições são livres para o quiosque ou dependem de aprovação da plataforma?
-5. Alterações de configuração precisam de aprovação ou entram em vigor imediatamente?
-6. Como a comissão será repassada (split no provedor de pagamento)? Depende da definição de pagamento, fora do MVP.
-
-## 11. Impacto no roadmap
-
-Esta versão não substitui a seção 10 do PRD v1.0. Ela acrescenta o papel `KIOSK_OPERATOR`, o painel de configuração por parceria e o cálculo de comissão no pedido. A cobrança real de comissão continua condicionada à definição do provedor de pagamento.
+| :--- | :--- | :--- | :--- |
+| `GET` | `/partnerships` | Público | Lista parcerias globais ativas |
+| `GET` | `/kiosks?partnershipId=` | Público | Lista quiosques ativos e cardápio filtrado pela parceria |
+| `GET` | `/kiosks/{id}/partnerships` | Público | Lista ofertas por parceria: produtos elegíveis, taxa e restrições |
+| `GET` | `/kiosk/me/menu` | `KIOSK_OPERATOR` | Lista todos os itens do cardápio do quiosque do operador |
+| `POST` | `/kiosk/me/menu` | `KIOSK_OPERATOR` | Cadastra novo item no cardápio (com `fotoUrl` opcional) |
+| `PUT` | `/kiosk/me/menu/{itemId}` | `KIOSK_OPERATOR` | Atualiza item existente do cardápio |
+| `DELETE` | `/kiosk/me/menu/{itemId}` | `KIOSK_OPERATOR` | Remove item do cardápio do quiosque |
+| `POST` | `/uploads/menu-item-photo` | `KIOSK_OPERATOR` | Faz upload da foto do produto para `pe-na-areia/cardapio` no Cloudinary |
+| `GET` | `/kiosk/me/partnerships` | `KIOSK_OPERATOR` | Lista configurações de parcerias do quiosque do operador |
+| `PUT` | `/kiosk/me/partnerships/{partnershipId}` | `KIOSK_OPERATOR` | Atualiza parceria, produtos, filtros, taxas e restrições |
+| `POST` | `/kiosk/me/partnerships/{partnershipId}/preview` | `KIOSK_OPERATOR` | Simula subtotal, comissão, total do cliente e líquido do quiosque |
+| `POST` | `/admin/partnerships` | `ADMIN` | Cria novo canal de parceria global |
+| `PUT` | `/admin/partnerships/{partnershipId}` | `ADMIN` | Ativa ou pausa canal global |
+| `PATCH` | `/admin/kiosk-operators` | `ADMIN` | Associa conta de usuário existente a um quiosque (`KIOSK_OPERATOR`) |
