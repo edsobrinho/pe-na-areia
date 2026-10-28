@@ -27,12 +27,25 @@ public class KioskMenuDtos {
 
             Boolean returnablePackaging,
 
-            String fotoUrl
+            String fotoUrl,
+
+            Boolean destaque
     ) {
         public CreateMenuItemRequest {
             if (disponivel == null) disponivel = true;
             if (category == null || category.isBlank()) category = "Outros";
             if (returnablePackaging == null) returnablePackaging = false;
+            if (destaque == null) destaque = false;
+        }
+
+        public CreateMenuItemRequest(String nome,
+                                     String descricao,
+                                     BigDecimal preco,
+                                     Boolean disponivel,
+                                     String category,
+                                     Boolean returnablePackaging,
+                                     String fotoUrl) {
+            this(nome, descricao, preco, disponivel, category, returnablePackaging, fotoUrl, false);
         }
     }
 
@@ -54,12 +67,25 @@ public class KioskMenuDtos {
 
             Boolean returnablePackaging,
 
-            String fotoUrl
+            String fotoUrl,
+
+            Boolean destaque
     ) {
         public UpdateMenuItemRequest {
             if (disponivel == null) disponivel = true;
             if (category == null || category.isBlank()) category = "Outros";
             if (returnablePackaging == null) returnablePackaging = false;
+            if (destaque == null) destaque = false;
+        }
+
+        public UpdateMenuItemRequest(String nome,
+                                     String descricao,
+                                     BigDecimal preco,
+                                     Boolean disponivel,
+                                     String category,
+                                     Boolean returnablePackaging,
+                                     String fotoUrl) {
+            this(nome, descricao, preco, disponivel, category, returnablePackaging, fotoUrl, false);
         }
     }
 
@@ -67,5 +93,14 @@ public class KioskMenuDtos {
             boolean disponivel
     ) {
     }
-}
 
+    public record UpdateStorefrontRequest(
+            @Size(max = 160, message = "A descrição curta deve ter no máximo 160 caracteres.")
+            String descricaoCurta,
+            String fotoCapaUrl,
+            String logoUrl,
+            Boolean aceitaEmbalagemSustentavel,
+            Boolean destaquePopular
+    ) {
+    }
+}

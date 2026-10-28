@@ -184,6 +184,17 @@ public class OrderService {
         order.setPontoReferenciaId(posto.getId());
         order.setDescricaoLocal(request.getDescricaoLocal());
         order.setFotoLocalUrl(request.getFotoLocalUrl());
+        order.setReferenciaBarraca(request.getReferenciaBarraca());
+        order.setComplementoLocal(request.getComplementoLocal());
+        order.setFotoVisaoPostoUrl(request.getFotoVisaoPostoUrl());
+        order.setFotoOutroReferencialUrl(request.getFotoOutroReferencialUrl());
+        order.setContatoNome(request.getContatoNome() != null && !request.getContatoNome().isBlank()
+                ? request.getContatoNome().trim()
+                : usuario.getNome());
+        order.setContatoTelefone(request.getContatoTelefone() != null && !request.getContatoTelefone().isBlank()
+                ? request.getContatoTelefone().trim()
+                : usuario.getTelefone());
+        order.setEtiquetaLocal(request.getEtiquetaLocal());
 
         if (request.getFormaPagamento() == PaymentMethod.PIX) {
             PixPaymentGateway.PixCharge charge = pixPaymentGateway.gerarCobranca(order);

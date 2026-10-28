@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, ApiError } from '../api'
-import type { MenuItem, MenuItemPayload } from '../types'
+import type { Kiosk, MenuItem, MenuItemPayload } from '../types'
 import { MenuItemFormDialog } from './MenuItemFormDialog'
 
 interface MenuManagerProps {
@@ -26,6 +26,31 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
   const [localError, setLocalError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
+  // Storefront state (Vitrine do Quiosque no App do Cliente)
+  const [storefrontOpen, setStorefrontOpen] = useState(false)
+  const [storefront, setStorefront] = useState<Kiosk | null>(null)
+  const [descricaoCurta, setDescricaoCurta] = useState('')
+  const [fotoCapaUrl, setFotoCapaUrl] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [destaquePopular, setDestaquePopular] = useState(true)
+  const [aceitaSustentavel, setAceitaSustentavel] = useState(true)
+
+  useEffect(() => {
+    void api
+      .getOperatorStorefront()
+      .then((kiosk) => {
+        setStorefront(kiosk)
+        setDescricaoCurta(kiosk.descricaoCurta ?? '')
+        setFotoCapaUrl(kiosk.fotoCapaUrl ?? '')
+        setLogoUrl(kiosk.logoUrl ?? '')
+        setDestaquePopular(kiosk.destaquePopular ?? true)
+        setAceitaSustentavel(kiosk.aceitaEmbalagemSustentavel ?? true)
+      })
+      .catch(() => {
+        // Ignorado caso ainda não carregado
+      })
+  }, [])
+
   const handleOpenCreate = () => {
     setEditingItem(null)
     setLocalError(null)
@@ -36,6 +61,48 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
     setEditingItem(item)
     setLocalError(null)
     setDialogOpen(true)
+  }
+
+  const handleSaveStorefront = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setBusy(true)
+    setLocalError(null)
+    setNotice(null)
+    try {
+      const updated = await api.updateOperatorStorefront({
+        descricaoCurta: descricaoCurta.trim(),
+        fotoCapaUrl: fotoCapaUrl.trim() || null,
+        logoUrl: logoUrl.trim() || null,
+        aceitaEmbalagemSustentavel: aceitaSustentavel,
+        destaquePopular,
+      })
+      setStorefront(updated)
+      setNotice('Vitrine do quiosque atualizada com sucesso para o App do Cliente.')
+      setStorefrontOpen(false)
+    } catch (reason: unknown) {
+      setLocalError(messageOf(reason))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleUploadStorefrontImage = async (
+    file: File | null,
+    target: 'capa' | 'logo',
+  ) => {
+    if (!file) return
+    setBusy(true)
+    setLocalError(null)
+    try {
+      const uploaded = await api.uploadMenuItemPhoto(file)
+      if (target === 'capa') setFotoCapaUrl(uploaded.secureUrl)
+      else setLogoUrl(uploaded.secureUrl)
+      setNotice('Imagem enviada para o Cloudinary com sucesso!')
+    } catch (reason: unknown) {
+      setLocalError(messageOf(reason))
+    } finally {
+      setBusy(false)
+    }
   }
 
   const handleSave = async (payload: MenuItemPayload, photoFile: File | null) => {
@@ -108,12 +175,100 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
       <div className="menu-manager-header">
         <div>
           <h2>Itens do Cardápio ({menuItems.length})</h2>
-          <p className="muted">Cadastre seus produtos com foto para exibir no aplicativo do cliente.</p>
+          <p className="muted">
+            Cadastre seus produtos com foto, marque os mais pedidos e personalize a vitrine do seu quiosque no app.
+          </p>
         </div>
-        <button type="button" className="button button-primary" onClick={handleOpenCreate} disabled={busy}>
-          + Adicionar Item
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="button button-outline"
+            onClick={() => setStorefrontOpen((prev) => !prev)}
+            disabled={busy}
+          >
+            🏖️ {storefrontOpen ? 'Ocultar Vitrine do Quiosque' : 'Configurar Vitrine no App'}
+          </button>
+          <button type="button" className="button button-primary" onClick={handleOpenCreate} disabled={busy}>
+            + Adicionar Item
+          </button>
+        </div>
       </div>
+
+      {storefrontOpen && (
+        <form
+          className="card"
+          style={{ marginBottom: 18, padding: 16, border: '1px solid #d7e3e0', borderRadius: 12 }}
+          onSubmit={(event) => void handleSaveStorefront(event)}
+        >
+          <h3 style={{ marginTop: 0 }}>🏖️ Vitrine do Quiosque no App do Cliente ({storefront?.nome ?? 'Meu Quiosque'})</h3>
+          <p className="muted" style={{ marginBottom: 12 }}>
+            Essas informações aparecem na Home de Descoberta, em "Quiosques Populares na Orla" e no topo da Loja do Quiosque.
+          </p>
+          <label className="field">
+            <span>Especialidades / Descrição curta na orla</span>
+            <input
+              type="text"
+              maxLength={160}
+              placeholder="Ex: Porções de frutos do mar, água de coco e petiscos no Posto 4"
+              value={descricaoCurta}
+              onChange={(e) => setDescricaoCurta(e.target.value)}
+            />
+          </label>
+          <div className="form-row" style={{ marginTop: 10 }}>
+            <label className="field">
+              <span>URL da Foto de Capa (ou envie arquivo abaixo)</span>
+              <input
+                type="text"
+                placeholder="https://..."
+                value={fotoCapaUrl}
+                onChange={(e) => setFotoCapaUrl(e.target.value)}
+              />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => void handleUploadStorefrontImage(e.target.files?.[0] ?? null, 'capa')}
+              />
+            </label>
+            <label className="field">
+              <span>URL do Logo / Avatar do Quiosque</span>
+              <input
+                type="text"
+                placeholder="https://..."
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+              />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => void handleUploadStorefrontImage(e.target.files?.[0] ?? null, 'logo')}
+              />
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 10 }}>
+            <label className="checkbox-line">
+              <input
+                type="checkbox"
+                checked={destaquePopular}
+                onChange={(e) => setDestaquePopular(e.target.checked)}
+              />
+              <span>🔥 Exibir em "Quiosques Populares na Orla" no App</span>
+            </label>
+            <label className="checkbox-line">
+              <input
+                type="checkbox"
+                checked={aceitaSustentavel}
+                onChange={(e) => setAceitaSustentavel(e.target.checked)}
+              />
+              <span>♻️ Quiosque aceita Embalagem Sustentável / Retornável</span>
+            </label>
+          </div>
+          <div className="form-actions" style={{ marginTop: 12 }}>
+            <button type="submit" className="button button-primary" disabled={busy}>
+              {busy ? 'Salvando…' : 'Salvar Vitrine'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {(error || localError) && (
         <div className="notice notice-error" role="alert">
@@ -153,6 +308,11 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
                 </div>
                 <div className="menu-card-meta">
                   <span className="category-badge">{item.category || 'Outros'}</span>
+                  {item.destaque && (
+                    <span className="eco-badge" title="Exibido em Mais Pedidos no App">
+                      ⭐ Destaque
+                    </span>
+                  )}
                   {item.returnablePackaging && (
                     <span className="eco-badge" title="Embalagem sustentável">
                       🌱 Retornável
@@ -216,4 +376,3 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
     </div>
   )
 }
-

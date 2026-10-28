@@ -30,6 +30,15 @@ class CatalogRepository {
     return mapJsonObjectList(data, KioskMapper.fromJson, uri);
   }
 
+  /// Lista ofertas, taxas, tempo de preparo e pedido minimo de um quiosque
+  /// (`GET /kiosks/{kioskId}/partnerships`).
+  Future<List<KioskPartnershipOffer>> fetchKioskOffers(String kioskId) async {
+    final path = '$_basePath/${Uri.encodeComponent(kioskId)}/partnerships';
+    final uri = _apiClient.resolve(path);
+    final data = await _apiClient.getJsonList(path);
+    return mapJsonObjectList(data, KioskPartnershipOffer.fromJson, uri);
+  }
+
   /// Lista quiosques vinculados a um posto de referencia
   /// (`GET /kiosks/by-reference-point/{pontoReferenciaId}`).
   Future<List<Kiosk>> fetchKiosksByReferencePoint(String pontoReferenciaId) async {

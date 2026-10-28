@@ -14,6 +14,11 @@ abstract final class KioskMapper {
         aceitaEmbalagemSustentavel:
             json['aceitaEmbalagemSustentavel'] as bool? ?? true,
         ativo: json['ativo'] as bool? ?? true,
+        fotoCapaUrl: json['fotoCapaUrl'] as String?,
+        logoUrl: json['logoUrl'] as String?,
+        descricaoCurta: json['descricaoCurta'] as String?,
+        avaliacaoMedia: (json['avaliacaoMedia'] as num?)?.toDouble() ?? 4.8,
+        destaquePopular: json['destaquePopular'] as bool? ?? true,
       );
 }
 
@@ -28,5 +33,6 @@ abstract final class MenuItemMapper {
         category: json['category'] as String? ?? 'Outros',
         returnablePackaging: json['returnablePackaging'] as bool? ?? false,
         fotoUrl: json['fotoUrl'] as String?,
+        destaque: json['destaque'] as bool? ?? false,
       );
 }

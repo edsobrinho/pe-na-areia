@@ -2,6 +2,7 @@ package com.penaareia.service;
 
 import com.penaareia.dto.KioskMenuDtos.CreateMenuItemRequest;
 import com.penaareia.dto.KioskMenuDtos.UpdateMenuItemRequest;
+import com.penaareia.dto.KioskMenuDtos.UpdateStorefrontRequest;
 import com.penaareia.model.Kiosk;
 import com.penaareia.model.User;
 import com.penaareia.repository.KioskRepository;
@@ -163,6 +164,31 @@ class KioskServiceTest {
         Kiosk.MenuItem modificado = service.setMenuItemAvailability("op-1", itemId, false);
 
         assertThat(modificado.isDisponivel()).isFalse();
+        verify(repository).save(kiosk);
+    }
+
+    @Test
+    void updateStorefrontAtualizaMetadadosDaVitrineDoQuiosque() {
+        User operator = createOperator("op-1", "kiosk-1");
+        Kiosk kiosk = Fixtures.kioskAtivo();
+        when(userRepository.findById("op-1")).thenReturn(Optional.of(operator));
+        when(repository.findById("kiosk-1")).thenReturn(Optional.of(kiosk));
+        when(repository.save(any(Kiosk.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateStorefrontRequest req = new UpdateStorefrontRequest(
+                "Especialista em Frutos do Mar e Porções na Orla",
+                "https://res.cloudinary.com/demo/image/upload/v1/capa.jpg",
+                "https://res.cloudinary.com/demo/image/upload/v1/logo.jpg",
+                true,
+                true
+        );
+
+        Kiosk atualizado = service.updateStorefront("op-1", req);
+
+        assertThat(atualizado.getDescricaoCurta()).isEqualTo("Especialista em Frutos do Mar e Porções na Orla");
+        assertThat(atualizado.getFotoCapaUrl()).isEqualTo("https://res.cloudinary.com/demo/image/upload/v1/capa.jpg");
+        assertThat(atualizado.getLogoUrl()).isEqualTo("https://res.cloudinary.com/demo/image/upload/v1/logo.jpg");
+        assertThat(atualizado.isDestaquePopular()).isTrue();
         verify(repository).save(kiosk);
     }
 }

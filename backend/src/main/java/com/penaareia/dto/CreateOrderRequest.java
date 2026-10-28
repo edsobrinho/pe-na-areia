@@ -49,6 +49,26 @@ public class CreateOrderRequest {
     /** Opcional - URL da foto ja enviada para o storage (POST /uploads/location-photo) */
     private String fotoLocalUrl;
 
+    // --- Metadados detalhados do Ponto na Praia (v2.1 - Tela 1) ---
+    @Size(max = 80, message = "A referência da barraca/guarda-sol deve ter no máximo 80 caracteres")
+    private String referenciaBarraca;
+
+    @Size(max = 80, message = "O complemento do local deve ter no máximo 80 caracteres")
+    private String complementoLocal;
+
+    private String fotoVisaoPostoUrl;
+
+    private String fotoOutroReferencialUrl;
+
+    @Size(max = 100, message = "O nome de contato deve ter no máximo 100 caracteres")
+    private String contatoNome;
+
+    @Size(max = 30, message = "O telefone de contato deve ter no máximo 30 caracteres")
+    private String contatoTelefone;
+
+    @Size(max = 40, message = "A etiqueta do local deve ter no máximo 40 caracteres")
+    private String etiquetaLocal;
+
     @Data
     public static class ItemRequest {
         @NotBlank

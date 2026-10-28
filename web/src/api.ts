@@ -2,6 +2,7 @@ import type {
   AuthSession,
   CreatedOrder,
   Kiosk,
+  KioskStorefrontPayload,
   MenuItem,
   MenuItemPayload,
   Partnership,
@@ -104,6 +105,9 @@ export const api = {
       body: json({ items }),
     }),
   listReferencePoints: () => request<ReferencePoint[]>('/reference-points'),
+  getOperatorStorefront: () => request<Kiosk>('/kiosk/me/storefront'),
+  updateOperatorStorefront: (payload: KioskStorefrontPayload) =>
+    request<Kiosk>('/kiosk/me/storefront', { method: 'PUT', body: json(payload) }),
   listOperatorMenuItems: () => request<MenuItem[]>('/kiosk/me/menu-items'),
   createMenuItem: (payload: MenuItemPayload) =>
     request<MenuItem>('/kiosk/me/menu-items', { method: 'POST', body: json(payload) }),
@@ -140,6 +144,13 @@ export const api = {
     pontoReferenciaId: string
     descricaoLocal: string
     fotoLocalUrl?: string
+    referenciaBarraca?: string
+    complementoLocal?: string
+    fotoVisaoPostoUrl?: string
+    fotoOutroReferencialUrl?: string
+    contatoNome?: string
+    contatoTelefone?: string
+    etiquetaLocal?: string
   }) => request<CreatedOrder>('/orders', { method: 'POST', body: json(input) }),
   getOrder: (id: string) => request<CreatedOrder>(`/orders/${encodeURIComponent(id)}`),
   createPartnership: (name: string, channel: string) =>

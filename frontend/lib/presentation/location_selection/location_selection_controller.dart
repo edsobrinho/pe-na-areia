@@ -64,6 +64,8 @@ class LocationSelectionController extends ChangeNotifier {
 
   GeoPoint get pin => _pin;
 
+  UploadRepository get uploadRepository => _uploadRepository;
+
   List<ReferencePoint> get postosProximos => _postosProximos;
 
   ReferencePoint? get postoSelecionado => _postoSelecionado;

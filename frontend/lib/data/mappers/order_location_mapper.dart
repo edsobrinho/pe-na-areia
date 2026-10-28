@@ -17,6 +17,13 @@ abstract final class OrderLocationMapper {
       pontoReferenciaId: json['pontoReferenciaId'] as String? ?? '',
       descricaoLocal: json['descricaoLocal'] as String? ?? '',
       fotoLocalUrl: json['fotoLocalUrl'] as String?,
+      referenciaBarraca: json['referenciaBarraca'] as String?,
+      complementoLocal: json['complementoLocal'] as String?,
+      fotoVisaoPostoUrl: json['fotoVisaoPostoUrl'] as String?,
+      fotoOutroReferencialUrl: json['fotoOutroReferencialUrl'] as String?,
+      contatoNome: json['contatoNome'] as String?,
+      contatoTelefone: json['contatoTelefone'] as String?,
+      etiquetaLocal: json['etiquetaLocal'] as String?,
     );
   }
 
@@ -31,5 +38,26 @@ abstract final class OrderLocationMapper {
         'descricaoLocal': localizacao.descricaoLocal,
         if (localizacao.fotoLocalUrl != null)
           'fotoLocalUrl': localizacao.fotoLocalUrl,
+        if (localizacao.referenciaBarraca != null &&
+            localizacao.referenciaBarraca!.isNotEmpty)
+          'referenciaBarraca': localizacao.referenciaBarraca,
+        if (localizacao.complementoLocal != null &&
+            localizacao.complementoLocal!.isNotEmpty)
+          'complementoLocal': localizacao.complementoLocal,
+        if (localizacao.fotoVisaoPostoUrl != null &&
+            localizacao.fotoVisaoPostoUrl!.isNotEmpty)
+          'fotoVisaoPostoUrl': localizacao.fotoVisaoPostoUrl,
+        if (localizacao.fotoOutroReferencialUrl != null &&
+            localizacao.fotoOutroReferencialUrl!.isNotEmpty)
+          'fotoOutroReferencialUrl': localizacao.fotoOutroReferencialUrl,
+        if (localizacao.contatoNome != null &&
+            localizacao.contatoNome!.isNotEmpty)
+          'contatoNome': localizacao.contatoNome,
+        if (localizacao.contatoTelefone != null &&
+            localizacao.contatoTelefone!.isNotEmpty)
+          'contatoTelefone': localizacao.contatoTelefone,
+        if (localizacao.etiquetaLocal != null &&
+            localizacao.etiquetaLocal!.isNotEmpty)
+          'etiquetaLocal': localizacao.etiquetaLocal,
       };
 }

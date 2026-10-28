@@ -35,6 +35,24 @@ public class Kiosk {
 
     private boolean ativo = true;
 
+    // --- Metadados de Vitrine (Storefront v2.1) ---
+    private String fotoCapaUrl;
+    private String logoUrl;
+    private String descricaoCurta;
+    private Double avaliacaoMedia = 4.8;
+    private boolean destaquePopular = true;
+
+    public Kiosk(String id,
+                 String nome,
+                 String pontoReferenciaId,
+                 GeoJsonPoint localizacao,
+                 List<MenuItem> cardapio,
+                 boolean aceitaEmbalagemSustentavel,
+                 boolean ativo) {
+        this(id, nome, pontoReferenciaId, localizacao, cardapio,
+                aceitaEmbalagemSustentavel, ativo, null, null, null, 4.8, true);
+    }
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -47,9 +65,21 @@ public class Kiosk {
         private String category = "Outros";
         private boolean returnablePackaging;
         private String fotoUrl;
+        private boolean destaque = false;
 
         public MenuItem(String id, String nome, String descricao, BigDecimal preco, boolean disponivel) {
-            this(id, nome, descricao, preco, disponivel, "Outros", false, null);
+            this(id, nome, descricao, preco, disponivel, "Outros", false, null, false);
+        }
+
+        public MenuItem(String id,
+                        String nome,
+                        String descricao,
+                        BigDecimal preco,
+                        boolean disponivel,
+                        String category,
+                        boolean returnablePackaging,
+                        String fotoUrl) {
+            this(id, nome, descricao, preco, disponivel, category, returnablePackaging, fotoUrl, false);
         }
     }
 }

@@ -23,6 +23,7 @@ export interface MenuItem {
   category: string
   returnablePackaging: boolean
   fotoUrl?: string | null
+  destaque?: boolean
 }
 
 export interface MenuItemPayload {
@@ -33,13 +34,28 @@ export interface MenuItemPayload {
   category?: string
   returnablePackaging?: boolean
   fotoUrl?: string | null
+  destaque?: boolean
+}
+
+export interface KioskStorefrontPayload {
+  descricaoCurta?: string
+  fotoCapaUrl?: string | null
+  logoUrl?: string | null
+  aceitaEmbalagemSustentavel?: boolean
+  destaquePopular?: boolean
 }
 
 export interface Kiosk {
   id: string
   nome: string
+  pontoReferenciaId?: string
   ativo: boolean
   aceitaEmbalagemSustentavel: boolean
+  fotoCapaUrl?: string | null
+  logoUrl?: string | null
+  descricaoCurta?: string | null
+  avaliacaoMedia?: number
+  destaquePopular?: boolean
   cardapio: MenuItem[]
 }
 
@@ -113,6 +129,11 @@ export interface CreatedOrder {
   pixCopiaECola?: string | null
   pixQrCodeBase64?: string | null
   alertaProximidadeEnviado?: boolean
+  referenciaBarraca?: string | null
+  complementoLocal?: string | null
+  contatoNome?: string | null
+  contatoTelefone?: string | null
+  etiquetaLocal?: string | null
   localizacaoEntregador?: {
     type: 'Point'
     coordinates: [number, number]
@@ -125,4 +146,11 @@ export interface BeachLocation {
   pontoReferenciaId: string
   descricaoLocal: string
   fotoLocalUrl?: string
+  referenciaBarraca?: string
+  complementoLocal?: string
+  fotoVisaoPostoUrl?: string
+  fotoOutroReferencialUrl?: string
+  contatoNome?: string
+  contatoTelefone?: string
+  etiquetaLocal?: string
 }

@@ -8,7 +8,7 @@ interface MenuItemFormDialogProps {
   busy: boolean
 }
 
-const CATEGORIES = ['Bebidas', 'Lanches', 'Porções', 'Sobremesas', 'Outros']
+const CATEGORIES = ['Bebidas', 'Lanches', 'Porções', 'Frutos do Mar', 'Açaí & Gelados', 'Sobremesas', 'Outros']
 
 export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemFormDialogProps) {
   const [nome, setNome] = useState(item?.nome ?? '')
@@ -16,6 +16,7 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
   const [preco, setPreco] = useState(item ? String(item.preco) : '')
   const [descricao, setDescricao] = useState(item?.descricao ?? '')
   const [returnablePackaging, setReturnablePackaging] = useState(item?.returnablePackaging ?? false)
+  const [destaque, setDestaque] = useState(item?.destaque ?? false)
   const [disponivel, setDisponivel] = useState(item?.disponivel ?? true)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(item?.fotoUrl ?? null)
@@ -52,6 +53,7 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
       category,
       returnablePackaging,
       fotoUrl: item?.fotoUrl ?? null,
+      destaque,
     }
 
     try {
@@ -146,6 +148,15 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
           <label className="checkbox-line">
             <input
               type="checkbox"
+              checked={destaque}
+              onChange={(event) => setDestaque(event.target.checked)}
+            />
+            <span>⭐ Destacar como "Mais Pedido" no topo da vitrine do quiosque</span>
+          </label>
+
+          <label className="checkbox-line">
+            <input
+              type="checkbox"
               checked={returnablePackaging}
               onChange={(event) => setReturnablePackaging(event.target.checked)}
             />
@@ -180,4 +191,3 @@ export function MenuItemFormDialog({ item, onClose, onSave, busy }: MenuItemForm
     </div>
   )
 }
-

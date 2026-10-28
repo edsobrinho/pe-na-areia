@@ -38,6 +38,13 @@ public class OrderResponse {
     private String pontoReferenciaId;
     private String descricaoLocal;
     private String fotoLocalUrl;
+    private String referenciaBarraca;
+    private String complementoLocal;
+    private String fotoVisaoPostoUrl;
+    private String fotoOutroReferencialUrl;
+    private String contatoNome;
+    private String contatoTelefone;
+    private String etiquetaLocal;
     private GeoJsonPoint localizacaoEntregador;
     private Instant atualizadoEntregadorEm;
     private boolean alertaProximidadeEnviado;
@@ -66,6 +73,13 @@ public class OrderResponse {
                 order.getPontoReferenciaId(),
                 order.getDescricaoLocal(),
                 order.getFotoLocalUrl(),
+                order.getReferenciaBarraca(),
+                order.getComplementoLocal(),
+                order.getFotoVisaoPostoUrl(),
+                order.getFotoOutroReferencialUrl(),
+                order.getContatoNome(),
+                order.getContatoTelefone(),
+                order.getEtiquetaLocal(),
                 order.getLocalizacaoEntregador(),
                 order.getAtualizadoEntregadorEm(),
                 order.isAlertaProximidadeEnviado(),

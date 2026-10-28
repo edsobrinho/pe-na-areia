@@ -21,8 +21,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    @Value("${app.cors.origins:http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:9101,http://127.0.0.1:54219,http://localhost:55400,http://localhost:50190,\r\n" + //
-                "http://localhost:53302,http://localhost:58788}")
+    @Value("${app.cors.origins:http://localhost:*,http://127.0.0.1:*,http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173}")
     private String corsOrigins;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
@@ -35,9 +34,9 @@ public class SecurityConfig {
     }
 
     /**
-     * CORS para clientes web (Flutter web, admin). Padrao local: app Flutter web
-     * em localhost:8090/5173. Em outros ambientes, defina APP_CORS_ORIGINS
-     * (lista separada por virgula). Preflight e permitido sem credenciais.
+     * CORS para clientes web (Flutter web em portas dinâmicas e painel React).
+     * Suporta curingas de porta (ex.: http://localhost:*, http://127.0.0.1:*)
+     * via allowedOriginPatterns, além de origens explícitas em APP_CORS_ORIGINS.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -46,9 +45,9 @@ public class SecurityConfig {
                 .filter(origin -> !origin.isEmpty())
                 .toList();
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(origins);
+        config.setAllowedOriginPatterns(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Device", "X-Request-Id", "X-Pix-Webhook-Token"));
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "X-Request-Id"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -66,6 +65,7 @@ public class SecurityConfig {
                         (request, response, exception) ->
                                 response.sendError(org.springframework.http.HttpStatus.UNAUTHORIZED.value())))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/docs/**", "/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/auth/**", "/webhooks/**").permitAll()

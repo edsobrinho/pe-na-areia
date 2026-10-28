@@ -53,7 +53,16 @@ public class Order {
 
     private String pontoReferenciaId;
     private String descricaoLocal;   // ex: "guarda-sol listrado azul, perto do quiosque do Ze"
-    private String fotoLocalUrl;     // opcional
+    private String fotoLocalUrl;     // opcional (Guarda-sol / Barraca)
+
+    // --- Metadados detalhados do Ponto na Praia (v2.1 - Tela 1) ---
+    private String referenciaBarraca;       // ex: "Guarda-sol azul marinho" ou "Sem guarda-sol"
+    private String complementoLocal;        // ex: "Em frente à rede de futevôlei"
+    private String fotoVisaoPostoUrl;       // Guia de foto 2: Visão do Posto / Calçadão
+    private String fotoOutroReferencialUrl; // Guia de foto 3: Outro referencial (cooler, bandeira)
+    private String contatoNome;             // Nome de quem vai receber na praia
+    private String contatoTelefone;         // Telefone/WhatsApp (+55) de quem vai receber
+    private String etiquetaLocal;           // MEU_GUARDA_SOL, BARRACA_FAMILIA, POINT_SURF, OUTRO
 
     // --- Live Tracking do Entregador na Praia ---
     private GeoJsonPoint localizacaoEntregador;

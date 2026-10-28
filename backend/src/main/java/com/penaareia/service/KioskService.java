@@ -2,6 +2,7 @@ package com.penaareia.service;
 
 import com.penaareia.dto.KioskMenuDtos.CreateMenuItemRequest;
 import com.penaareia.dto.KioskMenuDtos.UpdateMenuItemRequest;
+import com.penaareia.dto.KioskMenuDtos.UpdateStorefrontRequest;
 import com.penaareia.model.Kiosk;
 import com.penaareia.model.User;
 import com.penaareia.repository.KioskRepository;
@@ -28,6 +29,30 @@ public class KioskService {
         return repository.findByPontoReferenciaIdAndAtivoTrue(pontoReferenciaId);
     }
 
+    public Kiosk getStorefrontForOperator(String operatorId) {
+        return ownedKiosk(operatorId);
+    }
+
+    public Kiosk updateStorefront(String operatorId, UpdateStorefrontRequest request) {
+        Kiosk kiosk = ownedKiosk(operatorId);
+        if (request.descricaoCurta() != null) {
+            kiosk.setDescricaoCurta(request.descricaoCurta().trim());
+        }
+        if (request.fotoCapaUrl() != null) {
+            kiosk.setFotoCapaUrl(request.fotoCapaUrl().isBlank() ? null : request.fotoCapaUrl().trim());
+        }
+        if (request.logoUrl() != null) {
+            kiosk.setLogoUrl(request.logoUrl().isBlank() ? null : request.logoUrl().trim());
+        }
+        if (request.aceitaEmbalagemSustentavel() != null) {
+            kiosk.setAceitaEmbalagemSustentavel(request.aceitaEmbalagemSustentavel());
+        }
+        if (request.destaquePopular() != null) {
+            kiosk.setDestaquePopular(request.destaquePopular());
+        }
+        return repository.save(kiosk);
+    }
+
     public List<Kiosk.MenuItem> listMenuForOperator(String operatorId) {
         Kiosk kiosk = ownedKiosk(operatorId);
         return kiosk.getCardapio() == null ? List.of() : kiosk.getCardapio();
@@ -48,7 +73,8 @@ public class KioskService {
                 request.disponivel() != null ? request.disponivel() : true,
                 request.category() != null && !request.category().isBlank() ? request.category().trim() : "Outros",
                 request.returnablePackaging() != null ? request.returnablePackaging() : false,
-                request.fotoUrl() != null && !request.fotoUrl().isBlank() ? request.fotoUrl().trim() : null
+                request.fotoUrl() != null && !request.fotoUrl().isBlank() ? request.fotoUrl().trim() : null,
+                request.destaque() != null ? request.destaque() : false
         );
 
         cardapio.add(newItem);
@@ -83,7 +109,8 @@ public class KioskService {
                 request.disponivel() != null ? request.disponivel() : true,
                 request.category() != null && !request.category().isBlank() ? request.category().trim() : "Outros",
                 request.returnablePackaging() != null ? request.returnablePackaging() : false,
-                request.fotoUrl() != null && !request.fotoUrl().isBlank() ? request.fotoUrl().trim() : null
+                request.fotoUrl() != null && !request.fotoUrl().isBlank() ? request.fotoUrl().trim() : null,
+                request.destaque() != null ? request.destaque() : false
         );
 
         cardapio.set(index, updated);

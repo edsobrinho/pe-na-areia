@@ -58,6 +58,7 @@ services:
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-local-key-123456}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-local-secret-123456}
       CLOUDINARY_UPLOAD_PREFIX: ${CLOUDINARY_UPLOAD_PREFIX:-http://cloudinary-mock:8099}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:*,http://127.0.0.1:*}
     ports:
       - "8080:8080"
 
