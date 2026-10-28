@@ -1,7 +1,7 @@
 package com.penaareia.config;
 
-import com.cloudinary.Cloudinary;
 import com.penaareia.security.JwtAuthFilter;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -33,7 +33,9 @@ class CloudinaryConfigTest {
         var cors = source.getCorsConfiguration(
                 new org.springframework.mock.web.MockHttpServletRequest("GET", "/orders"));
 
+        Assertions.assertNotNull(cors);
         assertThat(cors.getAllowedOrigins()).containsExactly("https://example.test", "http://localhost:5173");
+        assertThat(cors.getAllowedOriginPatterns()).containsExactly("https://example.test", "http://localhost:5173");
         assertThat(cors.getAllowedHeaders()).contains("X-Request-Id");
         assertThat(cors.getExposedHeaders()).contains("X-Request-Id");
     }
