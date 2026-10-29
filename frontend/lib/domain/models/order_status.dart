@@ -10,6 +10,7 @@ enum OrderStatus {
   chegouNoLocal('CHEGOU_NO_LOCAL'),
   entregue('ENTREGUE'),
   cancelado('CANCELADO'),
+  naoEncontrado('NAO_ENCONTRADO'),
   desconhecido('DESCONHECIDO');
 
   const OrderStatus(this.wireValue);

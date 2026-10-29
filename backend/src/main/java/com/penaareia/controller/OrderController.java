@@ -86,6 +86,19 @@ public class OrderController {
         return cursorResponse(workflowService.listarEmRota(authentication.getName(), size, cursor));
     }
 
+    @GetMapping("/kiosk/me")
+    @Operation(summary = "Lista pedidos do quiosque/restaurante do parceiro autenticado")
+    public List<OrderResponse> listarPedidosDoQuiosque(
+            Authentication authentication,
+            @RequestParam(required = false, defaultValue = "ALL") String statusFilter) {
+        requireRole(authentication, "ROLE_KIOSK_OPERATOR");
+        com.penaareia.model.User user = orderService.buscarUsuario(authentication.getName());
+        if (user.getKioskId() == null || user.getKioskId().isBlank()) {
+            throw new BusinessRuleException("O usuário autenticado não possui um quiosque vinculado.");
+        }
+        return workflowService.listarPedidosDoQuiosque(user.getKioskId(), statusFilter);
+    }
+
     private static ResponseEntity<List<OrderResponse>> cursorResponse(OrderCursorSlice slice) {
         List<OrderResponse> orders = slice.orders().stream()
                 .map(OrderResponse::fromEntity)
@@ -154,7 +167,7 @@ public class OrderController {
                                          @Valid @RequestBody StatusUpdateRequest request,
                                          Authentication authentication) {
         return OrderResponse.fromEntity(workflowService.atualizarStatus(
-                id, request.status(), authentication.getName(), authentication.getAuthorities()));
+                id, request.status(), authentication.getName(), authentication.getAuthorities(), request.motivo()));
     }
 
     @PatchMapping("/{id}/courier-location")

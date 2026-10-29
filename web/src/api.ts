@@ -1,6 +1,7 @@
 import type {
   AuthSession,
   Kiosk,
+  KioskOrder,
   KioskStorefrontPayload,
   MenuItem,
   MenuItemPayload,
@@ -129,6 +130,18 @@ export const api = {
     form.append('file', file)
     return request<{ secureUrl: string }>('/uploads/menu-item-photo', { method: 'POST', body: form })
   },
+  listOperatorOrders: (filter: string = 'ALL') =>
+    request<KioskOrder[]>(`/orders/kiosk/me?statusFilter=${encodeURIComponent(filter)}`),
+  acceptOperatorOrder: (orderId: string) =>
+    request<KioskOrder>(`/orders/${encodeURIComponent(orderId)}/status`, {
+      method: 'PATCH',
+      body: json({ status: 'EM_PREPARO' }),
+    }),
+  cancelOperatorOrder: (orderId: string, motivo: string) =>
+    request<KioskOrder>(`/orders/${encodeURIComponent(orderId)}/status`, {
+      method: 'PATCH',
+      body: json({ status: 'CANCELADO', motivo }),
+    }),
   createPartnership: (name: string, channel: string) =>
     request<Partnership>('/admin/partnerships', {
       method: 'POST',

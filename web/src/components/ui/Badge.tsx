@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type BadgeTone = 'default' | 'eco' | 'warning' | 'highlight'
+export type BadgeTone = 'default' | 'eco' | 'warning' | 'highlight' | 'danger' | 'info'
 
 interface BadgeProps {
   tone?: BadgeTone
@@ -15,7 +15,11 @@ export function Badge({ tone = 'default', children }: BadgeProps) {
         ? 'badge warning'
         : tone === 'highlight'
           ? 'badge highlight'
-          : 'badge'
+          : tone === 'danger'
+            ? 'badge danger'
+            : tone === 'info'
+              ? 'badge info'
+              : 'badge'
 
   return <span className={toneClass}>{children}</span>
 }

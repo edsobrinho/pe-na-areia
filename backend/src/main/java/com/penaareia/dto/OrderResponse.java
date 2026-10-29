@@ -50,9 +50,21 @@ public class OrderResponse {
     private boolean alertaProximidadeEnviado;
     private List<Order.OrderMessage> mensagens;
     private OrderStatus status;
+    private String motivoCancelamento;
+    private String courierNome;
+    private String courierTelefone;
+    private String courierVeiculo;
     private Order.StatusTimeline timeline;
 
     public static OrderResponse fromEntity(Order order) {
+        return fromEntityWithCourier(order, null);
+    }
+
+    public static OrderResponse fromEntityWithCourier(Order order, com.penaareia.model.Courier courier) {
+        String veiculoStr = null;
+        if (courier != null && courier.getVeiculo() != null) {
+            veiculoStr = courier.getVeiculo().name();
+        }
         return new OrderResponse(
                 order.getId(),
                 order.getUserId(),
@@ -85,6 +97,10 @@ public class OrderResponse {
                 order.isAlertaProximidadeEnviado(),
                 order.getMensagens() == null ? List.of() : List.copyOf(order.getMensagens()),
                 order.getStatus(),
+                order.getMotivoCancelamento(),
+                courier != null ? courier.getNome() : null,
+                courier != null ? courier.getTelefone() : null,
+                veiculoStr,
                 order.getTimeline()
         );
     }

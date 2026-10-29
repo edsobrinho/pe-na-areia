@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import type { AuthSession } from '../../types'
 
-export type PartnerTab = 'identity' | 'address' | 'menu' | 'partnerships' | 'admin'
+export type PartnerTab = 'identity' | 'address' | 'menu' | 'partnerships' | 'orders' | 'admin'
 
 interface AppShellProps {
   session: AuthSession | null
   activeTab: PartnerTab
   kioskName?: string | null
   kioskLogoUrl?: string | null
+  pendingOrdersCount?: number
   onSelectTab: (tab: PartnerTab) => void
   onSignOut: () => void
   children: ReactNode
@@ -18,6 +19,7 @@ export function AppShell({
   activeTab,
   kioskName,
   kioskLogoUrl,
+  pendingOrdersCount,
   onSelectTab,
   onSignOut,
   children,
@@ -76,6 +78,16 @@ export function AppShell({
                       onClick={() => onSelectTab('partnerships')}
                     >
                       4. Canais &amp; Repasse
+                    </button>
+                    <button
+                      type="button"
+                      className={`orders-tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
+                      onClick={() => onSelectTab('orders')}
+                    >
+                      📦 Pedidos
+                      {typeof pendingOrdersCount === 'number' && pendingOrdersCount > 0 && (
+                        <span className="tab-pending-badge">{pendingOrdersCount}</span>
+                      )}
                     </button>
                   </>
                 )}

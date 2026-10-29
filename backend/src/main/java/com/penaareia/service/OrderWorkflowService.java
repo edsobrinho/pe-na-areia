@@ -42,10 +42,11 @@ public class OrderWorkflowService {
             OrderStatus.CRIADO, Set.of(OrderStatus.PAGO, OrderStatus.CANCELADO),
             OrderStatus.PAGO, Set.of(OrderStatus.EM_PREPARO, OrderStatus.CANCELADO),
             OrderStatus.EM_PREPARO, Set.of(OrderStatus.A_CAMINHO, OrderStatus.CANCELADO),
-            OrderStatus.A_CAMINHO, Set.of(OrderStatus.CHEGOU_NO_LOCAL),
-            OrderStatus.CHEGOU_NO_LOCAL, Set.of(),
+            OrderStatus.A_CAMINHO, Set.of(OrderStatus.CHEGOU_NO_LOCAL, OrderStatus.CANCELADO, OrderStatus.NAO_ENCONTRADO),
+            OrderStatus.CHEGOU_NO_LOCAL, Set.of(OrderStatus.ENTREGUE, OrderStatus.CANCELADO, OrderStatus.NAO_ENCONTRADO),
             OrderStatus.ENTREGUE, Set.of(),
-            OrderStatus.CANCELADO, Set.of()
+            OrderStatus.CANCELADO, Set.of(),
+            OrderStatus.NAO_ENCONTRADO, Set.of()
     );
 
     private final OrderRepository orderRepository;
@@ -83,6 +84,15 @@ public class OrderWorkflowService {
                                  OrderStatus newStatus,
                                  String callerId,
                                  Collection<? extends GrantedAuthority> authorities) {
+        return atualizarStatus(orderId, newStatus, callerId, authorities, null);
+    }
+
+    @Transactional
+    public Order atualizarStatus(String orderId,
+                                 OrderStatus newStatus,
+                                 String callerId,
+                                 Collection<? extends GrantedAuthority> authorities,
+                                 String motivo) {
         Order order = findOrder(orderId);
         if (!ALLOWED_TRANSITIONS.getOrDefault(order.getStatus(), Set.of()).contains(newStatus)) {
             throw new BusinessRuleException(
@@ -90,6 +100,9 @@ public class OrderWorkflowService {
         }
         boolean courierRole = hasRole(authorities, "ROLE_COURIER");
         boolean clientRole = hasRole(authorities, "ROLE_CLIENT");
+        boolean kioskOperatorRole = hasRole(authorities, "ROLE_KIOSK_OPERATOR");
+        boolean adminRole = hasRole(authorities, "ROLE_ADMIN");
+        boolean isOwnerKiosk = kioskOperatorRole && isKioskOwner(callerId, order);
 
         if (newStatus == OrderStatus.A_CAMINHO || newStatus == OrderStatus.CHEGOU_NO_LOCAL) {
             if (!courierRole) {
@@ -122,7 +135,7 @@ public class OrderWorkflowService {
                 if (courierUpdated != 1) {
                     courierRepository.findById(callerId)
                             .orElseThrow(() -> new ResourceNotFoundException(
-                                    "Entregador não encontrado: " + callerId));
+                                     "Entregador não encontrado: " + callerId));
                     throw new BusinessRuleException(
                             "O entregador precisa estar disponível para aceitar pedidos.");
                 }
@@ -130,6 +143,37 @@ public class OrderWorkflowService {
                 return claimedOrder;
             } else if (!callerId.equals(order.getCourierId())) {
                 throw new BusinessRuleException("Este pedido não pertence a este entregador.");
+            }
+        } else if (newStatus == OrderStatus.EM_PREPARO) {
+            // Quiosque aceita o pedido pago para iniciar preparo na cozinha
+            if (!isOwnerKiosk && !clientRole && !adminRole) {
+                throw new BusinessRuleException("Somente o quiosque do pedido pode aceitar e iniciar o preparo.");
+            }
+        } else if (newStatus == OrderStatus.CANCELADO) {
+            boolean isClient = clientRole && order.getUserId().equals(callerId);
+            boolean isAssignedCourier = courierRole && callerId.equals(order.getCourierId());
+            if (!isClient && !isOwnerKiosk && !isAssignedCourier && !adminRole) {
+                throw new BusinessRuleException("Você não tem autorização para cancelar este pedido.");
+            }
+            // Libera o entregador se já estava em rota
+            if (order.getCourierId() != null) {
+                mongoTemplate.updateFirst(
+                        Query.query(Criteria.where("id").is(order.getCourierId())
+                                .and("status").is(Courier.CourierStatus.EM_ROTA)),
+                        new Update().set("status", Courier.CourierStatus.DISPONIVEL),
+                        Courier.class);
+            }
+        } else if (newStatus == OrderStatus.NAO_ENCONTRADO) {
+            boolean isAssignedCourier = courierRole && callerId.equals(order.getCourierId());
+            if (!isAssignedCourier && !isOwnerKiosk && !adminRole) {
+                throw new BusinessRuleException("Somente o entregador em rota ou o quiosque pode reportar cliente não encontrado.");
+            }
+            if (order.getCourierId() != null) {
+                mongoTemplate.updateFirst(
+                        Query.query(Criteria.where("id").is(order.getCourierId())
+                                .and("status").is(Courier.CourierStatus.EM_ROTA)),
+                        new Update().set("status", Courier.CourierStatus.DISPONIVEL),
+                        Courier.class);
             }
         } else {
             if (!clientRole || !order.getUserId().equals(callerId)) {
@@ -140,10 +184,22 @@ public class OrderWorkflowService {
             }
         }
 
+        if (motivo != null && !motivo.isBlank()) {
+            order.setMotivoCancelamento(motivo.trim());
+        }
+
         order.transitionTo(newStatus);
         Order saved = orderRepository.save(order);
         streamService.publish(saved);
         return saved;
+    }
+
+    private boolean isKioskOwner(String callerId, Order order) {
+        if (callerId == null || order == null || order.getKioskId() == null) {
+            return false;
+        }
+        com.penaareia.model.User user = mongoTemplate.findById(callerId, com.penaareia.model.User.class);
+        return user != null && order.getKioskId().equals(user.getKioskId());
     }
 
     @Transactional
@@ -288,6 +344,36 @@ public class OrderWorkflowService {
                 Criteria.where("courierId").is(courierId),
                 Criteria.where("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL));
         return listar(Query.query(criteria), size, cursorValue);
+    }
+
+    public List<com.penaareia.dto.OrderResponse> listarPedidosDoQuiosque(String kioskId, String statusFilter) {
+        Criteria criteria = Criteria.where("kioskId").is(kioskId);
+        if (statusFilter != null && !statusFilter.isBlank() && !statusFilter.equalsIgnoreCase("ALL")) {
+            switch (statusFilter.toUpperCase()) {
+                case "PENDING" -> criteria.and("status").in(OrderStatus.PAGO, OrderStatus.CRIADO);
+                case "PREPARING" -> criteria.and("status").is(OrderStatus.EM_PREPARO);
+                case "IN_ROUTE" -> criteria.and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL);
+                case "COMPLETED" -> criteria.and("status").in(OrderStatus.ENTREGUE, OrderStatus.CANCELADO, OrderStatus.NAO_ENCONTRADO);
+                default -> {
+                    try {
+                        OrderStatus status = OrderStatus.valueOf(statusFilter.toUpperCase());
+                        criteria.and("status").is(status);
+                    } catch (IllegalArgumentException ignored) {
+                    }
+                }
+            }
+        }
+        Query query = Query.query(criteria).with(ORDER_PAGE_SORT);
+        List<Order> orders = mongoTemplate.find(query, Order.class);
+        return orders.stream()
+                .map(order -> {
+                    Courier courier = null;
+                    if (order.getCourierId() != null && !order.getCourierId().isBlank()) {
+                        courier = courierRepository.findById(order.getCourierId()).orElse(null);
+                    }
+                    return com.penaareia.dto.OrderResponse.fromEntityWithCourier(order, courier);
+                })
+                .toList();
     }
 
     private OrderCursorSlice listar(Query query, int size, String cursorValue) {

@@ -10,6 +10,7 @@ import { WizardStepper, type WizardStepItem } from './components/ui/WizardSteppe
 import { AdminPanel } from './features/admin/AdminPanel'
 import { PartnerAuthPanel } from './features/auth/PartnerAuthPanel'
 import { PartnershipConfigPanel } from './features/partnerships/PartnershipConfigPanel'
+import { PartnerOrdersManager } from './features/orders/PartnerOrdersManager'
 import { StorefrontIdentityForm } from './features/storefront/StorefrontIdentityForm'
 import { TraditionalAddressForm } from './features/storefront/TraditionalAddressForm'
 import type {
@@ -40,6 +41,7 @@ function App() {
   const [menuRefreshTrigger, setMenuRefreshTrigger] = useState(0)
   const [referencePoints, setReferencePoints] = useState<ReferencePoint[]>([])
   const [partnerships, setPartnerships] = useState<Partnership[]>([])
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -70,6 +72,13 @@ function App() {
       setKiosk(loadedKiosk)
       setMenuItems(loadedItems)
       setMenuRefreshTrigger((prev) => prev + 1)
+
+      try {
+        const pending = await api.listOperatorOrders('PENDING')
+        setPendingOrdersCount(pending.length)
+      } catch {
+        // Ignora erro se quiosque ainda não tem pedidos
+      }
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 403) {
         setKiosk(null)
@@ -86,6 +95,17 @@ function App() {
       void loadPartnerData()
     }
   }, [session, loadPartnerData])
+
+  useEffect(() => {
+    if (!session || session.role === 'ADMIN') return
+    const interval = setInterval(() => {
+      void api
+        .listOperatorOrders('PENDING')
+        .then((pending) => setPendingOrdersCount(pending.length))
+        .catch(() => {})
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [session])
 
   const handleAuthenticated = (nextSession: AuthSession, initialKiosk?: Kiosk) => {
     setSession(nextSession)
@@ -208,6 +228,7 @@ function App() {
       activeTab={activeTab}
       kioskName={kiosk?.nome}
       kioskLogoUrl={kiosk?.logoUrl}
+      pendingOrdersCount={pendingOrdersCount}
       onSelectTab={setActiveTab}
       onSignOut={handleSignOut}
     >
@@ -236,6 +257,11 @@ function App() {
             onError={setError}
           />
         </>
+      ) : activeTab === 'orders' ? (
+        <PartnerOrdersManager
+          kioskId={defaultKioskTemplate.id}
+          kioskName={defaultKioskTemplate.nome}
+        />
       ) : (
         <>
           <PageHeader
@@ -323,6 +349,13 @@ function App() {
                   onClick={() => setActiveTab('menu')}
                 >
                   ← Etapa 3: Produtos &amp; Categorias
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => setActiveTab('orders')}
+                >
+                  Ir para Gestão de Pedidos em Tempo Real 📦 →
                 </Button>
               </div>
             </>

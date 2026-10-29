@@ -1903,6 +1903,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         OrderStatus.chegouNoLocal => 'Entregador chegou',
         OrderStatus.entregue => 'Entregue',
         OrderStatus.cancelado => 'Cancelado',
+        OrderStatus.naoEncontrado => 'Não encontrado na praia',
         OrderStatus.desconhecido => 'Status atualizado',
       };
 }

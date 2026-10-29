@@ -360,6 +360,97 @@ class OrderWorkflowServiceTest {
         verify(mongoTemplate).find(any(Query.class), eq(Order.class));
     }
 
+    @Test
+    void kioskOperatorCanAcceptPaidOrderAndMoveToPreparing() {
+        Order order = orderAtStatus(OrderStatus.PAGO);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.penaareia.model.User operator = new com.penaareia.model.User();
+        operator.setId("operator-1");
+        operator.setKioskId("kiosk-1");
+        when(mongoTemplate.findById("operator-1", com.penaareia.model.User.class)).thenReturn(operator);
+
+        Order updated = service().atualizarStatus(
+                "order-1",
+                OrderStatus.EM_PREPARO,
+                "operator-1",
+                List.of(new SimpleGrantedAuthority("ROLE_KIOSK_OPERATOR")));
+
+        assertThat(updated.getStatus()).isEqualTo(OrderStatus.EM_PREPARO);
+        assertThat(updated.getTimeline().getEmPreparoEm()).isNotNull();
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void kioskOperatorCanCancelOrderWithReason() {
+        Order order = orderAtStatus(OrderStatus.PAGO);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.penaareia.model.User operator = new com.penaareia.model.User();
+        operator.setId("operator-1");
+        operator.setKioskId("kiosk-1");
+        when(mongoTemplate.findById("operator-1", com.penaareia.model.User.class)).thenReturn(operator);
+
+        Order updated = service().atualizarStatus(
+                "order-1",
+                OrderStatus.CANCELADO,
+                "operator-1",
+                List.of(new SimpleGrantedAuthority("ROLE_KIOSK_OPERATOR")),
+                "Item do cardápio esgotado na cozinha");
+
+        assertThat(updated.getStatus()).isEqualTo(OrderStatus.CANCELADO);
+        assertThat(updated.getMotivoCancelamento()).isEqualTo("Item do cardápio esgotado na cozinha");
+        assertThat(updated.getTimeline().getCanceladoEm()).isNotNull();
+    }
+
+    @Test
+    void courierCanReportCustomerNotFound() {
+        Order order = orderAtStatus(OrderStatus.CHEGOU_NO_LOCAL);
+        order.setCourierId("courier-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Order updated = service().atualizarStatus(
+                "order-1",
+                OrderStatus.NAO_ENCONTRADO,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER")),
+                "Cliente não respondeu sinal visual nem WhatsApp");
+
+        assertThat(updated.getStatus()).isEqualTo(OrderStatus.NAO_ENCONTRADO);
+        assertThat(updated.getMotivoCancelamento()).isEqualTo("Cliente não respondeu sinal visual nem WhatsApp");
+        assertThat(updated.getTimeline().getNaoEncontradoEm()).isNotNull();
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
+    @Test
+    void listsKioskOrdersWithCourierDetails() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setKioskId("kiosk-1");
+        order.setCourierId("courier-1");
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of(order));
+
+        Courier courier = new Courier();
+        courier.setId("courier-1");
+        courier.setNome("Carlos Silva Runner");
+        courier.setTelefone("1399887766");
+        courier.setVeiculo(Courier.VehicleType.BICICLETA);
+        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(courier));
+
+        var responses = service().listarPedidosDoQuiosque("kiosk-1", "ALL");
+
+        assertThat(responses).hasSize(1);
+        var res = responses.get(0);
+        assertThat(res.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
+        assertThat(res.getCourierNome()).isEqualTo("Carlos Silva Runner");
+        assertThat(res.getCourierTelefone()).isEqualTo("1399887766");
+        assertThat(res.getCourierVeiculo()).isEqualTo("BICICLETA");
+    }
+
     private static Order orderAtStatus(OrderStatus status) {
         Order order = new Order();
         order.setId("order-1");

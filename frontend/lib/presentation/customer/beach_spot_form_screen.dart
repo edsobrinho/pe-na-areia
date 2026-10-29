@@ -208,6 +208,14 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
       return;
     }
 
+    final dist = _locationController.distanciaSelecionadaMeters;
+    if (dist != null && dist > 500) {
+      setState(() {
+        _error = 'O ponto de entrega está a ${dist.round()} m do posto. O raio máximo permitido é 500 m. Aproxime seu pin ou clique em "Alinhar pin com a areia do ${posto?.nome ?? "posto"}".';
+      });
+      return;
+    }
+
     final barracaText = _semGuardaSol
         ? 'Sem guarda-sol (na faixa de areia)'
         : _barracaController.text.trim();
@@ -426,6 +434,56 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
               ],
             ),
           ),
+          if (distPosto != null && distPosto > 500)
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.coral100,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.coral500.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          color: AppColors.coral600, size: 20),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Pin a ${distPosto.round()} m do posto (limite máx: 500 m).',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.ocean900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (posto != null) ...[
+                    const SizedBox(height: 6),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor: AppColors.ocean800,
+                      ),
+                      onPressed: () {
+                        _locationController.movePin(GeoPoint(
+                          latitude: posto.latitude,
+                          longitude: posto.longitude,
+                        ));
+                      },
+                      icon: const Icon(Icons.near_me, size: 16),
+                      label: Text('Alinhar pin com a areia do ${posto.nome}'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
         ],
       ),
     );

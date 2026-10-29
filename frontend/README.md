@@ -35,7 +35,7 @@ Requisitos: **Flutter 3.29+**, backend em execução (consulte o [README da raiz
 ```powershell
 Set-Location frontend
 flutter pub get
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
+flutter run --dart-define=API_BASE_URL=http://localhost:8080
 ```
 
 - `10.0.2.2` aponta para o computador host no emulador Android.
@@ -63,8 +63,13 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 
 ### Configuração da Chave do Google Maps
 
-Ative o **Maps SDK for Android** e/ou **Maps SDK for iOS** no Google Cloud Console:
+Ative as seguintes APIs no Google Cloud Console:
+- **Maps SDK for Android** (para compilação e execução no celular Android)
+- **Maps JavaScript API** (para visualização no navegador Chrome / Flutter Web)
+- **Maps SDK for iOS** (para iOS / iPhone)
 
+Onde configurar em cada plataforma:
+- **Web (Chrome / Flutter Web):** a chave fica no `<head>` do arquivo [`web/index.html`](file:///c:/_development/workspace/pe-na-areia/frontend/web/index.html) na tag `<script src="https://maps.googleapis.com/maps/api/js?key=SUA_CHAVE"></script>`.
 - **Android:** adicione `MAPS_API_KEY=SUA_CHAVE` em `android/local.properties` ou defina a variável de ambiente `MAPS_API_KEY`.
 - **iOS:** defina `GMS_API_KEY = SUA_CHAVE` em `ios/Flutter/ApiKeys.xcconfig`.
 

@@ -132,3 +132,63 @@ export interface PricingPreview {
   kioskNet: number
   note: string
 }
+
+export type OrderStatus =
+  | 'CRIADO'
+  | 'PAGO'
+  | 'EM_PREPARO'
+  | 'A_CAMINHO'
+  | 'CHEGOU_NO_LOCAL'
+  | 'ENTREGUE'
+  | 'CANCELADO'
+  | 'NAO_ENCONTRADO'
+
+export interface KioskOrderItem {
+  menuItemId: string
+  nome: string
+  quantidade: number
+  precoUnitario: number
+  category?: string
+  returnablePackaging?: boolean
+}
+
+export interface KioskOrder {
+  id: string
+  userId: string
+  kioskId: string
+  status: OrderStatus
+  pago: boolean
+  formaPagamento: string
+  valorTotal: number
+  itens: KioskOrderItem[]
+  pinCliente?: {
+    type: 'Point'
+    coordinates: [number, number]
+  }
+  pontoReferenciaId?: string
+  descricaoLocal?: string
+  fotoLocalUrl?: string | null
+  referenciaBarraca?: string
+  complementoLocal?: string
+  fotoVisaoPostoUrl?: string | null
+  fotoOutroReferencialUrl?: string | null
+  contatoNome?: string
+  contatoTelefone?: string
+  etiquetaLocal?: string
+  courierId?: string | null
+  courierNome?: string | null
+  courierTelefone?: string | null
+  courierVeiculo?: 'A_PE' | 'BICICLETA' | null
+  motivoCancelamento?: string | null
+  timeline: {
+    criadoEm: string
+    pagoEm?: string
+    emPreparoEm?: string
+    aCaminhoEm?: string
+    chegouNoLocalEm?: string
+    entregueEm?: string
+    canceladoEm?: string
+    naoEncontradoEm?: string
+  }
+}
+

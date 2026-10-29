@@ -7,5 +7,7 @@ public enum OrderStatus {
     A_CAMINHO,
     CHEGOU_NO_LOCAL,
     ENTREGUE,
-    CANCELADO
+    CANCELADO,
+    NAO_ENCONTRADO
 }
+

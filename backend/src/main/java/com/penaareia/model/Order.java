@@ -77,6 +77,9 @@ public class Order {
 
     private OrderStatus status = OrderStatus.CRIADO;
 
+    /** Motivo detalhado quando cancelado, recusado ou cliente não encontrado */
+    private String motivoCancelamento;
+
     private StatusTimeline timeline = new StatusTimeline();
 
     @Data
@@ -135,6 +138,8 @@ public class Order {
         private Instant aCaminhoEm;
         private Instant chegouNoLocalEm;
         private Instant entregueEm;
+        private Instant canceladoEm;
+        private Instant naoEncontradoEm;
     }
 
     public void transitionTo(OrderStatus newStatus) {
@@ -150,7 +155,9 @@ public class Order {
             case A_CAMINHO -> this.timeline.setACaminhoEm(now);
             case CHEGOU_NO_LOCAL -> this.timeline.setChegouNoLocalEm(now);
             case ENTREGUE -> this.timeline.setEntregueEm(now);
-            case CRIADO, CANCELADO -> {
+            case CANCELADO -> this.timeline.setCanceladoEm(now);
+            case NAO_ENCONTRADO -> this.timeline.setNaoEncontradoEm(now);
+            case CRIADO -> {
             }
         }
     }

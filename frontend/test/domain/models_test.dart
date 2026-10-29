@@ -100,6 +100,8 @@ void main() {
           OrderStatus.fromWire('CHEGOU_NO_LOCAL'), OrderStatus.chegouNoLocal);
       expect(OrderStatus.fromWire('ENTREGUE'), OrderStatus.entregue);
       expect(OrderStatus.fromWire('CANCELADO'), OrderStatus.cancelado);
+      expect(
+          OrderStatus.fromWire('NAO_ENCONTRADO'), OrderStatus.naoEncontrado);
     });
 
     test('valor desconhecido cai no fallback sem quebrar', () {
