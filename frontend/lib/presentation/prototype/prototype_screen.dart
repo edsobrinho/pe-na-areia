@@ -130,7 +130,17 @@ class _PrototypeScreenState extends State<PrototypeScreen>
   }
 
   Widget _buildHeader() => Container(
-        color: AppColors.brandRed,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.ocean900,
+              AppColors.ocean800,
+              AppColors.ocean700,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         padding: const EdgeInsets.fromLTRB(20, 12, 12, 16),
         child: Row(
           children: [
@@ -138,12 +148,12 @@ class _PrototypeScreenState extends State<PrototypeScreen>
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
+                color: Colors.white.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.beach_access_rounded,
-                color: Colors.white,
+                color: AppColors.mango500,
               ),
             ),
             const SizedBox(width: 12),
@@ -161,9 +171,9 @@ class _PrototypeScreenState extends State<PrototypeScreen>
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'EXPERIÊNCIA PARCEIRA · IFOOD',
+                    'TROPICAL ATLÂNTICO · EXPERIÊNCIA PARCEIRA',
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: AppColors.ocean100,
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.9,
@@ -189,9 +199,9 @@ class _PrototypeScreenState extends State<PrototypeScreen>
         color: AppColors.surface,
         child: TabBar(
           controller: _tabController,
-          labelColor: AppColors.brandRed,
-          unselectedLabelColor: const Color(0xFF757575),
-          indicatorColor: AppColors.brandRed,
+          labelColor: AppColors.ocean900,
+          unselectedLabelColor: AppColors.ink500,
+          indicatorColor: AppColors.mango500,
           indicatorWeight: 3,
           labelStyle: const TextStyle(fontWeight: FontWeight.w700),
           tabs: const [
@@ -239,18 +249,22 @@ class _PrototypeScreenState extends State<PrototypeScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openCustomerStep(0),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           child: Ink(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: AppColors.brandRed,
-              borderRadius: BorderRadius.circular(12),
+              gradient: const LinearGradient(
+                colors: [AppColors.ocean900, AppColors.ocean700],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Icon(Icons.waves_rounded, color: Colors.white, size: 34),
-                const SizedBox(width: 14),
-                const Expanded(
+                Icon(Icons.waves_rounded, color: AppColors.mango500, size: 34),
+                SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -265,12 +279,12 @@ class _PrototypeScreenState extends State<PrototypeScreen>
                       SizedBox(height: 4),
                       Text(
                         'Peça dos quiosques e receba na areia.',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppColors.ocean100),
                       ),
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.arrow_forward_ios,
                   color: Colors.white,
                   size: 16,
@@ -1150,13 +1164,13 @@ class _PrototypeScreenState extends State<PrototypeScreen>
       'R\$ ${price.toStringAsFixed(2).replaceAll('.', ',')}';
 
   TextStyle get _headlineStyle => const TextStyle(
-        color: Color(0xFF252525),
+        color: AppColors.ocean900,
         fontSize: 23,
         fontWeight: FontWeight.w800,
       );
 
   TextStyle get _sectionStyle => const TextStyle(
-        color: Color(0xFF252525),
+        color: AppColors.ocean900,
         fontSize: 17,
         fontWeight: FontWeight.w800,
       );
@@ -1499,7 +1513,7 @@ class _Eyebrow extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         label,
         style: const TextStyle(
-          color: AppColors.brandRed,
+          color: AppColors.ocean700,
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 1,

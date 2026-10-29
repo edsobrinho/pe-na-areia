@@ -27,17 +27,30 @@ class PeNaAreiaApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.brandRed,
-          primary: AppColors.brandRed,
-          secondary: AppColors.positive,
+          seedColor: AppColors.ocean700,
+          primary: AppColors.ocean700,
+          secondary: AppColors.mango500,
+          tertiary: AppColors.positive,
           surface: AppColors.surface,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.ocean900,
+          foregroundColor: Colors.white,
+          elevation: 0,
         ),
         cardTheme: CardThemeData(
           color: AppColors.surface,
           elevation: 1,
           margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.surface,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
         fontFamily: 'Roboto',

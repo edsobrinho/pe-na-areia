@@ -9,12 +9,14 @@ import type { Kiosk, KioskStorefrontPayload, ReferencePoint } from '../../types'
 interface TraditionalAddressFormProps {
   kiosk: Kiosk
   referencePoints: ReferencePoint[]
-  onSave: (payload: KioskStorefrontPayload) => Promise<void>
+  onBack: () => void
+  onSave: (payload: KioskStorefrontPayload, advanceToNextStep?: boolean) => Promise<void>
 }
 
 export function TraditionalAddressForm({
   kiosk,
   referencePoints,
+  onBack,
   onSave,
 }: TraditionalAddressFormProps) {
   const [cep, setCep] = useState(kiosk.cep ?? '')
@@ -57,23 +59,30 @@ export function TraditionalAddressForm({
     }
   }
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
+  const submitForm = async (advanceToNextStep: boolean) => {
     setSaving(true)
     try {
-      await onSave({
-        cep: cep.trim() || null,
-        logradouro: logradouro.trim() || null,
-        numero: numero.trim() || null,
-        complemento: complemento.trim() || null,
-        bairro: bairro.trim() || null,
-        cidade: cidade.trim() || 'Santos',
-        uf: uf.trim().toUpperCase() || 'SP',
-        pontoReferenciaId: pontoReferenciaId || null,
-      })
+      await onSave(
+        {
+          cep: cep.trim() || null,
+          logradouro: logradouro.trim() || null,
+          numero: numero.trim() || null,
+          complemento: complemento.trim() || null,
+          bairro: bairro.trim() || null,
+          cidade: cidade.trim() || 'Santos',
+          uf: uf.trim().toUpperCase() || 'SP',
+          pontoReferenciaId: pontoReferenciaId || null,
+        },
+        advanceToNextStep,
+      )
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    await submitForm(false)
   }
 
   const referenceOptions =
@@ -86,7 +95,7 @@ export function TraditionalAddressForm({
 
   return (
     <SectionCard
-      eyebrow="2. Endereço Tradicional & Localização Costeira (Sem Mapa)"
+      eyebrow="Etapa 2 de 4 · Endereço Tradicional & Localização Costeira (Sem Mapa)"
       title="Endereço do Estabelecimento e Posto de Referência"
       description="Informe o endereço tradicional do seu restaurante ou quiosque e escolha o Posto de Salvamento mais próximo. O sistema calcula o posicionamento na orla automaticamente sem precisar de mapa."
     >
@@ -100,21 +109,21 @@ export function TraditionalAddressForm({
               setCep(masked)
               if (unmask(masked).length === 8) void handleLookupCep(masked)
             }}
-            placeholder="11045-500"
+            placeholder="11025-031"
             hint={lookingUpCep ? 'Consultando CEP...' : 'Digite 8 dígitos para autocompletar'}
           />
           <InputField
             label="Logradouro / Avenida da Orla *"
             value={logradouro}
             onChange={(e) => setLogradouro(e.target.value)}
-            placeholder="Ex.: Av. Vicente de Carvalho"
+            placeholder="Ex.: Rua Liberdade"
             required
           />
           <InputField
             label="Número / Nº do Quiosque *"
             value={numero}
             onChange={(e) => setNumero(e.target.value)}
-            placeholder="Ex.: Quiosque 42 ou 120"
+            placeholder="Ex.: 444 ou Quiosque 42"
             required
           />
         </div>
@@ -130,7 +139,7 @@ export function TraditionalAddressForm({
             label="Bairro *"
             value={bairro}
             onChange={(e) => setBairro(e.target.value)}
-            placeholder="Ex.: Boqueirão"
+            placeholder="Ex.: Embaré"
             required
           />
           <div className="two-col">
@@ -160,13 +169,25 @@ export function TraditionalAddressForm({
           hint="Define automaticamente a região de atendimento na faixa de areia (até 500m do Posto selecionado)."
         />
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button type="submit" variant="primary" disabled={saving}>
-            {saving ? 'Salvando Endereço...' : '📍 Salvar Endereço e Localização'}
+        <div className="wizard-footer">
+          <Button type="button" variant="ghost" onClick={onBack} disabled={saving}>
+            ← Etapa 1: Logomarca &amp; Vitrine
           </Button>
+          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <Button type="submit" variant="secondary" disabled={saving}>
+              {saving ? 'Salvando...' : '📍 Salvar Endereço'}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={saving}
+              onClick={() => void submitForm(true)}
+            >
+              {saving ? 'Salvando...' : 'Salvar e Avançar para Produtos (Etapa 3) →'}
+            </Button>
+          </div>
         </div>
       </form>
     </SectionCard>
   )
 }
-
