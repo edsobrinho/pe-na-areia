@@ -34,5 +34,8 @@ class AppColors {
 
   /// Tipografia e Neutros Costeiros
   static const ink = Color(0xFF122629);
+  static const ink700 = Color(0xFF334E52);
   static const ink500 = Color(0xFF64748B);
+  static const line = Color(0xFFDCE5E4);
+  static const lineStrong = Color(0xFFBFD0CE);
 }

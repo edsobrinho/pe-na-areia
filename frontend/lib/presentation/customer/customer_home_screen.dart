@@ -749,62 +749,64 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   const SizedBox(height: 16),
                 ],
 
-                // Grade de 10 Categorias Praianas (2 linhas x 5 colunas)
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _beachCategories.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 5,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: 0.78,
+                // Carrossel de Categorias em Pílula (Estilo Figma 01/02 - "All, Discount, Snack, etc.")
+                SizedBox(
+                  height: 42,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _beachCategories.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final cat = _beachCategories[index];
+                      final selected = _selectedCategoryFilter == cat.id;
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: () => setState(() {
+                          _selectedCategoryFilter = selected ? 'ALL' : cat.id;
+                        }),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: selected ? AppColors.ocean700 : AppColors.surface,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: selected ? AppColors.ocean700 : AppColors.sand200,
+                              width: 1.2,
+                            ),
+                            boxShadow: selected
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.ocean700.withValues(alpha: 0.24),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                cat.icon,
+                                size: 18,
+                                color: selected ? Colors.white : AppColors.ocean900,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                cat.label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                                  color: selected ? Colors.white : AppColors.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  itemBuilder: (context, index) {
-                    final cat = _beachCategories[index];
-                    final selected = _selectedCategoryFilter == cat.id;
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => setState(() {
-                        _selectedCategoryFilter =
-                            selected ? 'ALL' : cat.id;
-                      }),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: selected ? AppColors.ocean700 : cat.bg,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Icon(
-                              cat.icon,
-                              color: selected
-                                  ? Colors.white
-                                  : AppColors.ocean900,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            cat.label,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: selected
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
                 ),
 
                 const SizedBox(height: 18),
@@ -1014,32 +1016,109 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             1000.0
         : 0.4;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _openKioskStorefront(kiosk),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.sand200, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.ocean900.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _openKioskStorefront(kiosk),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: imageUrl != null
-                    ? Image.network(
-                        imageUrl,
-                        width: 84,
-                        height: 84,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _kioskThumbFallback(),
-                      )
-                    : _kioskThumbFallback(),
+              // Imagem Superior com Proporção Costeira & Badges Flutuantes (Figma 01/02)
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                    child: SizedBox(
+                      height: 130,
+                      width: double.infinity,
+                      child: imageUrl != null
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _kioskBannerFallback(),
+                            )
+                          : _kioskBannerFallback(),
+                    ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface.withValues(alpha: 0.94),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded, size: 16, color: AppColors.destination),
+                          const SizedBox(width: 3),
+                          Text(
+                            kiosk.avaliacaoMedia.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (kiosk.aceitaEmbalagemSustentavel)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.seafoam700,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.eco, size: 13, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              'Retornável',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
+              // Conteúdo Descritivo do Quiosque
+              Padding(
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1051,52 +1130,45 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         color: AppColors.ink,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 16,
-                          color: AppColors.destination,
-                        ),
-                        const SizedBox(width: 2),
+                        const Icon(Icons.place_outlined, size: 14, color: AppColors.ocean700),
+                        const SizedBox(width: 3),
                         Text(
-                          kiosk.avaliacaoMedia.toStringAsFixed(1),
+                          '${distKm.toStringAsFixed(1)} km da areia',
                           style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ocean900,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.access_time, size: 14, color: AppColors.ink500),
+                        const SizedBox(width: 3),
+                        Text(
+                          timeRange,
+                          style: const TextStyle(fontSize: 12, color: AppColors.ink500),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: fee <= 0 ? const Color(0xFFDCFCE7) : AppColors.sand100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            fee <= 0 ? 'Entrega Grátis' : 'Taxa R\$ ${fee.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: fee <= 0 ? AppColors.seafoam700 : AppColors.ocean900,
+                            ),
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${fee <= 0 ? 'R\$ 0' : 'R\$ ${fee.toStringAsFixed(2)}'} · $timeRange · ${distKm.toStringAsFixed(1)} km',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.sand100,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        kiosk.aceitaEmbalagemSustentavel
-                            ? '♻️ Embalagem Retornável na Areia'
-                            : '🏖️ Entrega no Pin da Praia',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ocean900,
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -1108,12 +1180,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 
-  Widget _kioskThumbFallback() => Container(
-        width: 84,
-        height: 84,
-        color: AppColors.sand50,
-        child: const Center(
-          child: Icon(Icons.beach_access, color: AppColors.ocean700, size: 32),
+  Widget _kioskBannerFallback() => Container(
+        color: AppColors.sand100,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.beach_access_rounded, color: AppColors.ocean700.withValues(alpha: 0.6), size: 36),
+              const SizedBox(height: 4),
+              const Text(
+                'Quiosque Pé na Areia',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.ocean900),
+              ),
+            ],
+          ),
         ),
       );
 
@@ -1532,23 +1612,41 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         ),
                       ),
                       const Spacer(),
-                      IconButton(
-                        tooltip: 'Remover ${item.nome}',
-                        onPressed: quantity == 0
-                            ? null
-                            : () => _changeQuantity(item, -1),
-                        icon: const Icon(Icons.remove_circle_outline),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      Text(
-                        '$quantity',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      IconButton(
-                        tooltip: 'Adicionar ${item.nome}',
-                        onPressed: () => _changeQuantity(item, 1),
-                        icon: const Icon(Icons.add_circle_outline),
-                        visualDensity: VisualDensity.compact,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.sand100,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Remover ${item.nome}',
+                              onPressed: quantity == 0
+                                  ? null
+                                  : () => _changeQuantity(item, -1),
+                              icon: const Icon(Icons.remove, size: 16),
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Text(
+                                '$quantity',
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Adicionar ${item.nome}',
+                              onPressed: () => _changeQuantity(item, 1),
+                              icon: const Icon(Icons.add, size: 16, color: AppColors.mango500),
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -1650,17 +1748,89 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               ],
             ),
             Text('Pedido ${order.id} · ${_statusLabel(order.status)}'),
-            if (distMetros != null && isCourierOnRoute)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  '📍 Entregador a ${distMetros.round()} m de distância na praia',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFC2410C),
-                  ),
+            // Card Flutuante de Perfil do Entregador / Runner (Estilo Figma 05 - "Natalya Undergrowth / Runner")
+            if (isCourierOnRoute) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.sand200, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.ocean900.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.ocean100,
+                      child: const Icon(Icons.directions_run, color: AppColors.ocean700, size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            order.courierNome?.isNotEmpty == true
+                                ? order.courierNome!
+                                : 'Entregador de Praia (Runner)',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.coral100,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  distMetros != null ? 'Previsão: ${(distMetros / 80).ceil()} min' : 'Em rota na areia',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.coral600,
+                                  ),
+                                ),
+                              ),
+                              if (order.courierVeiculo != null && order.courierVeiculo!.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  '• ${order.courierVeiculo}',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.ink500),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (order.courierTelefone != null && order.courierTelefone!.isNotEmpty)
+                      IconButton.filledTonal(
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.sand100,
+                          foregroundColor: AppColors.ocean900,
+                        ),
+                        tooltip: 'Ligar para entregador',
+                        onPressed: () {},
+                        icon: const Icon(Icons.phone_outlined, size: 20),
+                      ),
+                  ],
                 ),
               ),
+            ],
             const SizedBox(height: 6),
             Wrap(
               spacing: 8,

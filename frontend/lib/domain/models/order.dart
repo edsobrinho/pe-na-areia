@@ -90,6 +90,9 @@ class Order {
     this.mensagens = const [],
     this.status = OrderStatus.criado,
     this.timeline = const OrderTimeline(),
+    this.courierNome,
+    this.courierTelefone,
+    this.courierVeiculo,
   });
 
   final String id;
@@ -99,6 +102,9 @@ class Order {
 
   /// Nulo ate um entregador aceitar o pedido.
   final String? courierId;
+  final String? courierNome;
+  final String? courierTelefone;
+  final String? courierVeiculo;
 
   final List<OrderItem> itens;
   final double valorTotal;

@@ -44,6 +44,9 @@ abstract final class OrderMapper {
           json['status'] as String? ?? OrderStatus.criado.wireValue,
         ),
         timeline: OrderTimelineMapper.fromJson(json['timeline']),
+        courierNome: json['courierNome'] as String?,
+        courierTelefone: json['courierTelefone'] as String?,
+        courierVeiculo: json['courierVeiculo'] as String?,
       );
 
   /// Corpo JSON de `POST /orders`, conforme contrato compartilhado com o backend.
