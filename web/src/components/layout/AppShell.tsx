@@ -121,7 +121,7 @@ export function AppShell({
             </>
           ) : (
             <div className="session-box">
-              <span className="badge eco">🌊 Identidade Visual Tropical Atlântico v2.2</span>
+              <span className="badge eco">🌿 Design System Brisa Minimalista · Sage &amp; Apricot</span>
             </div>
           )}
         </div>

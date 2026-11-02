@@ -80,7 +80,13 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
   }, [])
 
   useEffect(() => {
-    void loadOrders(false)
+    let ignore = false
+    void Promise.resolve().then(() => {
+      if (!ignore) void loadOrders(false)
+    })
+    return () => {
+      ignore = true
+    }
   }, [loadOrders])
 
   useEffect(() => {

@@ -204,9 +204,6 @@ public class OrderService {
             order.setPixExpiracao(charge.expiracao());
         }
 
-        order.transitionTo(OrderStatus.PAGO);
-        order.transitionTo(OrderStatus.EM_PREPARO);
-
         return orderRepository.save(order);
     }
 

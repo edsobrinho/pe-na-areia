@@ -42,6 +42,32 @@ class PartnershipPricingServiceTest {
         assertThat(pricing.kioskNet()).isEqualByComparingTo("26.52");
     }
 
+    @Test
+    void handlesNullFiltersAndNullProductIds() {
+        KioskPartnership configuration = configuration();
+        configuration.setFilters(null);
+        configuration.setProductIds(null);
+
+        Order.PricingSnapshot pricing = service.calculate(new BigDecimal("20.00"), configuration);
+
+        assertThat(pricing.filterCategories()).isEmpty();
+        assertThat(pricing.enabledProductIds()).isEmpty();
+        assertThat(pricing.onlyReturnable()).isFalse();
+    }
+
+    @Test
+    void appliesActiveFiltersWithCategoriesAndReturnable() {
+        KioskPartnership configuration = configuration();
+        configuration.setFilters(new KioskPartnership.Filters(List.of("Bebidas", "Porções"), true));
+        configuration.setProductIds(List.of("p-1", "p-2"));
+
+        Order.PricingSnapshot pricing = service.calculate(new BigDecimal("50.00"), configuration);
+
+        assertThat(pricing.filterCategories()).containsExactly("Bebidas", "Porções");
+        assertThat(pricing.enabledProductIds()).containsExactly("p-1", "p-2");
+        assertThat(pricing.onlyReturnable()).isTrue();
+    }
+
     private KioskPartnership configuration() {
         KioskPartnership configuration = new KioskPartnership();
         configuration.setCommissionPercent(BigDecimal.ZERO);

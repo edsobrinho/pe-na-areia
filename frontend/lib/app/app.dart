@@ -6,7 +6,7 @@ import '../presentation/courier/courier_home_screen.dart';
 import '../presentation/customer/customer_home_screen.dart';
 import '../presentation/location_selection/location_selection_screen.dart';
 import '../presentation/prototype/prototype_screen.dart';
-import '../presentation/theme/app_colors.dart';
+import '../presentation/theme/app_theme.dart';
 import 'dependencies.dart';
 import 'routes.dart';
 
@@ -23,38 +23,7 @@ class PeNaAreiaApp extends StatelessWidget {
     return MaterialApp(
       title: 'Pé na Areia',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: AppColors.background,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.ocean700,
-          primary: AppColors.ocean700,
-          secondary: AppColors.mango500,
-          tertiary: AppColors.positive,
-          surface: AppColors.surface,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.ocean900,
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          color: AppColors.surface,
-          elevation: 1,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.surface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        fontFamily: 'Roboto',
-      ),
+      theme: AppTheme.light,
       initialRoute: initialRoute,
       routes: buildAppRoutes(dependencies),
     );

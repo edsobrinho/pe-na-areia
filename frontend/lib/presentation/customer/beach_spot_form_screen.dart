@@ -288,14 +288,13 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.ocean900,
-        foregroundColor: Colors.white,
-        title: const Text('Ponto de entrega na praia'),
+        backgroundColor: AppColors.background,
+        title: const Text('Ponto na Praia'),
         actions: [
           IconButton(
             tooltip: 'Limpar campos',
             onPressed: _resetForm,
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.ink700),
           ),
         ],
       ),
@@ -316,15 +315,18 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.red.shade200),
+                color: AppColors.danger100,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.danger500.withValues(alpha: 0.35),
+                ),
               ),
               child: Text(
                 _error!,
-                style: TextStyle(
-                  color: Colors.red.shade900,
+                style: const TextStyle(
+                  color: AppColors.ink,
                   fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
             ),
@@ -332,22 +334,30 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
           const SizedBox(height: 24),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.mango500,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.line)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.sage500,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(50),
+                shape: const StadiumBorder(),
               ),
-            ),
-            onPressed: _uploadingPhoto ? null : _confirmSpot,
-            child: const Text(
-              'Confirmar ponto na areia',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              onPressed: _uploadingPhoto ? null : _confirmSpot,
+              child: const Text(
+                'CONFIRMAR PONTO NA AREIA',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
             ),
           ),
         ),
@@ -399,7 +409,7 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
                     padding: const EdgeInsets.only(bottom: 58),
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.ocean900.withValues(alpha: 0.92),
+                        backgroundColor: AppColors.sage500,
                         foregroundColor: Colors.white,
                         visualDensity: VisualDensity.compact,
                       ),

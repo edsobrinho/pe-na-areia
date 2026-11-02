@@ -118,11 +118,11 @@ class OrderServiceTest {
 
         assertThat(pedido.isEmbalagemSustentavel()).isTrue();
         assertThat(pedido.getDescricaoLocal()).isEqualTo("Guarda-sol listrado azul");
-        assertThat(pedido.isPago()).isTrue();
+        assertThat(pedido.isPago()).isFalse();
         assertThat(pedido.getStatus()).isEqualTo(
-                com.penaareia.model.OrderStatus.EM_PREPARO);
-        assertThat(pedido.getTimeline().getPagoEm()).isNotNull();
-        assertThat(pedido.getTimeline().getEmPreparoEm()).isNotNull();
+                com.penaareia.model.OrderStatus.CRIADO);
+        assertThat(pedido.getTimeline().getPagoEm()).isNull();
+        assertThat(pedido.getTimeline().getEmPreparoEm()).isNull();
 
         verify(orderRepository).save(any(Order.class));
     }
@@ -421,5 +421,48 @@ class OrderServiceTest {
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("pin");
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void confirmarPagamentoPixViaTxIdQuandoOrderIdNulo() {
+        Order order = new Order();
+        order.setId("ord-tx-1");
+        order.setStatus(com.penaareia.model.OrderStatus.CRIADO);
+        order.setPago(false);
+
+        when(orderRepository.findByPixTxId("TX-123")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order res = service.confirmarPagamentoPixWebhook(
+                new com.penaareia.dto.OrderTrackingDtos.PixWebhookRequest("TX-123", null, "CONCLUIDA"));
+
+        assertThat(res.isPago()).isTrue();
+        assertThat(res.getStatus()).isEqualTo(com.penaareia.model.OrderStatus.EM_PREPARO);
+    }
+
+    @Test
+    void confirmarPagamentoPixLanca404QuandoNaoEncontrado() {
+        when(orderRepository.findByPixTxId("TX-INEXISTENTE")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.confirmarPagamentoPixWebhook(
+                new com.penaareia.dto.OrderTrackingDtos.PixWebhookRequest("TX-INEXISTENTE", "", "CONCLUIDA")))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Pedido não encontrado");
+    }
+
+    @Test
+    void confirmarPagamentoPixIgnoraSePedidoJaPago() {
+        Order order = new Order();
+        order.setId("ord-pago-1");
+        order.setStatus(com.penaareia.model.OrderStatus.EM_PREPARO);
+        order.setPago(true);
+
+        when(orderRepository.findById("ord-pago-1")).thenReturn(Optional.of(order));
+
+        Order res = service.confirmarPagamentoPixWebhook(
+                new com.penaareia.dto.OrderTrackingDtos.PixWebhookRequest("TX-999", "ord-pago-1", "CONCLUIDA"));
+
+        assertThat(res.getStatus()).isEqualTo(com.penaareia.model.OrderStatus.EM_PREPARO);
+        verify(orderRepository, never()).save(any(Order.class));
     }
 }

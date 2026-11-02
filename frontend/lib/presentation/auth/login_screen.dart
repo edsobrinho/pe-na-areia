@@ -6,6 +6,7 @@ import '../../core/forms/validators.dart';
 import '../../data/http/api_exception.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_text_field.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -61,7 +62,9 @@ class _LoginScreenState extends State<LoginScreen> {
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (error) {
-      if (mounted) setState(() => _error = 'Não foi possível autenticar: $error');
+      if (mounted) {
+        setState(() => _error = 'Não foi possível autenticar: $error');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -69,7 +72,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: AppColors.sand50,
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          title: Text(_registerMode ? 'Criar Conta' : 'Acesso'),
+        ),
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -80,15 +87,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.sand200),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x140B3B40),
-                        blurRadius: 24,
-                        offset: Offset(0, 10),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.line),
+                    boxShadow: AppTheme.softCardShadow,
                   ),
                   child: Form(
                     key: _formKey,
@@ -97,42 +98,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Center(
                           child: Container(
-                            width: 72,
-                            height: 72,
+                            width: 68,
+                            height: 68,
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  AppColors.ocean900,
-                                  AppColors.ocean700,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              color: AppColors.sage500,
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x280E817C),
-                                  blurRadius: 16,
-                                  offset: Offset(0, 6),
-                                ),
-                              ],
                             ),
                             child: const Icon(
                               Icons.beach_access_rounded,
-                              size: 38,
-                              color: AppColors.mango500,
+                              size: 34,
+                              color: Colors.white,
                             ),
                           ),
                         ),
                         const SizedBox(height: 14),
                         const Text(
-                          'TROPICAL ATLÂNTICO · ORLA DE SANTOS',
+                          'ORLA DE SANTOS · ENTREGA NA AREIA',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: AppColors.ocean700,
+                            color: AppColors.sage700,
                             fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.1,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -141,13 +128,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           textAlign: TextAlign.center,
                           style: Theme.of(context)
                               .textTheme
-                              .headlineMedium
+                              .headlineSmall
                               ?.copyWith(
-                                color: AppColors.ocean900,
-                                fontWeight: FontWeight.w800,
+                                color: AppColors.ink,
+                                fontWeight: FontWeight.w700,
                               ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 22),
                         if (_registerMode) ...[
                           AppTextField(
                             controller: _nameController,
@@ -169,6 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
+                            activeTrackColor: AppColors.sage500,
                             title: const Text('Sou entregador'),
                             subtitle: const Text('Veículo: a pé'),
                             value: _courierMode,
@@ -189,12 +177,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _passwordController,
                           label: 'Senha',
                           obscureText: true,
-                          validator: (value) => value == null || value.length < 6
-                              ? 'A senha deve ter ao menos 6 caracteres'
-                              : null,
+                          validator: (value) =>
+                              value == null || value.length < 6
+                                  ? 'A senha deve ter ao menos 6 caracteres'
+                                  : null,
                         ),
                         if (_error != null) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           Text(
                             _error!,
                             style: const TextStyle(color: AppColors.danger500),
@@ -209,10 +198,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
+                                    color: Colors.white,
                                   ),
                                 )
                               : Text(_registerMode ? 'Criar conta' : 'Entrar'),
                         ),
+                        const SizedBox(height: 6),
                         TextButton(
                           onPressed: _loading
                               ? null

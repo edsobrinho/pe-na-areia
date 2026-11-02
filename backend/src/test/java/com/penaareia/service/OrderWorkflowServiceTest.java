@@ -451,6 +451,194 @@ class OrderWorkflowServiceTest {
         assertThat(res.getCourierVeiculo()).isEqualTo("BICICLETA");
     }
 
+    @Test
+    void listsKioskOrdersWithVariousFilters() {
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of());
+
+        assertThat(service().listarPedidosDoQuiosque("kiosk-1", "PENDING")).isEmpty();
+        assertThat(service().listarPedidosDoQuiosque("kiosk-1", "PREPARING")).isEmpty();
+        assertThat(service().listarPedidosDoQuiosque("kiosk-1", "IN_ROUTE")).isEmpty();
+        assertThat(service().listarPedidosDoQuiosque("kiosk-1", "COMPLETED")).isEmpty();
+        assertThat(service().listarPedidosDoQuiosque("kiosk-1", "PAGO")).isEmpty();
+        assertThat(service().listarPedidosDoQuiosque("kiosk-1", "UNKNOWN_STATUS")).isEmpty();
+        assertThat(service().listarPedidosDoQuiosque("kiosk-1", null)).isEmpty();
+    }
+
+    @Test
+    void transitionsInvalidStatusThrowsException() {
+        Order order = orderAtStatus(OrderStatus.ENTREGUE);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1",
+                OrderStatus.A_CAMINHO,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Transição inválida");
+    }
+
+    @Test
+    void nonCourierCannotAcceptDelivery() {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1",
+                OrderStatus.A_CAMINHO,
+                "client-1",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Somente um entregador pode iniciar a entrega");
+    }
+
+    @Test
+    void cannotAcceptIfAlreadyAssignedToOtherCourier() {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        order.setCourierId("other-courier");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1",
+                OrderStatus.A_CAMINHO,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("já foi aceito por outro entregador");
+    }
+
+    @Test
+    void chegouNoLocalThrowsIfWrongCourier() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setCourierId("other-courier");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1",
+                OrderStatus.CHEGOU_NO_LOCAL,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("já foi aceito por outro entregador");
+    }
+
+    @Test
+    void unauthorizedCancelThrowsException() {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        order.setUserId("client-1");
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1",
+                OrderStatus.CANCELADO,
+                "stranger",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT")),
+                "motivo"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não tem autorização para cancelar");
+    }
+
+    @Test
+    void cannotSendQuickMessageUnlessInRoute() {
+        Order order = orderAtStatus(OrderStatus.CRIADO);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().enviarMensagemRapida(
+                "order-1",
+                "client-1",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT")),
+                "Olá!"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("só fica disponível enquanto o entregador está a caminho");
+    }
+
+    @Test
+    void strangerCannotSendQuickMessage() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setUserId("client-1");
+        order.setCourierId("courier-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().enviarMensagemRapida(
+                "order-1",
+                "stranger",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT")),
+                "Olá!"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Você não participa desta entrega");
+    }
+
+    @Test
+    void confirmDeliveryRejectsMismatchedCourier() {
+        ConfirmDeliveryRequest req = new ConfirmDeliveryRequest(
+                "different-courier",
+                new ConfirmDeliveryRequest.CourierLocation(-23.97, -46.33));
+
+        assertThatThrownBy(() -> service().confirmarEntrega("order-1", req, "courier-1"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não corresponde");
+    }
+
+    @Test
+    void kioskOwnerCanTransitionPagoToEmPreparo() {
+        Order order = orderAtStatus(OrderStatus.PAGO);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        com.penaareia.model.User operator = new com.penaareia.model.User();
+        operator.setId("operator-1");
+        operator.setKioskId("kiosk-1");
+        when(mongoTemplate.findById("operator-1", com.penaareia.model.User.class)).thenReturn(operator);
+
+        Order updated = service().atualizarStatus(
+                "order-1",
+                OrderStatus.EM_PREPARO,
+                "operator-1",
+                List.of(new SimpleGrantedAuthority("ROLE_KIOSK_OPERATOR")));
+
+        assertThat(updated.getStatus()).isEqualTo(OrderStatus.EM_PREPARO);
+        assertThat(updated.getTimeline().getEmPreparoEm()).isNotNull();
+    }
+
+    @Test
+    void clientCanCancelOrderBeforePreparo() {
+        Order order = orderAtStatus(OrderStatus.CRIADO);
+        order.setUserId("client-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order updated = service().atualizarStatus(
+                "order-1",
+                OrderStatus.CANCELADO,
+                "client-1",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT")),
+                "Desisti do pedido");
+
+        assertThat(updated.getStatus()).isEqualTo(OrderStatus.CANCELADO);
+        assertThat(updated.getMotivoCancelamento()).isEqualTo("Desisti do pedido");
+    }
+
+    @Test
+    void assignedCourierCanCancelOrderAndReleasesCourier() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setUserId("client-1");
+        order.setCourierId("courier-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order updated = service().atualizarStatus(
+                "order-1",
+                OrderStatus.CANCELADO,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER")),
+                "Pneu furou");
+
+        assertThat(updated.getStatus()).isEqualTo(OrderStatus.CANCELADO);
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
     private static Order orderAtStatus(OrderStatus status) {
         Order order = new Order();
         order.setId("order-1");

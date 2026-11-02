@@ -9,6 +9,7 @@ import '../../domain/models/geo_point.dart';
 import '../../domain/models/order_location.dart';
 import '../../domain/models/reference_point.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import 'location_selection_controller.dart';
 
 /// Tela 1 do fluxo do cliente: o cliente marca um pin no mapa em vez de
@@ -146,11 +147,17 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        title: const Text('Selecionar Ponto'),
+      ),
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) {
           if (_controller.isInitializing) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.sage500),
+            );
           }
           return Column(
             children: [
@@ -165,26 +172,21 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
 
   Widget _buildMapa() {
     final pinLatLng = _toLatLng(_controller.pin);
-    return Stack(
-      children: [
-        GoogleMap(
-          initialCameraPosition: CameraPosition(target: pinLatLng, zoom: 17),
-          onMapCreated: (controller) => _mapController = controller,
-          onTap: (position) => unawaited(
-            _controller.movePin(
-              GeoPoint(
-                  latitude: position.latitude, longitude: position.longitude),
-            ),
-          ),
-          myLocationEnabled: !_controller.usingFallbackLocation,
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          markers: {
-            Marker(
-              markerId: const MarkerId('pin-cliente'),
-              position: pinLatLng,
-              draggable: true,
-              onDragEnd: (position) => unawaited(
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: AppColors.placeholder,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: CameraPosition(target: pinLatLng, zoom: 17),
+              onMapCreated: (controller) => _mapController = controller,
+              onTap: (position) => unawaited(
                 _controller.movePin(
                   GeoPoint(
                     latitude: position.latitude,
@@ -192,45 +194,70 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
                   ),
                 ),
               ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueRed,
+              myLocationEnabled: !_controller.usingFallbackLocation,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              markers: {
+                Marker(
+                  markerId: const MarkerId('pin-cliente'),
+                  position: pinLatLng,
+                  draggable: true,
+                  onDragEnd: (position) => unawaited(
+                    _controller.movePin(
+                      GeoPoint(
+                        latitude: position.latitude,
+                        longitude: position.longitude,
+                      ),
+                    ),
+                  ),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueOrange,
+                  ),
+                ),
+                ..._controller.postosProximos.map(_buildMarkerDePosto),
+              },
+            ),
+            Positioned(
+              top: 10,
+              left: 10,
+              right: 10,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: AppTheme.softCardShadow,
+                  ),
+                  child: const Text(
+                    'Toque no mapa ou arraste o pin ate o local exato',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
               ),
             ),
-            ..._controller.postosProximos.map(_buildMarkerDePosto),
-          },
-        ),
-        Positioned(
-          top: 12,
-          left: 12,
-          right: 12,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Toque no mapa ou arraste o pin ate o local exato',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
+            Positioned(
+              right: 10,
+              bottom: 10,
+              child: FloatingActionButton.small(
+                heroTag: 'recentrar-localizacao',
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.sage600,
+                onPressed: _recentrarNaLocalizacaoAtual,
+                tooltip: 'Usar minha localizacao atual',
+                child: const Icon(Icons.my_location),
               ),
             ),
-          ),
+          ],
         ),
-        Positioned(
-          right: 12,
-          bottom: 12,
-          child: FloatingActionButton.small(
-            heroTag: 'recentrar-localizacao',
-            backgroundColor: Colors.white,
-            foregroundColor: AppColors.ocean700,
-            onPressed: _recentrarNaLocalizacaoAtual,
-            tooltip: 'Usar minha localizacao atual',
-            child: const Icon(Icons.my_location),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -240,7 +267,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
       markerId: MarkerId('posto-${posto.id}'),
       position: LatLng(posto.latitude, posto.longitude),
       icon: BitmapDescriptor.defaultMarkerWithHue(
-        selecionado ? BitmapDescriptor.hueRed : BitmapDescriptor.hueAzure,
+        selecionado ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueCyan,
       ),
       infoWindow: InfoWindow(title: posto.nome),
     );
@@ -249,26 +276,38 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
   Widget _buildFolhaDeSelecao() {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: AppTheme.bottomSheetShadow,
       ),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.dragHandle,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
             const Text(
               'Onde voce esta?',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 18,
-                color: AppColors.ocean900,
+                fontSize: 17,
+                color: AppColors.ink,
               ),
             ),
             const SizedBox(height: 4),
             const Text(
               'Escolha o posto de referencia mais proximo e descreva o local',
-              style: TextStyle(fontSize: 12.5, color: Colors.black54),
+              style: TextStyle(fontSize: 12.5, color: AppColors.ink500),
             ),
             if (_controller.usingFallbackLocation) ...[
               const SizedBox(height: 12),
@@ -285,7 +324,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
                 hintText:
                     'Ex: guarda-sol listrado azul, perto do quiosque do Ze',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
@@ -295,7 +334,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
               const SizedBox(height: 10),
               Text(
                 _controller.errorMessage!,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                style: const TextStyle(color: AppColors.danger500, fontSize: 12),
               ),
             ],
             const SizedBox(height: 16),
@@ -313,18 +352,21 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.sand100,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.placeholder,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          const Icon(Icons.location_off_outlined,
-              size: 18, color: AppColors.ocean900),
+          const Icon(
+            Icons.location_off_outlined,
+            size: 18,
+            color: AppColors.ink700,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               '$mensagem Toque no mapa ou arraste o pin para ajustar.',
-              style: const TextStyle(fontSize: 12, color: AppColors.ocean900),
+              style: const TextStyle(fontSize: 12, color: AppColors.ink700),
             ),
           ),
         ],
@@ -339,12 +381,15 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
           SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.sage500,
+            ),
           ),
           SizedBox(width: 8),
           Text(
             'Buscando postos proximos...',
-            style: TextStyle(fontSize: 12, color: Colors.black45),
+            style: TextStyle(fontSize: 12, color: AppColors.ink500),
           ),
         ],
       );
@@ -354,7 +399,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
       return const Text(
         'Nenhum posto de referencia encontrado perto do pin. '
         'Tente arrastar para mais perto da orla.',
-        style: TextStyle(fontSize: 12, color: Colors.black45),
+        style: TextStyle(fontSize: 12, color: AppColors.ink500),
       );
     }
 
@@ -370,17 +415,19 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
               label: Text(posto.nome),
               selected: selecionado,
               onSelected: (_) => _controller.selecionarPosto(posto),
-              selectedColor: AppColors.ocean900,
+              selectedColor: AppColors.sage500,
               labelStyle: TextStyle(
-                color: selecionado ? Colors.white : AppColors.ocean900,
+                color: selecionado ? Colors.white : AppColors.ink700,
                 fontWeight: FontWeight.w600,
                 fontSize: 12.5,
               ),
-              backgroundColor: AppColors.sand100,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide.none,
+              backgroundColor: AppColors.surface,
+              shape: StadiumBorder(
+                side: BorderSide(
+                  color: selecionado ? AppColors.sage500 : AppColors.line,
+                ),
               ),
+              showCheckmark: false,
             );
           }).toList(),
         ),
@@ -393,7 +440,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
             'do pin',
             style: const TextStyle(
               fontSize: 12,
-              color: AppColors.ocean700,
+              color: AppColors.sage700,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -408,7 +455,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
       children: [
         if (bytes != null) ...[
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
             child: Image.memory(
               bytes,
               width: 48,
@@ -426,21 +473,12 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
                   ? Icons.add_a_photo_outlined
                   : Icons.photo_camera_back_outlined,
               size: 18,
+              color: AppColors.sage600,
             ),
             label: Text(
               bytes == null
                   ? 'Adicionar foto do local (opcional)'
                   : 'Trocar foto do local',
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.ocean700,
-              side: BorderSide(
-                color: AppColors.ocean500.withValues(alpha: 0.5),
-              ),
-              minimumSize: const Size.fromHeight(44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
             ),
           ),
         ),
@@ -449,7 +487,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
             onPressed: _controller.removerFoto,
             tooltip: 'Remover foto',
             icon: const Icon(Icons.close),
-            color: AppColors.ocean900,
+            color: AppColors.ink700,
           ),
       ],
     );
@@ -459,15 +497,13 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     final confirmando = _controller.isConfirming;
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
+      child: FilledButton(
         onPressed: _controller.podeConfirmar ? _confirmarLocalizacao : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.mango500,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.sage500,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          minimumSize: const Size.fromHeight(50),
+          shape: const StadiumBorder(),
         ),
         child: confirmando
             ? Row(
@@ -483,14 +519,14 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    _controller.temFoto ? 'Enviando foto...' : 'Confirmando...',
+                    _controller.temFoto ? 'ENVIANDO FOTO...' : 'CONFIRMANDO...',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ],
               )
             : const Text(
                 'Confirmar localizacao',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
               ),
       ),
     );

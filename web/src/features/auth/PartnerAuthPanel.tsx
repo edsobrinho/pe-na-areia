@@ -241,7 +241,7 @@ export function PartnerAuthPanel({
   return (
     <div style={{ maxWidth: 880, margin: '1rem auto' }}>
       <SectionCard
-        eyebrow="Portal B2B · Identidade Visual Tropical Atlântico"
+        eyebrow="Portal B2B · Design System Brisa Minimalista"
         title={
           mode === 'register'
             ? 'Wizard de Credenciamento do Parceiro'

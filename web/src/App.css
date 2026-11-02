@@ -1,31 +1,56 @@
 :root {
-  /* Paleta Oficial "Tropical Atlântico — Pé na Areia" */
-  --ocean-900: #0b3b40;
-  --ocean-700: #0e817c;
-  --ocean-600: #139690;
-  --ocean-100: #e3f4f2;
-  --ocean-50: #f0f9f8;
-  --coral-600: #e86225;
-  --coral-500: #ff7a3d;
-  --coral-100: #fff0e8;
-  --sand-50: #f8f6f0;
-  --sand-100: #efe9dc;
-  --seafoam-700: #15803d;
-  --seafoam-100: #dcfce7;
-  --sun-400: #ffd600;
+  /* Design System Oficial "Brisa Minimalista — Sage & Apricot" (Extraído das 5 Telas) */
+  --sage-500: #8bbfb0;
+  --sage-600: #6fa898;
+  --sage-700: #4f8a7a;
+  --sage-300: #add3c8;
+  --sage-200: #a2ccc0;
+  --sage-100: #e8f3f0;
+
+  --apricot-500: #ff9749;
+  --apricot-400: #f59b56;
+  --apricot-600: #e07b2d;
+  --apricot-100: #fff3e8;
+
+  --canvas: #fafafa;
   --surface: #ffffff;
-  --ink-900: #122629;
-  --ink-700: #334e52;
-  --ink-500: #647b7f;
-  --line: #dce5e4;
-  --line-strong: #bfd0ce;
-  --danger-600: #dc2626;
-  --danger-100: #fee2e2;
-  --radius-sm: 10px;
-  --radius-md: 14px;
+  --placeholder: #eaeeed;
+
+  --ink-900: #292728;
+  --ink-700: #4a504f;
+  --ink-500: #9da5a3;
+  --line: #efefef;
+  --line-strong: #dce3e1;
+
+  --danger-600: #e05252;
+  --danger-100: #feecec;
+  --sun-400: #ffd600;
+
+  /* Aliases Semânticos Unificados do Ecossistema */
+  --ocean-900: #292728;
+  --ocean-800: #4f8a7a;
+  --ocean-700: #8bbfb0;
+  --ocean-600: #6fa898;
+  --ocean-100: #e8f3f0;
+  --ocean-50: #f4f9f7;
+  --coral-600: #e07b2d;
+  --coral-500: #ff9749;
+  --coral-100: #fff3e8;
+  --sand-50: #fafafa;
+  --sand-100: #eaeeed;
+  --sand-200: #efefef;
+  --seafoam-700: #4f8a7a;
+  --seafoam-100: #e8f3f0;
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
   --radius-lg: 20px;
-  --shadow-card: 0 10px 30px rgba(11, 59, 64, 0.06), 0 2px 6px rgba(11, 59, 64, 0.04);
-  --shadow-elevated: 0 18px 42px rgba(11, 59, 64, 0.12);
+  --radius-pill: 999px;
+  --shadow-sm: 0 4px 14px rgba(41, 39, 40, 0.04);
+  --shadow-md: 0 8px 24px rgba(41, 39, 40, 0.06);
+  --shadow-lg: 0 18px 42px rgba(41, 39, 40, 0.10);
+  --shadow-card: 0 8px 24px rgba(41, 39, 40, 0.04);
+  --shadow-elevated: 0 18px 42px rgba(41, 39, 40, 0.10);
 }
 
 *,
@@ -36,8 +61,8 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--sand-50);
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--canvas);
   color: var(--ink-900);
   -webkit-font-smoothing: antialiased;
 }
@@ -67,23 +92,21 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(14, 129, 124, 0.35);
+  outline: 3px solid rgba(139, 191, 176, 0.45);
   outline-offset: 2px;
 }
 
 /* =========================================================
-   SHELL & TOPBAR COSTEIRA
+   SHELL & TOPBAR MINIMALISTA CLARA (PADRÃO TELAS 01–05)
    ========================================================= */
 .app-shell {
   min-height: 100vh;
-  background: radial-gradient(circle at 100% 0%, rgba(14, 129, 124, 0.07) 0%, transparent 45%),
-    radial-gradient(circle at 0% 100%, rgba(255, 122, 61, 0.06) 0%, transparent 45%),
-    var(--sand-50);
+  background: var(--canvas);
   color: var(--ink-900);
 }
 
 .topbar-wrapper {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
   position: sticky;
@@ -92,7 +115,7 @@ textarea:focus-visible {
 }
 
 .topbar {
-  min-height: 76px;
+  min-height: 74px;
   max-width: 1220px;
   padding: 12px 24px;
   margin: 0 auto;
@@ -107,19 +130,19 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  color: var(--ocean-900);
+  color: var(--ink-900);
   text-decoration: none;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 18px;
   line-height: 1.15;
 }
 
 .brand small {
   display: block;
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--ink-500);
-  font-weight: 700;
-  letter-spacing: 0.07em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-top: 3px;
 }
@@ -129,20 +152,20 @@ textarea:focus-visible {
   height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 14px 14px 14px 4px;
-  background: linear-gradient(135deg, var(--ocean-700), var(--ocean-900));
+  border-radius: 14px;
+  background: var(--sage-500);
   color: #ffffff;
-  font-size: 21px;
-  box-shadow: 0 6px 16px rgba(14, 129, 124, 0.28);
+  font-size: 20px;
+  box-shadow: 0 6px 16px rgba(139, 191, 176, 0.32);
 }
 
 .nav-tabs {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--sand-50);
+  background: var(--canvas);
   padding: 5px;
-  border-radius: 12px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--line);
   flex-wrap: wrap;
 }
@@ -151,22 +174,23 @@ textarea:focus-visible {
   border: 0;
   background: transparent;
   color: var(--ink-700);
-  padding: 8px 14px;
-  border-radius: 9px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   transition: all 0.16s ease;
 }
 
 .nav-tabs button:hover {
-  color: var(--ocean-900);
-  background: rgba(14, 129, 124, 0.08);
+  color: var(--ink-900);
+  background: var(--sage-100);
 }
 
 .nav-tabs button.active {
-  background: var(--ocean-700);
+  background: var(--sage-500);
   color: #ffffff;
-  box-shadow: 0 3px 10px rgba(14, 129, 124, 0.25);
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(139, 191, 176, 0.35);
 }
 
 .session-box {
@@ -513,39 +537,41 @@ select[aria-invalid='true'] {
 }
 
 /* =========================================================
-   BOTÕES DO DESIGN SYSTEM
+   BOTÕES DO DESIGN SYSTEM (CÁPSULA SAGE MINT #8BBFB0)
    ========================================================= */
 button.primary,
 .button-primary {
-  min-height: 44px;
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--ocean-700);
-  background: linear-gradient(135deg, var(--ocean-700), var(--ocean-900));
+  min-height: 46px;
+  padding: 10px 24px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--sage-500);
+  background: var(--sage-500);
   color: #ffffff;
   font-weight: 700;
-  font-size: 13.5px;
-  box-shadow: 0 4px 12px rgba(14, 129, 124, 0.22);
-  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 16px rgba(139, 191, 176, 0.28);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
 }
 
 button.primary:not(:disabled):hover,
 .button-primary:not(:disabled):hover {
   transform: translateY(-1px);
-  filter: brightness(1.06);
-  box-shadow: 0 6px 18px rgba(14, 129, 124, 0.3);
+  background: var(--sage-600);
+  border-color: var(--sage-600);
+  box-shadow: 0 8px 20px rgba(111, 168, 152, 0.34);
 }
 
 button.secondary,
 label.secondary,
 .button-outline {
-  min-height: 42px;
-  padding: 9px 16px;
-  border-radius: var(--radius-sm);
+  min-height: 44px;
+  padding: 9px 20px;
+  border-radius: var(--radius-pill);
   border: 1.5px solid var(--line-strong);
   background: #ffffff;
-  color: var(--ocean-900);
-  font-weight: 700;
+  color: var(--ink-900);
+  font-weight: 600;
   font-size: 13px;
   transition: background 0.14s ease, border-color 0.14s ease;
 }
@@ -553,14 +579,14 @@ label.secondary,
 button.secondary:not(:disabled):hover,
 label.secondary:hover,
 .button-outline:not(:disabled):hover {
-  background: var(--ocean-50);
-  border-color: var(--ocean-700);
+  background: var(--sage-100);
+  border-color: var(--sage-500);
 }
 
 button.ghost {
   min-height: 38px;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
   background: transparent;
   color: var(--ink-700);
@@ -569,14 +595,14 @@ button.ghost {
 }
 
 button.ghost:not(:disabled):hover {
-  background: rgba(11, 59, 64, 0.06);
-  color: var(--ocean-900);
+  background: var(--placeholder);
+  color: var(--ink-900);
 }
 
 button.danger {
   min-height: 40px;
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
   border: 1px solid #fca5a5;
   background: var(--danger-100);
   color: var(--danger-600);
@@ -596,9 +622,9 @@ button.wide {
 /* Segmented Switch (Login / Cadastro) */
 .segmented {
   display: inline-flex;
-  background: var(--sand-50);
+  background: var(--canvas);
   padding: 4px;
-  border-radius: 11px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--line);
 }
 
@@ -606,16 +632,17 @@ button.wide {
   border: 0;
   background: transparent;
   color: var(--ink-700);
-  padding: 8px 14px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .segmented button.active {
-  background: var(--coral-500);
+  background: var(--sage-500);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(255, 122, 61, 0.3);
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(139, 191, 176, 0.32);
 }
 
 /* =========================================================
@@ -785,8 +812,8 @@ button.wide {
 
 .menu-card-price {
   font-size: 16px;
-  font-weight: 800;
-  color: var(--coral-600);
+  font-weight: 700;
+  color: var(--apricot-400);
 }
 
 .menu-card-actions {
@@ -1093,13 +1120,13 @@ legend {
 }
 
 .orders-filter-tab {
-  background: transparent;
-  border: none;
-  font-size: 14px;
-  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
   color: var(--ink-500);
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1108,13 +1135,15 @@ legend {
 }
 
 .orders-filter-tab:hover {
-  background: var(--sand-100);
-  color: var(--ocean-900);
+  border-color: var(--sage-500);
+  color: var(--ink-900);
 }
 
 .orders-filter-tab.active {
-  background: var(--ocean-900);
+  background: var(--sage-500);
+  border-color: var(--sage-500);
   color: #fff;
+  font-weight: 700;
 }
 
 .orders-filter-tab .tab-count {
@@ -1315,12 +1344,12 @@ legend {
   background: var(--ocean-100);
 }
 
-/* Courier Assigned Panel */
+/* Courier Assigned Panel (Padrão Tela 05) */
 .courier-assigned-box {
-  background: linear-gradient(135deg, rgba(14, 129, 124, 0.06), rgba(204, 251, 241, 0.2));
-  border: 1px solid var(--ocean-100);
+  background: var(--canvas);
+  border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 14px;
 }
 
 .courier-profile-row {
@@ -1330,11 +1359,11 @@ legend {
 }
 
 .courier-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--ocean-900);
-  color: #fff;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--placeholder);
+  color: var(--sage-700);
   display: flex;
   align-items: center;
   justify-content: center;

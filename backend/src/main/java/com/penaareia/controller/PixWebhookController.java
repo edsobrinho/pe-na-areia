@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+
 @RestController
 @RequestMapping("/webhooks/pix")
 @Tag(name = "Webhooks Pix", description = "Recebimento de notificacoes de pagamento Pix")
@@ -33,7 +36,11 @@ public class PixWebhookController {
     public OrderResponse receberConfirmacao(
             @RequestHeader(value = "X-Pix-Webhook-Token", required = false) String token,
             @Valid @RequestBody PixWebhookRequest request) {
-        if (!expectedToken.isEmpty() && !expectedToken.equals(token)) {
+        if (expectedToken.isEmpty()
+                || token == null
+                || !MessageDigest.isEqual(
+                        expectedToken.getBytes(StandardCharsets.UTF_8),
+                        token.trim().getBytes(StandardCharsets.UTF_8))) {
             throw new ForbiddenException("Token de webhook Pix inválido.");
         }
         return OrderResponse.fromEntity(orderService.confirmarPagamentoPixWebhook(request));

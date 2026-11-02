@@ -11,8 +11,11 @@ import '../../data/services/location_service.dart';
 import '../../domain/models/order.dart';
 import '../../domain/models/order_status.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import 'beach_radar_widget.dart';
 
+/// App Mobile do Entregador / Runner de Praia unificado ao Design System
+/// "Brisa Minimalista — Sage & Apricot" (Tela 05 `Order Details`).
 class CourierHomeScreen extends StatefulWidget {
   const CourierHomeScreen({
     super.key,
@@ -179,55 +182,83 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
   Future<void> _logout() async {
     await widget.authRepository.logout();
     if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          backgroundColor: AppColors.brandRed,
-          foregroundColor: Colors.white,
-          title: const Text('Entregas disponíveis'),
+          backgroundColor: AppColors.background,
+          title: const Text('Entregas na Praia'),
           actions: [
             IconButton(
               tooltip: 'Atualizar',
               onPressed: _loading ? null : _refresh,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh_rounded, color: AppColors.ink),
             ),
             IconButton(
               tooltip: 'Sair',
               onPressed: _logout,
-              icon: const Icon(Icons.logout),
+              icon: const Icon(Icons.logout_rounded, color: AppColors.ink700),
             ),
           ],
         ),
         body: _loading && _available.isEmpty && _active.isEmpty
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.sage500),
+              )
             : RefreshIndicator(
+                color: AppColors.sage500,
                 onRefresh: _refresh,
                 child: ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                   children: [
-                    if (_error != null)
-                      Card(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text(_error!),
+                    if (_error != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger100,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.danger500.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: AppColors.ink),
                         ),
                       ),
-                    Text('Minhas entregas',
-                        style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 16),
+                    ],
+                    const Text(
+                      'MINHAS ENTREGAS EM ROTA',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.7,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     if (_active.isEmpty)
-                      const ListTile(title: Text('Você não tem entregas em rota.'))
+                      _buildEmptyCard('Você não tem entregas em rota.')
                     else
                       ..._active.map(_buildActiveOrder),
-                    const SizedBox(height: 16),
-                    Text('Pedidos prontos',
-                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 22),
+                    const Text(
+                      'PEDIDOS PRONTOS NOS QUIOSQUES',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.7,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     if (_available.isEmpty)
-                      const ListTile(
-                          title: Text('Nenhum pedido disponível no momento.'))
+                      _buildEmptyCard('Nenhum pedido disponível no momento.')
                     else
                       ..._available.map(_buildAvailableOrder),
                   ],
@@ -235,65 +266,192 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
               ),
       );
 
-  Widget _buildAvailableOrder(Order order) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'Pedido ${order.id} · R\$ ${order.valorTotal.toStringAsFixed(2)}',
-                ),
-                subtitle: Text(_locationSummary(order)),
-                isThreeLine: true,
-                trailing: FilledButton(
-                  onPressed: _loading ? null : () => _accept(order),
-                  child: const Text('Aceitar'),
-                ),
-              ),
-              if (order.localizacao != null) _buildDestinationMap(order),
-            ],
-          ),
+  Widget _buildEmptyCard(String message) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Text(
+          message,
+          style: const TextStyle(color: AppColors.ink500, fontSize: 13.5),
         ),
       );
 
-  Widget _buildActiveOrder(Order order) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('Pedido ${order.id}'),
-                subtitle: Text(
-                  '${_locationSummary(order)}\nStatus: ${order.status.wireValue}',
+  Widget _buildAvailableOrder(Order order) => Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.line),
+          boxShadow: AppTheme.softCardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'PEDIDO #${order.id}',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppColors.ink,
+                  ),
                 ),
-                isThreeLine: true,
-                trailing: order.status == OrderStatus.aCaminho
-                    ? OutlinedButton(
-                        onPressed: _loading ? null : () => _markArrived(order),
-                        child: const Text('Cheguei'),
-                      )
-                    : FilledButton(
-                        onPressed:
-                            _loading ? null : () => _confirmDelivery(order),
-                        child: const Text('Confirmar'),
-                      ),
-              ),
-              BeachRadarWidget(
-                order: order,
-                courierLatitude: _courierLat,
-                courierLongitude: _courierLng,
-                onUpdateGps: () => _syncCourierGpsToActiveOrders(silent: false),
-              ),
-              if (order.localizacao != null) _buildDestinationMap(order),
-              const SizedBox(height: 10),
-              _buildQuickContactSection(order),
+                Text(
+                  'R\$ ${order.valorTotal.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.apricot400,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildInfoTile(
+              icon: Icons.location_on_outlined,
+              label: 'Destino na Faixa de Areia',
+              value: _locationSummary(order),
+            ),
+            if (order.localizacao != null) ...[
+              const SizedBox(height: 12),
+              _buildDestinationMap(order),
             ],
-          ),
+            const SizedBox(height: 14),
+            FilledButton(
+              onPressed: _loading ? null : () => _accept(order),
+              child: const Text('ACEITAR ENTREGA'),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildActiveOrder(Order order) => Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.line),
+          boxShadow: AppTheme.softCardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'PEDIDO #${order.id}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppColors.ink,
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.sage100,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    order.status.wireValue,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.sage700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildInfoTile(
+              icon: Icons.pin_drop_outlined,
+              label: 'Ponto de Encontro',
+              value: _locationSummary(order),
+            ),
+            BeachRadarWidget(
+              order: order,
+              courierLatitude: _courierLat,
+              courierLongitude: _courierLng,
+              onUpdateGps: () => _syncCourierGpsToActiveOrders(silent: false),
+            ),
+            if (order.localizacao != null) _buildDestinationMap(order),
+            const SizedBox(height: 12),
+            _buildQuickContactSection(order),
+            const SizedBox(height: 14),
+            if (order.status == OrderStatus.aCaminho)
+              OutlinedButton(
+                onPressed: _loading ? null : () => _markArrived(order),
+                child: const Text('CHEGUEI NO GUARDA-SOL'),
+              )
+            else
+              FilledButton(
+                onPressed: _loading ? null : () => _confirmDelivery(order),
+                child: const Text('CONFIRMAR ENTREGA'),
+              ),
+          ],
+        ),
+      );
+
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.placeholder,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(icon, size: 19, color: AppColors.ink700),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.ink500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       );
 
@@ -301,8 +459,13 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Avisos rápidos para o cliente na praia:',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            'AVISOS RÁPIDOS PARA O CLIENTE',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: AppColors.ink500,
+            ),
           ),
           const SizedBox(height: 6),
           Wrap(
@@ -311,7 +474,11 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
             children: _quickCourierMessages
                 .map(
                   (msg) => ActionChip(
-                    avatar: const Icon(Icons.send, size: 14),
+                    avatar: const Icon(
+                      Icons.send_rounded,
+                      size: 13,
+                      color: AppColors.sage600,
+                    ),
                     label: Text(msg, style: const TextStyle(fontSize: 11)),
                     onPressed: _loading
                         ? null
@@ -323,10 +490,11 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
           if (order.mensagens.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.line),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,7 +505,10 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Text(
                           '${m.senderRole == 'COURIER' ? 'Você' : 'Cliente'}: ${m.texto}',
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.ink700,
+                          ),
                         ),
                       ),
                     )
@@ -361,7 +532,7 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
         markerId: MarkerId('destino-${order.id}'),
         position: destination,
         icon: BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueYellow,
+          BitmapDescriptor.hueOrange,
         ),
         infoWindow: InfoWindow(
           title: location.descricaoLocal.isEmpty
@@ -374,7 +545,7 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
           markerId: MarkerId('courier-${order.id}'),
           position: courierLatLng,
           icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueAzure,
+            BitmapDescriptor.hueCyan,
           ),
           infoWindow: const InfoWindow(title: 'Sua posição na areia'),
         ),
@@ -385,23 +556,30 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
         Polyline(
           polylineId: PolylineId('radar-line-${order.id}'),
           points: [courierLatLng, destination],
-          color: const Color(0xFFFF7A3D),
+          color: AppColors.sage500,
           width: 4,
           patterns: [PatternItem.dash(16), PatternItem.gap(10)],
         ),
     };
 
-    return SizedBox(
-      height: 190,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: GoogleMap(
-          initialCameraPosition: CameraPosition(target: destination, zoom: 16),
-          markers: markers,
-          polylines: polylines,
-          myLocationEnabled: false,
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: AppColors.placeholder,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: SizedBox(
+        height: 185,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: GoogleMap(
+            initialCameraPosition: CameraPosition(target: destination, zoom: 16),
+            markers: markers,
+            polylines: polylines,
+            myLocationEnabled: false,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+          ),
         ),
       ),
     );
@@ -413,7 +591,7 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
     final description = location.descricaoLocal.isEmpty
         ? 'Ponto de entrega'
         : location.descricaoLocal;
-    return '$description\n${location.latitude.toStringAsFixed(5)}, '
-        '${location.longitude.toStringAsFixed(5)}';
+    return '$description (${location.latitude.toStringAsFixed(4)}, '
+        '${location.longitude.toStringAsFixed(4)})';
   }
 }

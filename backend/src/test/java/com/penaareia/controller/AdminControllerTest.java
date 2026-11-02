@@ -66,4 +66,18 @@ class AdminControllerTest {
                 "p-1", new AdminController.UpdatePartnershipRequest(false), admin)).isSameAs(updated);
         verify(service).setPartnershipActive("p-1", false);
     }
+
+    @Test
+    void setsDestaquePopularForAdmin() {
+        com.penaareia.service.KioskService kioskService = mock(com.penaareia.service.KioskService.class);
+        AdminController adminControllerWithKiosk = new AdminController(service, kioskService);
+        com.penaareia.model.Kiosk kiosk = new com.penaareia.model.Kiosk();
+        kiosk.setId("kiosk-1");
+        kiosk.setDestaquePopular(true);
+        when(kioskService.setDestaquePopular("kiosk-1", true)).thenReturn(kiosk);
+
+        com.penaareia.model.Kiosk res = adminControllerWithKiosk.setDestaquePopular(
+                "kiosk-1", new AdminController.DestaquePopularRequest(true), admin);
+        assertThat(res.isDestaquePopular()).isTrue();
+    }
 }

@@ -97,6 +97,27 @@ class CloudinaryStorageServiceTest {
         assertThatThrownBy(() -> service.enviarFotoLocal(
                 new MockMultipartFile("file", "nao-e-imagem", "application/octet-stream", new byte[12])))
                 .isInstanceOf(InvalidRequestException.class);
+
+        // Test partial magic byte sequences for branch coverage
+        byte[][] partialBytePatterns = {
+                {(byte) 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {(byte) 0xFF, (byte) 0xD8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {(byte) 0x89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {(byte) 0x89, 'P', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {(byte) 0x89, 'P', 'N', 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {'R', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {'R', 'I', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {'R', 'I', 'F', 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'X', 0, 0, 0},
+                {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'X', 0, 0},
+                {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'X', 0},
+                {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'X'}
+        };
+        for (byte[] pattern : partialBytePatterns) {
+            assertThatThrownBy(() -> service.enviarFotoLocal(
+                    new MockMultipartFile("file", "test.bin", "image/png", pattern)))
+                    .isInstanceOf(InvalidRequestException.class);
+        }
     }
 
     @Test

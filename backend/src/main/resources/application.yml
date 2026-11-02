@@ -29,11 +29,6 @@ management:
     sampling:
       probability: 1.0
 
-jwt:
-  # Nunca versione o secret real - defina via variavel de ambiente em producao
-  secret: ${JWT_SECRET:troque-este-segredo-antes-de-ir-para-producao}
-  expiration-ms: 86400000 # 24h
-
 springdoc:
   swagger-ui:
     path: /docs
@@ -43,14 +38,16 @@ springdoc:
 cloudinary:
   # Credenciais do upload de fotos (POST /uploads/location-photo e /uploads/menu-item-photo).
   # Em ambiente Docker local, CLOUDINARY_UPLOAD_PREFIX aponta para o container cloudinary-mock.
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
-  api-key: ${CLOUDINARY_API_KEY:}
-  api-secret: ${CLOUDINARY_API_SECRET:}
-  upload-prefix: ${CLOUDINARY_UPLOAD_PREFIX:}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:pe-na-areia-local}
+  api-key: ${CLOUDINARY_API_KEY:local-key-123456}
+  api-secret: ${CLOUDINARY_API_SECRET:local-secret-123456}
+  upload-prefix: ${CLOUDINARY_UPLOAD_PREFIX:http://localhost:8099}
 
 app:
+  pix:
+    webhook-token: ${PIX_WEBHOOK_TOKEN:${PIX_WEBHOOK_SECRET:dev-pix-webhook-token-secret-12345}}
   cors:
-    origins: ${APP_CORS_ORIGINS:http://localhost:*,http://127.0.0.1:*,http://localhost:8090,http://127.0.0.1:8090,http://localhost:5173,http://127.0.0.1:5173}
+    origins: ${APP_CORS_ORIGINS:http://localhost:*,http://127.0.0.1:*}
   delivery:
     # Raio máximo (em metros) para aceitar a confirmação de entrega do entregador
     confirmation-radius-meters: 60

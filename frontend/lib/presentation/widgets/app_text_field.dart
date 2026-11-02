@@ -57,7 +57,6 @@ class AppTextField extends StatelessWidget {
             decoration: InputDecoration(
               labelText: label,
               hintText: hint,
-              border: const OutlineInputBorder(),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,

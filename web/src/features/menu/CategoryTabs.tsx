@@ -1,19 +1,5 @@
 import type { MenuItem } from '../../types'
-
-export const COASTAL_CATEGORIES = [
-  'Água de Coco',
-  'Porções',
-  'Frutos do Mar',
-  'Pastéis',
-  'Bebidas',
-  'Cervejas & Drinks',
-  'Açaí & Gelados',
-  'Espetinhos',
-  'Lanches',
-  'Sobremesas',
-  'Combos Guarda-Sol',
-  'Outros',
-] as const
+import { COASTAL_CATEGORIES } from './categoryConstants'
 
 interface CategoryTabsProps {
   items: MenuItem[]

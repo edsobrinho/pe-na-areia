@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { COASTAL_CATEGORIES } from '../features/menu/CategoryTabs'
+import { COASTAL_CATEGORIES } from '../features/menu/categoryConstants'
 import type { MenuItem, MenuItemPayload } from '../types'
 
 interface MenuItemFormDialogProps {
@@ -31,11 +31,12 @@ export function MenuItemFormDialog({
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!photoFile) return
-    const url = URL.createObjectURL(photoFile)
-    setPhotoPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [photoFile])
+    return () => {
+      if (photoPreview && photoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(photoPreview)
+      }
+    }
+  }, [photoPreview])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -141,7 +142,15 @@ export function MenuItemFormDialog({
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => setPhotoFile(event.target.files?.[0] ?? null)}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null
+                  setPhotoFile(file)
+                  if (file) {
+                    setPhotoPreview(URL.createObjectURL(file))
+                  } else {
+                    setPhotoPreview(item?.fotoUrl ?? null)
+                  }
+                }}
               />
             </label>
             {photoPreview ? (

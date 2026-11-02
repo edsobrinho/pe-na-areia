@@ -113,9 +113,6 @@ public class KioskService {
         if (request.aceitaEmbalagemSustentavel() != null) {
             kiosk.setAceitaEmbalagemSustentavel(request.aceitaEmbalagemSustentavel());
         }
-        if (request.destaquePopular() != null) {
-            kiosk.setDestaquePopular(request.destaquePopular());
-        }
         if (request.cnpj() != null) {
             kiosk.setCnpj(cleanOrNull(request.cnpj()));
         }
@@ -159,9 +156,6 @@ public class KioskService {
         }
         if (request.aceitaEmbalagemSustentavel() != null) {
             kiosk.setAceitaEmbalagemSustentavel(request.aceitaEmbalagemSustentavel());
-        }
-        if (request.destaquePopular() != null) {
-            kiosk.setDestaquePopular(request.destaquePopular());
         }
         if (request.cnpj() != null) {
             kiosk.setCnpj(cleanOrNull(request.cnpj()));
@@ -302,6 +296,13 @@ public class KioskService {
         kiosk.setCardapio(cardapio);
         repository.save(kiosk);
         return target;
+    }
+
+    public Kiosk setDestaquePopular(String kioskId, boolean destaque) {
+        Kiosk kiosk = repository.findById(kioskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Quiosque não encontrado: " + kioskId));
+        kiosk.setDestaquePopular(destaque);
+        return repository.save(kiosk);
     }
 
     private Kiosk ownedKiosk(String operatorId) {

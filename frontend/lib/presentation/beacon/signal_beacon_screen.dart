@@ -24,7 +24,7 @@ class SignalBeaconScreen extends StatefulWidget {
 class _SignalBeaconScreenState extends State<SignalBeaconScreen>
     with SingleTickerProviderStateMixin {
   static const _duracaoSinal = Duration(minutes: 3);
-  static const _corLaranjaNeon = Color(0xFFFF7A3D);
+  static const _corLaranjaNeon = Color(0xFFFF9749);
   static const _corAmareloSolar = Color(0xFFFFD600);
   static const _corBranco = Colors.white;
 

@@ -131,29 +131,23 @@ class _PrototypeScreenState extends State<PrototypeScreen>
 
   Widget _buildHeader() => Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.ocean900,
-              AppColors.ocean800,
-              AppColors.ocean700,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: AppColors.surface,
+          border: Border(bottom: BorderSide(color: AppColors.line)),
         ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 12, 16),
+        padding: const EdgeInsets.fromLTRB(20, 12, 14, 12),
         child: Row(
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.sage500,
+                borderRadius: BorderRadius.circular(13),
               ),
               child: const Icon(
                 Icons.beach_access_rounded,
-                color: AppColors.mango500,
+                color: Colors.white,
+                size: 22,
               ),
             ),
             const SizedBox(width: 12),
@@ -164,31 +158,34 @@ class _PrototypeScreenState extends State<PrototypeScreen>
                   Text(
                     'Pé na Areia',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  SizedBox(height: 1),
                   Text(
-                    'TROPICAL ATLÂNTICO · EXPERIÊNCIA PARCEIRA',
+                    'ORLA DE SANTOS · DESIGN MINIMALISTA',
                     style: TextStyle(
-                      color: AppColors.ocean100,
+                      color: AppColors.ink500,
                       fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
                     ),
                   ),
                 ],
               ),
             ),
-            TextButton.icon(
+            FilledButton.icon(
               onPressed: widget.onLoginTap,
-              style: TextButton.styleFrom(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.sage500,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 38),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: const StadiumBorder(),
               ),
-              icon: const Icon(Icons.login, size: 18),
+              icon: const Icon(Icons.login, size: 16),
               label: const Text('Entrar'),
             ),
           ],
@@ -199,9 +196,9 @@ class _PrototypeScreenState extends State<PrototypeScreen>
         color: AppColors.surface,
         child: TabBar(
           controller: _tabController,
-          labelColor: AppColors.ocean900,
+          labelColor: AppColors.ink,
           unselectedLabelColor: AppColors.ink500,
-          indicatorColor: AppColors.mango500,
+          indicatorColor: AppColors.sage500,
           indicatorWeight: 3,
           labelStyle: const TextStyle(fontWeight: FontWeight.w700),
           tabs: const [
@@ -249,22 +246,30 @@ class _PrototypeScreenState extends State<PrototypeScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openCustomerStep(0),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(20),
           child: Ink(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.ocean900, AppColors.ocean700],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
+              color: AppColors.sage500,
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.waves_rounded, color: AppColors.mango500, size: 34),
-                SizedBox(width: 14),
-                Expanded(
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.sage200,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.waves_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -279,12 +284,12 @@ class _PrototypeScreenState extends State<PrototypeScreen>
                       SizedBox(height: 4),
                       Text(
                         'Peça dos quiosques e receba na areia.',
-                        style: TextStyle(color: AppColors.ocean100),
+                        style: TextStyle(color: AppColors.sage100),
                       ),
                     ],
                   ),
                 ),
-                Icon(
+                const Icon(
                   Icons.arrow_forward_ios,
                   color: Colors.white,
                   size: 16,
@@ -1123,13 +1128,13 @@ class _PrototypeScreenState extends State<PrototypeScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFECECEC)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.line),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x08000000),
-              offset: Offset(0, 2),
-              blurRadius: 8,
+              color: Color(0x0B292728),
+              offset: Offset(0, 6),
+              blurRadius: 20,
             ),
           ],
         ),
@@ -1147,12 +1152,10 @@ class _PrototypeScreenState extends State<PrototypeScreen>
         child: FilledButton.icon(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: positive ? AppColors.positive : AppColors.brandRed,
+            backgroundColor: positive ? AppColors.sage600 : AppColors.sage500,
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
+            shape: const StadiumBorder(),
             textStyle: const TextStyle(fontWeight: FontWeight.w700),
           ),
           icon: Icon(icon),
@@ -1347,7 +1350,7 @@ class _BeachMapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final bounds = Offset.zero & size;
-    canvas.drawRect(bounds, Paint()..color = const Color(0xFFE8F4F6));
+    canvas.drawRect(bounds, Paint()..color = AppColors.placeholder);
 
     final beach = Path()
       ..moveTo(size.width * 0.58, 0)
@@ -1360,7 +1363,7 @@ class _BeachMapPainter extends CustomPainter {
       ..lineTo(size.width, size.height)
       ..lineTo(size.width, 0)
       ..close();
-    canvas.drawPath(beach, Paint()..color = const Color(0xFFF7E8C9));
+    canvas.drawPath(beach, Paint()..color = AppColors.sage100);
 
     final sandEdge = Path()
       ..moveTo(size.width * 0.62, 0)
@@ -1373,14 +1376,14 @@ class _BeachMapPainter extends CustomPainter {
     canvas.drawPath(
       sandEdge,
       Paint()
-        ..color = const Color(0xFF80C9D2)
-        ..strokeWidth = 5
+        ..color = AppColors.sage500
+        ..strokeWidth = 3
         ..style = PaintingStyle.stroke,
     );
 
     final streetPaint = Paint()
       ..color = Colors.white
-      ..strokeWidth = 12;
+      ..strokeWidth = 10;
     for (var index = 1; index <= 3; index++) {
       final y = size.height * index / 4;
       canvas.drawLine(Offset.zero.translate(0, y), Offset(size.width * 0.62, y),
@@ -1397,10 +1400,10 @@ class _BeachMapPainter extends CustomPainter {
       streetPaint,
     );
 
-    final destinationDot = Paint()..color = const Color(0xFFFFC928);
+    final destinationDot = Paint()..color = AppColors.apricot500;
     canvas.drawCircle(
       Offset(size.width * 0.77, size.height * 0.28),
-      10,
+      9,
       destinationDot,
     );
   }
@@ -1526,22 +1529,22 @@ class _PrototypeNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF5D8),
-          borderRadius: BorderRadius.circular(12),
+          color: AppColors.sage100,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: const Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.info_outline, color: Color(0xFF9A6B00), size: 18),
+            Icon(Icons.info_outline, color: AppColors.sage700, size: 18),
             SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Protótipo visual com dados de exemplo. Entre no app para '
                 'acessar os fluxos conectados à API.',
                 style: TextStyle(
-                  color: Color(0xFF644B11),
+                  color: AppColors.ink700,
                   fontSize: 12,
                   height: 1.4,
                 ),

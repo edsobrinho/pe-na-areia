@@ -161,6 +161,17 @@ class OrderBeachLogisticsAndPixTest {
                 "token-invalido",
                 new PixWebhookRequest(charge.pixTxId(), "ord-pix-10", "CONCLUIDA")))
                 .isInstanceOf(ForbiddenException.class);
+
+        assertThatThrownBy(() -> webhookController.receberConfirmacao(
+                null,
+                new PixWebhookRequest(charge.pixTxId(), "ord-pix-10", "CONCLUIDA")))
+                .isInstanceOf(ForbiddenException.class);
+
+        PixWebhookController unconfiguredController = new PixWebhookController(orderService, "");
+        assertThatThrownBy(() -> unconfiguredController.receberConfirmacao(
+                "qualquer-token",
+                new PixWebhookRequest(charge.pixTxId(), "ord-pix-10", "CONCLUIDA")))
+                .isInstanceOf(ForbiddenException.class);
     }
 }
 

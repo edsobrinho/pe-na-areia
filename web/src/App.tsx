@@ -91,8 +91,14 @@ function App() {
   }, [session])
 
   useEffect(() => {
+    let ignore = false
     if (session && session.role !== 'ADMIN') {
-      void loadPartnerData()
+      void Promise.resolve().then(() => {
+        if (!ignore) void loadPartnerData()
+      })
+    }
+    return () => {
+      ignore = true
     }
   }, [session, loadPartnerData])
 

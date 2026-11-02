@@ -337,9 +337,27 @@ const createOrder = await aparecimentoA.call('POST', '/orders', {
 check('pedido criado 201', createOrder.status === 201, JSON.stringify(createOrder.data));
 const order = createOrder.data || {};
 const orderId = order.id;
-check('status inicial PAGO/EM_PREPARO e pago=true', order.status === 'EM_PREPARO' && order.pago === true, JSON.stringify({ status: order.status, pago: order.pago }));
+check('status inicial CRIADO e pago=false', order.status === 'CRIADO' && order.pago === false, JSON.stringify({ status: order.status, pago: order.pago }));
 check('total calculado no servidor = 62.50 (2x12.00 + 1x38.50)', Number(order.valorTotal) === 62.5, String(order.valorTotal));
 check('Pix Copia e Cola e TxID gerados no servidor', !!order.pixTxId && String(order.pixCopiaECola).includes('br.gov.bcb.pix'), JSON.stringify({ pixTxId: order.pixTxId }));
+
+// Confirmação do pagamento Pix via Webhook autenticado com token secreto
+const webhookPix = await fetch(BASE + '/webhooks/pix', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Pix-Webhook-Token': process.env.PIX_WEBHOOK_TOKEN || 'pe-na-areia-pix-webhook-secret',
+  },
+  body: JSON.stringify({
+    txId: order.pixTxId,
+    orderId: order.id,
+    status: 'CONCLUIDA',
+  }),
+});
+const webhookData = await webhookPix.json();
+check('Webhook Pix autenticado confirma pagamento e transiciona para EM_PREPARO (200)',
+  webhookPix.status === 200 && webhookData?.status === 'EM_PREPARO' && webhookData?.pago === true,
+  JSON.stringify(webhookData));
 check('fotoLocalUrl e fotoVisaoPostoUrl do Cloudinary Docker vinculadas ao pedido',
   order.fotoLocalUrl === uploadLocalRes.data.secureUrl &&
   order.fotoVisaoPostoUrl === uploadVisaoPostoRes.data.secureUrl);

@@ -19,9 +19,11 @@ import '../../domain/models/payment_method.dart';
 import '../beacon/signal_beacon_screen.dart';
 import '../location_selection/location_selection_controller.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import 'beach_cart_screen.dart';
 import 'beach_spot_form_screen.dart';
 import 'kiosk_storefront_screen.dart';
+import 'menu_item_details_sheet.dart';
 import 'popular_kiosks_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -51,68 +53,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     'Estou próximo ao posto selecionado',
   ];
 
-  static const List<({String id, String label, IconData icon, Color bg})>
-      _beachCategories = [
-    (
-      id: 'Porções',
-      label: 'Porções',
-      icon: Icons.restaurant_menu,
-      bg: AppColors.sand100,
-    ),
-    (
-      id: 'Frutos do Mar',
-      label: 'Frutos do Mar',
-      icon: Icons.set_meal_outlined,
-      bg: AppColors.sand50,
-    ),
-    (
-      id: 'Bebidas',
-      label: 'Bebidas',
-      icon: Icons.local_drink_outlined,
-      bg: AppColors.sand100,
-    ),
-    (
-      id: 'Lanches',
-      label: 'Lanches',
-      icon: Icons.lunch_dining_outlined,
-      bg: AppColors.sand50,
-    ),
-    (
-      id: 'Açaí & Gelados',
-      label: 'Açaí & Gelados',
-      icon: Icons.icecream_outlined,
-      bg: AppColors.sand100,
-    ),
-    (
-      id: 'RETORNABLE',
-      label: 'Retornáveis',
-      icon: Icons.recycling,
-      bg: Color(0xFFE0F2FE),
-    ),
-    (
-      id: 'TOP',
-      label: 'Bem avaliados',
-      icon: Icons.workspace_premium_outlined,
-      bg: Color(0xFFFEF3C7),
-    ),
-    (
-      id: 'Sobremesas',
-      label: 'Doces',
-      icon: Icons.cake_outlined,
-      bg: AppColors.sand50,
-    ),
-    (
-      id: 'FREE_DELIVERY',
-      label: 'Entrega Grátis',
-      icon: Icons.directions_walk,
-      bg: Color(0xFFDCFCE7),
-    ),
-    (
-      id: 'ALL',
-      label: 'Todos',
-      icon: Icons.beach_access_outlined,
-      bg: AppColors.sand100,
-    ),
+  static const List<({String id, String label})> _beachCategories = [
+    (id: 'ALL', label: 'Todos'),
+    (id: 'RETORNABLE', label: 'Retornáveis'),
+    (id: 'FREE_DELIVERY', label: 'Entrega Grátis'),
+    (id: 'Porções', label: 'Porções'),
+    (id: 'Frutos do Mar', label: 'Frutos do Mar'),
+    (id: 'Bebidas', label: 'Bebidas'),
+    (id: 'Lanches', label: 'Lanches'),
+    (id: 'Açaí & Gelados', label: 'Açaí & Gelados'),
+    (id: 'TOP', label: 'Destaques'),
+    (id: 'Sobremesas', label: 'Doces'),
   ];
 
   int _currentTabIndex = 0;
@@ -129,8 +80,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   String _searchQuery = '';
   String _selectedCategoryFilter = 'ALL';
-  bool _onlyReturnableFilter = false;
-  bool _onlyFreeDeliveryFilter = false;
+  final bool _onlyReturnableFilter = false;
+  final bool _onlyFreeDeliveryFilter = false;
   String _sortMode = 'DEFAULT';
 
   final Map<String, int> _quantities = {};
@@ -226,6 +177,23 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         _quantities[item.id] = quantity;
       }
     });
+  }
+
+  void _openItemDetails(MenuItem item) {
+    final current = _quantities[item.id] ?? 0;
+    MenuItemDetailsSheet.show(
+      context,
+      item: item,
+      currentQuantity: current,
+      onAddQuantity: (targetQty) {
+        final delta = targetQty - current;
+        if (delta != 0) {
+          _changeQuantity(item, delta);
+        } else if (current == 0) {
+          _changeQuantity(item, 1);
+        }
+      },
+    );
   }
 
   Future<OrderLocation?> _openBeachSpotForm() async {
@@ -353,7 +321,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       setState(() {
         _order = order;
         _quantities.clear();
-        _currentTabIndex = 1; // Vai para a aba Pedidos acompanhar ao vivo
+        _currentTabIndex = 1;
       });
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -474,7 +442,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: _loadingCatalog
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.sage500),
+            )
           : IndexedStack(
               index: _currentTabIndex,
               children: [
@@ -483,523 +453,667 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 _buildAccountTab(),
               ],
             ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.sand100,
-        selectedIndex: _currentTabIndex,
-        onDestinationSelected: (idx) => setState(() => _currentTabIndex = idx),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home, color: AppColors.ocean900),
-            label: 'Início',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: _order != null,
-              label: const Text('1'),
-              child: const Icon(Icons.receipt_long_outlined),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          boxShadow: AppTheme.bottomSheetShadow,
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildBottomNavItem(
+                  index: 0,
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
+                  tooltip: 'Início',
+                ),
+                _buildBottomNavAction(
+                  icon: Icons.search_rounded,
+                  tooltip: 'Quiosques populares',
+                  onTap: _openPopularKiosksScreen,
+                ),
+                _buildBottomNavItem(
+                  index: 1,
+                  icon: Icons.shopping_bag_outlined,
+                  activeIcon: Icons.shopping_bag_rounded,
+                  tooltip: 'Pedidos',
+                  badgeCount: _order != null ? 1 : totalUnits,
+                ),
+                _buildBottomNavItem(
+                  index: 2,
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  tooltip: 'Conta',
+                ),
+              ],
             ),
-            selectedIcon: const Icon(
-              Icons.receipt_long,
-              color: AppColors.ocean900,
-            ),
-            label: 'Pedidos',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person, color: AppColors.ocean900),
-            label: 'Conta',
-          ),
-        ],
+        ),
       ),
     );
   }
 
+  Widget _buildBottomNavItem({
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String tooltip,
+    int badgeCount = 0,
+  }) {
+    final selected = _currentTabIndex == index;
+    final iconWidget = Icon(
+      selected ? activeIcon : icon,
+      size: 25,
+      color: selected ? AppColors.sage500 : AppColors.ink400,
+    );
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: () => setState(() => _currentTabIndex = index),
+      icon: badgeCount > 0
+          ? Badge(
+              backgroundColor: AppColors.apricot500,
+              label: Text('$badgeCount'),
+              child: iconWidget,
+            )
+          : iconWidget,
+    );
+  }
+
+  Widget _buildBottomNavAction({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) =>
+      IconButton(
+        tooltip: tooltip,
+        onPressed: onTap,
+        icon: Icon(icon, size: 25, color: AppColors.ink400),
+      );
+
   // ===========================================================================
-  // ABA 1: INÍCIO — VITRINE PRINCIPAL DE DESCOBERTA DA ORLA (TELA 2)
+  // ABA 1: INÍCIO — TELA 01 (`Home`: Header Claro + Promo #8BBFB0 + Inset Cards)
   // ===========================================================================
   Widget _buildDiscoveryTab(int totalUnits) {
     final filteredKiosks = _filteredKiosks;
     final popularKiosks =
         _kiosks.where((k) => k.destaquePopular).toList(growable: false);
+    final userInitial = widget.session.name.trim().isEmpty
+        ? 'P'
+        : widget.session.name.trim()[0].toUpperCase();
 
     return RefreshIndicator(
+      color: AppColors.sage500,
       onRefresh: _loadCatalog,
       child: ListView(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: [
-          // Header Costeiro (Localização + Sacola + Busca + Banner Praia Limpa)
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 48, 16, 18),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.ocean900, AppColors.ocean700],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(24),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Linha superior: Ponto na Praia + Ícone da Sacola com Badge
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      color: AppColors.destination,
-                      size: 20,
+          // Top Bar Minimalista Clara (Padrão Exato da Tela 01 `Home`)
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Definir ponto na areia',
+                    onPressed: _openBeachSpotForm,
+                    icon: const Icon(
+                      Icons.menu_rounded,
+                      color: AppColors.ink,
+                      size: 24,
                     ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: InkWell(
-                        onTap: _openBeachSpotForm,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                _currentBeachSpot != null
-                                    ? '${_currentBeachSpot!.etiquetaAmigavel} · ${_currentBeachSpot!.pontoReferenciaId.toUpperCase()}'
-                                    : 'Escolher meu ponto na areia · Santos, SP',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
+                  ),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: _openBeachSpotForm,
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Início',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.location_on_rounded,
+                                size: 13,
+                                color: AppColors.apricot500,
+                              ),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  _currentBeachSpot != null
+                                      ? '${_currentBeachSpot!.etiquetaAmigavel} · ${_currentBeachSpot!.pontoReferenciaId.toUpperCase()}'
+                                      : 'Marcar guarda-sol · Orla de Santos',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.ink500,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const Icon(
-                              Icons.keyboard_arrow_down,
-                              color: Colors.white70,
-                              size: 18,
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
+                  ),
+                  if (totalUnits > 0)
                     IconButton(
                       tooltip: 'Abrir sacola',
                       onPressed: _openBeachCart,
                       icon: Badge(
-                        isLabelVisible: totalUnits > 0,
-                        backgroundColor: AppColors.mango500,
+                        backgroundColor: AppColors.apricot500,
                         label: Text('$totalUnits'),
                         child: const Icon(
-                          Icons.shopping_cart_outlined,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Barra de Busca Instantânea
-                TextField(
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: 'Porções, água de coco, açaí ou quiosque...',
-                    prefixIcon: const Icon(Icons.search, color: Colors.black54),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(28),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Banner Sustentável / Identidade Pé na Areia
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.ocean500.withValues(alpha: 0.42),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.mango500,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'ENTREGA NO GUARDA-SOL',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Olá, ${widget.session.name}! Peça com Embalagem Retornável na orla.',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.tonal(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.sand100,
-                          foregroundColor: AppColors.ocean900,
-                        ),
-                        onPressed: _openBeachSpotForm,
-                        child: const Text(
-                          'Marcar Pin',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_error != null) ...[
-                  _errorCard(_error!),
-                  const SizedBox(height: 12),
-                ],
-
-                // Seletor compacto de Canal de Venda (Parceria)
-                if (_partnerships.isNotEmpty) ...[
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.verified_outlined,
-                        size: 18,
-                        color: AppColors.ocean700,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Canal de venda:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: DropdownButtonFormField<Partnership>(
-                          value: _selectedPartnership,
-                          isDense: true,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            filled: true,
-                            fillColor: AppColors.surface,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          items: _partnerships
-                              .map(
-                                (partnership) => DropdownMenuItem(
-                                  value: partnership,
-                                  child: Text(partnership.name),
-                                ),
-                              )
-                              .toList(growable: false),
-                          onChanged: _loadingCatalog
-                              ? null
-                              : (partnership) {
-                                  if (partnership != null &&
-                                      partnership.id !=
-                                          _selectedPartnership?.id) {
-                                    _loadCatalog(
-                                      selectedPartnership: partnership,
-                                    );
-                                  }
-                                },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                // Carrossel de Categorias em Pílula (Estilo Figma 01/02 - "All, Discount, Snack, etc.")
-                SizedBox(
-                  height: 42,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _beachCategories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final cat = _beachCategories[index];
-                      final selected = _selectedCategoryFilter == cat.id;
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(999),
-                        onTap: () => setState(() {
-                          _selectedCategoryFilter = selected ? 'ALL' : cat.id;
-                        }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: selected ? AppColors.ocean700 : AppColors.surface,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: selected ? AppColors.ocean700 : AppColors.sand200,
-                              width: 1.2,
-                            ),
-                            boxShadow: selected
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.ocean700.withValues(alpha: 0.24),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                cat.icon,
-                                size: 18,
-                                color: selected ? Colors.white : AppColors.ocean900,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                cat.label,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                                  color: selected ? Colors.white : AppColors.ink,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 18),
-
-                // Seção Horizontal: Quiosques Populares na Orla
-                if (popularKiosks.isNotEmpty) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Quiosques populares na orla',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                          Icons.shopping_bag_outlined,
                           color: AppColors.ink,
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'Ver todos os quiosques populares',
-                        onPressed: _openPopularKiosksScreen,
-                        icon: const Icon(Icons.chevron_right),
+                    ),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: () => setState(() => _currentTabIndex = 2),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: AppColors.placeholder,
+                        shape: BoxShape.circle,
                       ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 86,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: popularKiosks.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        final kiosk = popularKiosks[index];
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => _openKioskStorefront(kiosk),
-                          child: Container(
-                            width: 78,
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppColors.ocean900,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.beach_access,
-                                  color: AppColors.destination,
-                                  size: 26,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  kiosk.nome,
-                                  maxLines: 2,
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                      alignment: Alignment.center,
+                      child: Text(
+                        userInitial,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppColors.ink700,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
                 ],
+              ),
+            ),
+          ),
 
-                // Barra de Chips de Filtro e Ordenação
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+          // Barra de Busca Branca Flutuante (`Search` - Tela 01)
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.line),
+              boxShadow: AppTheme.softCardShadow,
+            ),
+            child: TextField(
+              onChanged: (val) => setState(() => _searchQuery = val),
+              decoration: const InputDecoration(
+                hintText: 'Buscar porções, água de coco ou quiosque...',
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: AppColors.ink400,
+                  size: 20,
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 13),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          if (_error != null) ...[
+            _errorCard(_error!),
+            const SizedBox(height: 16),
+          ],
+
+          // Seção SPECIAL FOR YOU + Card Promocional Sage Mint (#8BBFB0 - Tela 01)
+          const Text(
+            'ESPECIAL PARA VOCÊ',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.7,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.sage500,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AppTheme.softCardShadow,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      PopupMenuButton<String>(
-                        onSelected: (v) => setState(() => _sortMode = v),
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(
-                            value: 'DEFAULT',
-                            child: Text('Melhor avaliação'),
+                      const Text(
+                        'Entrega Sustentável na Faixa de Areia',
+                        style: TextStyle(
+                          color: AppColors.sage100,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Olá, ${widget.session.name.split(' ').first}!',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            '0%',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                          PopupMenuItem(
-                            value: 'TEMPO',
-                            child: Text('Menor tempo na areia'),
-                          ),
-                          PopupMenuItem(
-                            value: 'TAXA',
-                            child: Text('Menor taxa de entrega'),
+                          SizedBox(width: 6),
+                          Text(
+                            'plástico descartável',
+                            style: TextStyle(
+                              color: AppColors.sage100,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
-                        child: Chip(
-                          backgroundColor: AppColors.surface,
-                          label: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Ordenar'),
-                              SizedBox(width: 4),
-                              Icon(Icons.keyboard_arrow_down, size: 16),
-                            ],
+                      ),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: _openBeachSpotForm,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.sage300,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _currentBeachSpot == null
+                                ? 'MARCAR GUARDA-SOL'
+                                : 'ALTERAR PONTO',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.7,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilterChip(
-                        label: const Text('♻️ Embalagem Retornável'),
-                        selected: _onlyReturnableFilter,
-                        onSelected: (val) =>
-                            setState(() => _onlyReturnableFilter = val),
-                      ),
-                      const SizedBox(width: 8),
-                      FilterChip(
-                        label: const Text('🏃 Entrega grátis'),
-                        selected: _onlyFreeDeliveryFilter,
-                        onSelected: (val) =>
-                            setState(() => _onlyFreeDeliveryFilter = val),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
-
-                // Lista de Quiosques da Orla
-                Text(
-                  'Quiosques',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                const SizedBox(width: 14),
+                Container(
+                  width: 104,
+                  height: 116,
+                  decoration: BoxDecoration(
+                    color: AppColors.sage200,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.beach_access_rounded,
+                      size: 46,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                if (filteredKiosks.isEmpty)
-                  const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text(
-                        'Nenhum quiosque está disponível para este filtro.',
-                      ),
-                    ),
-                  )
-                else ...[
-                  ...filteredKiosks.map(_buildDiscoveryKioskCard),
-                  const SizedBox(height: 16),
-                  _buildKioskSelector(),
-                  if (_selectedKiosk case final kiosk?) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Cardápio rápido de ${kiosk.nome}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _openKioskStorefront(kiosk),
-                          icon: const Icon(Icons.storefront, size: 16),
-                          label: const Text('Abrir loja completa'),
-                        ),
-                      ],
-                    ),
-                    if (kiosk.cardapio.isEmpty)
-                      const ListTile(
-                        title: Text(
-                          'Este quiosque não possui itens no cardápio.',
-                        ),
-                      )
-                    else
-                      ...kiosk.cardapio
-                          .where((item) => item.disponivel)
-                          .map(_buildMenuItem),
-                    if (kiosk.aceitaEmbalagemSustentavel)
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Embalagem sustentável'),
-                        value: _sustainablePackaging,
-                        onChanged: (value) =>
-                            setState(() => _sustainablePackaging = value),
-                      ),
-                    const SizedBox(height: 8),
-                    _buildCheckout(kiosk),
-                  ],
-                ],
               ],
             ),
           ),
+          const SizedBox(height: 10),
+          // Indicadores de paginação do carrossel (exatos da Tela 01)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 18,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.sage500,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              for (var i = 0; i < 4; i++)
+                Container(
+                  width: 5,
+                  height: 5,
+                  margin: const EdgeInsets.only(left: 5),
+                  decoration: const BoxDecoration(
+                    color: AppColors.sage200,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          // Seletor compacto de Canal de Venda (Parceria)
+          if (_partnerships.length > 1) ...[
+            Row(
+              children: [
+                const Icon(
+                  Icons.verified_outlined,
+                  size: 17,
+                  color: AppColors.sage600,
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Canal:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
+                    color: AppColors.ink700,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: DropdownButtonFormField<Partnership>(
+                    value: _selectedPartnership,
+                    isDense: true,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    items: _partnerships
+                        .map(
+                          (partnership) => DropdownMenuItem(
+                            value: partnership,
+                            child: Text(partnership.name),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: _loadingCatalog
+                        ? null
+                        : (partnership) {
+                            if (partnership != null &&
+                                partnership.id != _selectedPartnership?.id) {
+                              _loadCatalog(selectedPartnership: partnership);
+                            }
+                          },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+          ],
+
+          // Carrossel de Pílulas de Categoria (Padrão Tela 02: All, Discount, Snack...)
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _beachCategories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final cat = _beachCategories[index];
+                final selected = _selectedCategoryFilter == cat.id;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () => setState(() {
+                    _selectedCategoryFilter = selected ? 'ALL' : cat.id;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.sage500 : AppColors.surface,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: selected ? AppColors.sage500 : AppColors.line,
+                      ),
+                    ),
+                    child: Text(
+                      cat.label,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? Colors.white : AppColors.ink500,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Cabeçalho da Seção RESTAURANT / QUIOSQUES
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'QUIOSQUES NA ORLA',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.7,
+                  color: AppColors.ink,
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PopupMenuButton<String>(
+                    tooltip: 'Ordenar quiosques',
+                    onSelected: (v) => setState(() => _sortMode = v),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'DEFAULT',
+                        child: Text('Melhor avaliação'),
+                      ),
+                      PopupMenuItem(
+                        value: 'TEMPO',
+                        child: Text('Menor tempo na areia'),
+                      ),
+                      PopupMenuItem(
+                        value: 'TAXA',
+                        child: Text('Menor taxa de entrega'),
+                      ),
+                    ],
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Ordenar',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.ink700,
+                            ),
+                          ),
+                          Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 16,
+                            color: AppColors.ink700,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (popularKiosks.isNotEmpty)
+                    TextButton(
+                      onPressed: _openPopularKiosksScreen,
+                      child: const Text('Ver todos'),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (filteredKiosks.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: const Text(
+                'Nenhum quiosque está disponível para este filtro.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.ink500),
+              ),
+            )
+          else ...[
+            ...filteredKiosks.map(_buildDiscoveryKioskCard),
+            const SizedBox(height: 20),
+            _buildKioskSelector(),
+            if (_selectedKiosk case final kiosk?) ...[
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'CARDÁPIO DE ${kiosk.nome.toUpperCase()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.7,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => _openKioskStorefront(kiosk),
+                    child: const Text('Ver vitrine'),
+                  ),
+                ],
+              ),
+              if (kiosk.cardapio.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'Este quiosque não possui itens no cardápio.',
+                    style: TextStyle(color: AppColors.ink500),
+                  ),
+                )
+              else
+                ...kiosk.cardapio
+                    .where((item) => item.disponivel)
+                    .map(_buildMenuItem),
+              if (kiosk.aceitaEmbalagemSustentavel) ...[
+                const SizedBox(height: 6),
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => setState(
+                    () => _sustainablePackaging = !_sustainablePackaging,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.line),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: _sustainablePackaging
+                                ? AppColors.sage500
+                                : AppColors.surface,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _sustainablePackaging
+                                  ? AppColors.sage500
+                                  : AppColors.lineStrong,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: _sustainablePackaging
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Embalagem retornável / sustentável',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              _buildCheckout(kiosk),
+            ],
+          ],
         ],
       ),
     );
   }
 
+  /// Card Inset de Quiosque (Padrão Exato das Telas 01 e 02):
+  /// Fundo `#FFFFFF`, borda `20px`, padding interno `12px` ao redor da foto
+  /// arredondada (`14px`), subtítulo sutil + tag à direita, título forte `#292728`,
+  /// estrelas `★★★★★` em damasco `#FF9749` e entregador + distância/tempo à direita.
   Widget _buildDiscoveryKioskCard(Kiosk kiosk) {
     final offer = _offersByKioskId[kiosk.id];
     final imageUrl = kiosk.imagemDestaqueUrl;
@@ -1015,165 +1129,121 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ) /
             1000.0
         : 0.4;
+    final subtitle = kiosk.categoriasDisponiveis.isEmpty
+        ? 'Orla de Santos - Culinária Praiana'
+        : '${kiosk.pontoReferenciaId.isEmpty ? 'Orla de Santos' : kiosk.pontoReferenciaId.toUpperCase()} - ${kiosk.categoriasDisponiveis.first}';
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.sand200, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.ocean900.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.line),
+        boxShadow: AppTheme.softCardShadow,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           onTap: () => _openKioskStorefront(kiosk),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Imagem Superior com Proporção Costeira & Badges Flutuantes (Figma 01/02)
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                    child: SizedBox(
-                      height: 130,
-                      width: double.infinity,
-                      child: imageUrl != null
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _kioskBannerFallback(),
-                            )
-                          : _kioskBannerFallback(),
-                    ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    height: 156,
+                    width: double.infinity,
+                    child: imageUrl != null && imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _kioskBannerFallback(),
+                          )
+                        : _kioskBannerFallback(),
                   ),
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface.withValues(alpha: 0.94),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star_rounded, size: 16, color: AppColors.destination),
-                          const SizedBox(width: 3),
-                          Text(
-                            kiosk.avaliacaoMedia.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (kiosk.aceitaEmbalagemSustentavel)
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.seafoam700,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.eco, size: 13, color: Colors.white),
-                            SizedBox(width: 4),
-                            Text(
-                              'Retornável',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              // Conteúdo Descritivo do Quiosque
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      kiosk.nome,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
+                    Expanded(
+                      child: Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.ink500,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.place_outlined, size: 14, color: AppColors.ocean700),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${distKm.toStringAsFixed(1)} km da areia',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ocean900,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('•', style: TextStyle(color: Colors.grey.shade400)),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.access_time, size: 14, color: AppColors.ink500),
-                        const SizedBox(width: 3),
-                        Text(
-                          timeRange,
-                          style: const TextStyle(fontSize: 12, color: AppColors.ink500),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: fee <= 0 ? const Color(0xFFDCFCE7) : AppColors.sand100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            fee <= 0 ? 'Entrega Grátis' : 'Taxa R\$ ${fee.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: fee <= 0 ? AppColors.seafoam700 : AppColors.ocean900,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    Text(
+                      fee <= 0
+                          ? 'Entrega Grátis'
+                          : kiosk.aceitaEmbalagemSustentavel
+                              ? 'Retornável ♻️'
+                              : 'Taxa R\$ ${fee.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: fee <= 0 || kiosk.aceitaEmbalagemSustentavel
+                            ? AppColors.sage600
+                            : AppColors.ink700,
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 3),
+                Text(
+                  kiosk.nome,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    ...List.generate(
+                      5,
+                      (_) => const Icon(
+                        Icons.star_rounded,
+                        size: 14.5,
+                        color: AppColors.apricot500,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      kiosk.avaliacaoMedia.toStringAsFixed(1),
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.ink500,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Icons.delivery_dining_rounded,
+                      size: 16,
+                      color: AppColors.apricot500,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${distKm.toStringAsFixed(1)}Km - $timeRange',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1181,69 +1251,121 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _kioskBannerFallback() => Container(
-        color: AppColors.sand100,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.beach_access_rounded, color: AppColors.ocean700.withValues(alpha: 0.6), size: 36),
-              const SizedBox(height: 4),
-              const Text(
-                'Quiosque Pé na Areia',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.ocean900),
-              ),
-            ],
+        color: AppColors.placeholder,
+        child: const Center(
+          child: Icon(
+            Icons.beach_access_rounded,
+            color: AppColors.sage500,
+            size: 40,
           ),
         ),
       );
 
   // ===========================================================================
-  // ABA 2: PEDIDOS — LIVE TRACKING, PIX COPIA E COLA, FAROL VISUAL E MENSAGENS
+  // ABA 2: PEDIDOS — TELA 05 (`Order Details`: Mapa #EAEEED + Cards Flutuantes)
   // ===========================================================================
   Widget _buildOrdersTab() {
     final order = _order;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        const Text(
-          'Meus Pedidos na Praia',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            color: AppColors.ink,
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Voltar ao início',
+                  onPressed: () => setState(() => _currentTabIndex = 0),
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Detalhes do Pedido',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Atualizar status',
+                  onPressed:
+                      order == null || _refreshingOrder ? null : _refreshOrder,
+                  icon: _refreshingOrder
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.sage500,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.more_vert_rounded,
+                          color: AppColors.ink,
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 12),
         if (order == null)
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+          Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.line),
+              boxShadow: AppTheme.softCardShadow,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  const Icon(
+            child: Column(
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: const BoxDecoration(
+                    color: AppColors.placeholder,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
                     Icons.beach_access_outlined,
-                    size: 48,
-                    color: AppColors.ocean700,
+                    size: 32,
+                    color: AppColors.sage500,
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Você ainda não tem um pedido em andamento na praia.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Nenhum pedido em andamento',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: AppColors.ink,
                   ),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.mango500,
-                    ),
-                    onPressed: () => setState(() => _currentTabIndex = 0),
-                    child: const Text('Explorar quiosques na orla'),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Escolha seu quiosque favorito na orla e acompanhe o entregador até o seu guarda-sol.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.ink500,
+                    height: 1.45,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 18),
+                FilledButton(
+                  onPressed: () => setState(() => _currentTabIndex = 0),
+                  child: const Text('EXPLORAR QUIOSQUES'),
+                ),
+              ],
             ),
           )
         else
@@ -1253,57 +1375,83 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   // ===========================================================================
-  // ABA 3: CONTA — PERFIL DO BANHISTA E SINALIZADOR SOLAR (TELA 6)
+  // ABA 3: CONTA — PERFIL MINIMALISTA DO BANHISTA
   // ===========================================================================
   Widget _buildAccountTab() => ListView(
-        padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: [
-          // Cabeçalho com Nome do Cliente e Botão de Suporte
-          Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        widget.session.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.ink,
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: AppColors.placeholder,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      color: AppColors.ink700,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.session.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                          ),
                         ),
-                      ),
+                        const Text(
+                          'Banhista · Orla de Santos',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.ink500,
+                          ),
+                        ),
+                      ],
                     ),
-                    const Icon(Icons.chevron_right),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: 'Suporte na praia',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Suporte Pé na Areia ativo para a Orla de Santos!',
-                      ),
+                  ),
+                  IconButton(
+                    tooltip: 'Suporte na praia',
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Suporte Pé na Areia ativo para a Orla de Santos!',
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.support_agent_outlined,
+                      color: AppColors.ink,
                     ),
-                  );
-                },
-                icon: const Icon(Icons.support_agent_outlined),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
 
           // Card de Acesso Rápido em 3 Colunas
           Container(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.line),
+              boxShadow: AppTheme.softCardShadow,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1330,7 +1478,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 _buildAccountQuickAction(
                   icon: Icons.receipt_long_outlined,
                   label: 'Pedidos',
-                  subtitle: _order != null ? '1 ativo' : 'Ver histórico',
+                  subtitle: _order != null ? '1 ativo' : 'Histórico',
                   onTap: () => setState(() => _currentTabIndex = 1),
                 ),
               ],
@@ -1338,20 +1486,29 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Banner Educativo: Conheça o Sinalizador Solar (Farol de Tela Cheia)
+          // Banner Educativo: Sinalizador Solar
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.sand50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.sand100),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.line),
+              boxShadow: AppTheme.softCardShadow,
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.flashlight_on_rounded,
-                  size: 38,
-                  color: AppColors.mango500,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.apricot100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.flashlight_on_rounded,
+                    size: 24,
+                    color: AppColors.apricot500,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -1359,24 +1516,29 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Farol Visual na Faixa de Areia',
+                        'Farol Visual na Areia',
                         style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
                           color: AppColors.ink,
                         ),
                       ),
+                      SizedBox(height: 2),
                       Text(
-                        'Levante o celular para o entregador te avistar no guarda-sol',
-                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                        'Levante o celular para o entregador ver seu guarda-sol',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.ink500,
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.ocean900,
-                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
                   onPressed: () {
                     Navigator.of(context).push(
@@ -1390,24 +1552,28 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       ),
                     );
                   },
-                  child: const Text('Testar'),
+                  child: const Text('TESTAR'),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
           // Menu de Opções em Lista
-          Card(
-            elevation: 0,
-            color: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.line),
+              boxShadow: AppTheme.softCardShadow,
             ),
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.credit_card_outlined),
+                  leading: const Icon(
+                    Icons.credit_card_outlined,
+                    color: AppColors.sage600,
+                  ),
                   title: const Text('Formas de pagamento'),
                   subtitle: Text(
                     _paymentMethod == PaymentMethod.pix
@@ -1425,7 +1591,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.place_outlined),
+                  leading: const Icon(
+                    Icons.place_outlined,
+                    color: AppColors.sage600,
+                  ),
                   title: const Text('Pontos de entrega na praia'),
                   subtitle: Text(
                     _savedBeachSpots.isEmpty
@@ -1437,7 +1606,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.favorite_outline),
+                  leading: const Icon(
+                    Icons.favorite_outline,
+                    color: AppColors.apricot500,
+                  ),
                   title: const Text('Quiosques favoritos'),
                   subtitle: Text(
                     '${_favoriteKioskIds.length} quiosque(s) favoritado(s)',
@@ -1448,38 +1620,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(
-                    Icons.verified_user_outlined,
-                    color: AppColors.seafoam500,
-                  ),
-                  title: const Text('Entrega Garantida no Pin (Raio 60m)'),
-                  subtitle: const Text(
-                    'Validação por GPS e Bússola Pedestre na Areia',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => setState(() => _currentTabIndex = 1),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.password_outlined),
-                  title: const Text('Código e Sinalizador de entrega'),
-                  subtitle: Text(
-                    _order != null
-                        ? 'Pedido ativo #${_order!.id}'
-                        : 'Disponível quando houver entrega em rota',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => setState(() => _currentTabIndex = 1),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(
-                    Icons.logout,
-                    color: AppColors.brandRed,
+                    Icons.logout_rounded,
+                    color: AppColors.danger500,
                   ),
                   title: const Text(
                     'Sair da conta',
                     style: TextStyle(
-                      color: AppColors.brandRed,
+                      color: AppColors.danger500,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1498,25 +1645,33 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     required VoidCallback onTap,
   }) =>
       InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Column(
             children: [
-              Icon(icon, color: AppColors.mango500, size: 28),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.placeholder,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.sage600, size: 22),
+              ),
               const SizedBox(height: 6),
               Text(
                 label,
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                  fontSize: 12.5,
                   color: AppColors.ink,
                 ),
               ),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 11, color: Colors.black54),
+                style: const TextStyle(fontSize: 11, color: AppColors.ink500),
               ),
             ],
           ),
@@ -1524,150 +1679,214 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       );
 
   // ===========================================================================
-  // WIDGETS COMPARTILHADOS DE SELEÇÃO E ACOMPANHAMENTO DO PEDIDO
+  // WIDGETS COMPARTILHADOS DE SELEÇÃO E ACOMPANHAMENTO (TELAS 04 E 05)
   // ===========================================================================
   Widget _buildKioskSelector() => SizedBox(
-        height: 46,
+        height: 36,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: _kiosks.length,
           separatorBuilder: (_, __) => const SizedBox(width: 8),
           itemBuilder: (context, index) {
             final kiosk = _kiosks[index];
-            return ChoiceChip(
-              label: Text(kiosk.nome),
-              selected: _selectedKiosk?.id == kiosk.id,
-              onSelected: (_) => _selectKiosk(kiosk),
+            final selected = _selectedKiosk?.id == kiosk.id;
+            return InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => _selectKiosk(kiosk),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.sage500 : AppColors.surface,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: selected ? AppColors.sage500 : AppColors.line,
+                  ),
+                ),
+                child: Text(
+                  kiosk.nome,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? Colors.white : AppColors.ink500,
+                  ),
+                ),
+              ),
             );
           },
         ),
       );
 
+  /// Card Horizontal de Item do Cardápio (Padrão Tela 04 + Toque abre Tela 03)
   Widget _buildMenuItem(MenuItem item) {
     final quantity = _quantities[item.id] ?? 0;
     final hasPhoto = item.fotoUrl != null && item.fotoUrl!.isNotEmpty;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: hasPhoto
-                  ? Image.network(
-                      item.fotoUrl!,
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _menuItemPlaceholder(),
-                    )
-                  : _menuItemPlaceholder(),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.nome,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.line),
+        boxShadow: AppTheme.softCardShadow,
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => _openItemDetails(item),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: hasPhoto
+                    ? Image.network(
+                        item.fotoUrl!,
+                        width: 76,
+                        height: 76,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _menuItemPlaceholder(),
+                      )
+                    : _menuItemPlaceholder(),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.nome,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: AppColors.ink,
+                            ),
                           ),
                         ),
-                      ),
-                      if (item.returnablePackaging)
-                        const Tooltip(
-                          message: 'Embalagem retornável',
-                          child: Text('🌱', style: TextStyle(fontSize: 15)),
-                        ),
-                    ],
-                  ),
-                  if (item.descricao.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        item.descricao,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        if (item.returnablePackaging)
+                          const Tooltip(
+                            message: 'Embalagem retornável',
+                            child: Icon(
+                              Icons.recycling_rounded,
+                              size: 16,
+                              color: AppColors.sage600,
+                            ),
+                          ),
+                      ],
                     ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Text(
-                        'R\$ ${item.preco.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                    if (item.descricao.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          item.descricao,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.ink500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Spacer(),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.sand100,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Remover ${item.nome}',
-                              onPressed: quantity == 0
-                                  ? null
-                                  : () => _changeQuantity(item, -1),
-                              icon: const Icon(Icons.remove, size: 16),
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.all(4),
-                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Text(
-                                '$quantity',
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.stepperBg,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: AppColors.line),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Remover ${item.nome}',
+                                onPressed: quantity == 0
+                                    ? null
+                                    : () => _changeQuantity(item, -1),
+                                icon: const Icon(
+                                  Icons.remove,
+                                  size: 15,
+                                  color: AppColors.ink500,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(
+                                  minWidth: 28,
+                                  minHeight: 28,
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              tooltip: 'Adicionar ${item.nome}',
-                              onPressed: () => _changeQuantity(item, 1),
-                              icon: const Icon(Icons.add, size: 16, color: AppColors.mango500),
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.all(4),
-                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                            ),
-                          ],
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 6),
+                                child: Text(
+                                  '$quantity',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13.5,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Adicionar ${item.nome}',
+                                onPressed: () => _changeQuantity(item, 1),
+                                icon: const Icon(
+                                  Icons.add,
+                                  size: 15,
+                                  color: AppColors.ink500,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(
+                                  minWidth: 28,
+                                  minHeight: 28,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const Spacer(),
+                        Text(
+                          'R\$ ${item.preco.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: AppColors.apricot400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _menuItemPlaceholder() => Container(
-        width: 72,
-        height: 72,
+        width: 76,
+        height: 76,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
+          color: AppColors.placeholder,
+          borderRadius: BorderRadius.circular(14),
         ),
         child: const Center(
-          child: Text('🍽️', style: TextStyle(fontSize: 28)),
+          child: Icon(
+            Icons.fastfood_rounded,
+            size: 28,
+            color: AppColors.sage500,
+          ),
         ),
       );
 
@@ -1677,272 +1896,406 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       (sum, item) => sum + item.preco * (_quantities[item.id] ?? 0),
     );
     final hasItems = _quantities.isNotEmpty;
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: hasItems ? _openBeachCart : null,
-            icon: const Icon(Icons.shopping_bag_outlined),
-            label: Text('Ver sacola ($_totalCartUnits)'),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.line),
+        boxShadow: AppTheme.softCardShadow,
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'TOTAL ($_totalCartUnits)',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.6,
+                  color: AppColors.ink500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'R\$ ${total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.apricot400,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          flex: 2,
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.mango500,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: hasItems && !_submittingOrder ? _checkout : null,
-            icon: _submittingOrder
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.location_on_outlined),
-            label: Text(
-              _submittingOrder
-                  ? 'Finalizando pedido...'
-                  : 'Escolher local · R\$ ${total.toStringAsFixed(2)}',
+          const SizedBox(width: 14),
+          Expanded(
+            child: FilledButton(
+              onPressed: hasItems && !_submittingOrder ? _openBeachCart : null,
+              child: Text(
+                _submittingOrder ? 'FINALIZANDO...' : 'REVISAR SACOLA',
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
+  /// Rastreamento ao Vivo inspirado diretamente na Tela 05 (`Order Details`):
+  /// Mapa em moldura `#EAEEED`, Card Flutuante do Entregador com 2 botões
+  /// circulares em `#8BBFB0` (Mensagem e Telefone) e Card `PEDIDO` com caixas
+  /// de ícone `38×38` em `#EAEEED` (`Endereço na Areia` e `Previsão`).
   Widget _buildOrderTracking(Order order) {
     final location = order.localizacao;
     final distMetros = order.distanciaEntregadorMetros;
     final canActivateBeacon = order.podeAtivarSinalizador;
     final isCourierOnRoute = order.status == OrderStatus.aCaminho ||
         order.status == OrderStatus.chegouNoLocal;
+    final etaMinutes = distMetros != null ? (distMetros / 80).ceil() : 12;
+    final etaFormatted =
+        '${etaMinutes.toString().padLeft(2, '0')}:00 min · ${_statusLabel(order.status)}';
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Acompanhe seu pedido',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Atualizar status',
-                  onPressed: _refreshingOrder ? null : _refreshOrder,
-                  icon: _refreshingOrder
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh),
-                ),
-              ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Mapa em Moldura #EAEEED (Tela 05)
+        if (location != null) ...[
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.placeholder,
+              borderRadius: BorderRadius.circular(24),
             ),
-            Text('Pedido ${order.id} · ${_statusLabel(order.status)}'),
-            // Card Flutuante de Perfil do Entregador / Runner (Estilo Figma 05 - "Natalya Undergrowth / Runner")
-            if (isCourierOnRoute) ...[
-              const SizedBox(height: 12),
+            child: _locationMap(order, location),
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        // 2. Card Flutuante do Entregador (Tela 05 - "Natalya Undergrowth")
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.line),
+            boxShadow: AppTheme.softCardShadow,
+          ),
+          child: Column(
+            children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 34,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.sand200, width: 1.2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.ocean900.withValues(alpha: 0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  color: AppColors.dragHandle,
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: AppColors.ocean100,
-                      child: const Icon(Icons.directions_run, color: AppColors.ocean700, size: 28),
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: const BoxDecoration(
+                      color: AppColors.placeholder,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            order.courierNome?.isNotEmpty == true
-                                ? order.courierNome!
-                                : 'Entregador de Praia (Runner)',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.coral100,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  distMetros != null ? 'Previsão: ${(distMetros / 80).ceil()} min' : 'Em rota na areia',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.coral600,
-                                  ),
-                                ),
-                              ),
-                              if (order.courierVeiculo != null && order.courierVeiculo!.isNotEmpty) ...[
-                                const SizedBox(width: 6),
-                                Text(
-                                  '• ${order.courierVeiculo}',
-                                  style: const TextStyle(fontSize: 11, color: AppColors.ink500),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
+                    child: const Icon(
+                      Icons.directions_run_rounded,
+                      color: AppColors.sage600,
+                      size: 24,
                     ),
-                    if (order.courierTelefone != null && order.courierTelefone!.isNotEmpty)
-                      IconButton.filledTonal(
-                        style: IconButton.styleFrom(
-                          backgroundColor: AppColors.sand100,
-                          foregroundColor: AppColors.ocean900,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order.courierNome?.isNotEmpty == true
+                              ? order.courierNome!
+                              : isCourierOnRoute
+                                  ? 'Runner de Praia'
+                                  : 'Aguardando Runner',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: AppColors.ink,
+                          ),
                         ),
-                        tooltip: 'Ligar para entregador',
-                        onPressed: () {},
-                        icon: const Icon(Icons.phone_outlined, size: 20),
-                      ),
-                  ],
-                ),
+                        const SizedBox(height: 2),
+                        Text(
+                          order.courierVeiculo?.isNotEmpty == true
+                              ? '${_statusLabel(order.status)} · ${order.courierVeiculo}'
+                              : _statusLabel(order.status),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.ink500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Botão Circular Sage Mint: Mensagem Rápida
+                  _buildCircularSageButton(
+                    icon: Icons.mail_outline_rounded,
+                    tooltip: 'Enviar aviso ao entregador',
+                    onTap: () => _sendQuickClientMessage(
+                      _quickClientMessages.first,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Botão Circular Sage Mint: Telefone
+                  _buildCircularSageButton(
+                    icon: Icons.phone_outlined,
+                    tooltip: 'Contato do entregador',
+                    onTap: () {
+                      final tel = order.courierTelefone ?? 'indisponível';
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Telefone do entregador: $tel'),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children: [
-                if (order.pago)
-                  const Chip(
-                    avatar:
-                        Icon(Icons.check_circle, color: AppColors.positive),
-                    label: Text('Pago (Zero dinheiro na areia)'),
-                  ),
-              ],
-            ),
-            if (order.pixCopiaECola != null &&
-                order.pixCopiaECola!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _buildPixPaymentBox(order),
-            ],
-            if (location != null) ...[
-              const SizedBox(height: 8),
-              _locationMap(order, location),
-              if (location.descricaoLocal.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text('Ponto escolhido: ${location.descricaoLocal}'),
-                ),
-              if (location.contatoNome != null &&
-                  location.contatoNome!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Recebedor: ${location.contatoNome} (${location.etiquetaAmigavel})',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // 3. Card ORDER (Tela 05 - Endereço & Tempo + Botão Cápsula #8BBFB0)
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.line),
+            boxShadow: AppTheme.softCardShadow,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 34,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.dragHandle,
+                    borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-            ],
-            if (canActivateBeacon) ...[
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'PEDIDO #${order.id}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.7,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  Text(
+                    'R\$ ${order.valorTotal.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.apricot400,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFFF7A3D)),
-                ),
-                child: const Text(
-                  '🏖️ Seu entregador está a menos de 60m na areia! Saia do mar e ative o Sinalizador para ser visto.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFC2410C),
-                  ),
-                ),
+              _buildOrderInfoTile(
+                icon: Icons.location_on_outlined,
+                label: 'Ponto de Entrega na Areia',
+                value: location != null && location.descricaoLocal.isNotEmpty
+                    ? location.descricaoLocal
+                    : 'Orla de Santos · Guarda-sol marcado no Pin',
               ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF7A3D),
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SignalBeaconScreen(
-                      orderId: order.id,
-                      descricaoLocal: order.localizacao?.descricaoLocal,
+              const SizedBox(height: 10),
+              _buildOrderInfoTile(
+                icon: Icons.access_time_rounded,
+                label: 'Previsão e Status',
+                value: etaFormatted,
+              ),
+              if (order.pixCopiaECola != null &&
+                  order.pixCopiaECola!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildPixPaymentBox(order),
+              ],
+              if (canActivateBeacon) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.apricot100,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.apricot500.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: const Text(
+                    '🏖️ Entregador a menos de 60m! Ative o Sinalizador de tela cheia para ser visto na areia.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.apricot600,
                     ),
                   ),
                 ),
-                icon: const Icon(Icons.flashlight_on_outlined),
-                label: const Text('🔦 Ativar Sinalizador na Praia'),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.apricot500,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SignalBeaconScreen(
+                          orderId: order.id,
+                          descricaoLocal: order.localizacao?.descricaoLocal,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.flashlight_on_outlined, size: 18),
+                    label: const Text('ATIVAR SINALIZADOR NA PRAIA'),
+                  ),
+                ),
+              ],
+              if (isCourierOnRoute) ...[
+                const SizedBox(height: 12),
+                _buildClientQuickMessages(order),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _refreshingOrder ? null : _refreshOrder,
+                  child: Text(
+                    _refreshingOrder
+                        ? 'ATUALIZANDO...'
+                        : 'ATUALIZAR DETALHES',
+                  ),
+                ),
               ),
             ],
-            if (isCourierOnRoute) ...[
-              const SizedBox(height: 12),
-              _buildClientQuickMessages(order),
-            ],
-            const SizedBox(height: 8),
-            const Text(
-              'O status e a posição do entregador são atualizados em tempo real.',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCircularSageButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) =>
+      Tooltip(
+        message: tooltip,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onTap,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: AppColors.sage500,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: Colors.white),
+          ),
+        ),
+      );
+
+  Widget _buildOrderInfoTile({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.placeholder,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(icon, size: 19, color: AppColors.ink700),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.ink500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
+      );
 
   Widget _buildPixPaymentBox(Order order) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.teal.shade50,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.teal.shade200),
+          color: AppColors.sage100,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.sage300),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.pix, size: 18, color: Colors.teal),
+                const Icon(Icons.pix, size: 18, color: AppColors.sage700),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'Pix Antecipado · TxID: ${order.pixTxId ?? 'PNA'}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                      fontSize: 12.5,
+                      color: AppColors.ink,
                     ),
                   ),
                 ),
                 TextButton.icon(
                   onPressed: () => _copyPixCode(order.pixCopiaECola!),
-                  icon: const Icon(Icons.copy, size: 16),
+                  icon: const Icon(Icons.copy, size: 15),
                   label: const Text('Copiar Pix'),
                 ),
               ],
@@ -1951,7 +2304,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               order.pixCopiaECola!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: Colors.black54),
+              style: const TextStyle(fontSize: 11, color: AppColors.ink500),
             ),
           ],
         ),
@@ -1961,8 +2314,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Contato rápido de emergência na areia:',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            'AVISOS RÁPIDOS NA AREIA',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: AppColors.ink500,
+            ),
           ),
           const SizedBox(height: 6),
           Wrap(
@@ -1971,7 +2329,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             children: _quickClientMessages
                 .map(
                   (msg) => ActionChip(
-                    avatar: const Icon(Icons.chat_bubble_outline, size: 14),
+                    avatar: const Icon(
+                      Icons.chat_bubble_outline,
+                      size: 14,
+                      color: AppColors.sage600,
+                    ),
                     label: Text(msg, style: const TextStyle(fontSize: 11)),
                     onPressed: _refreshingOrder
                         ? null
@@ -1983,10 +2345,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           if (order.mensagens.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.line),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1997,7 +2360,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Text(
                           '${m.senderRole == 'CLIENT' ? 'Você' : 'Entregador'}: ${m.texto}',
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.ink700,
+                          ),
                         ),
                       ),
                     )
@@ -2016,15 +2382,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         : null;
 
     return SizedBox(
-      height: 190,
+      height: 215,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(18),
         child: GoogleMap(
           initialCameraPosition: CameraPosition(target: position, zoom: 16),
           markers: {
             Marker(
               markerId: const MarkerId('destino-pedido'),
               position: position,
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange,
+              ),
               infoWindow: InfoWindow(
                 title: location.descricaoLocal.isEmpty
                     ? 'Local de entrega'
@@ -2036,7 +2405,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 markerId: const MarkerId('entregador-pedido'),
                 position: courierLatLng,
                 icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueAzure,
+                  BitmapDescriptor.hueOrange,
                 ),
                 infoWindow: const InfoWindow(title: 'Entregador na praia'),
               ),
@@ -2046,7 +2415,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               Polyline(
                 polylineId: const PolylineId('rota-areia'),
                 points: [courierLatLng, position],
-                color: const Color(0xFFFF7A3D),
+                color: AppColors.sage500,
                 width: 4,
               ),
           },
@@ -2057,11 +2426,34 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 
-  Widget _errorCard(String message) => Card(
-        color: Theme.of(context).colorScheme.errorContainer,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(message),
+  Widget _errorCard(String message) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.danger100,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.danger500.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.danger500,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: AppColors.ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
       );
 

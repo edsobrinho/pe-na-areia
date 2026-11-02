@@ -437,4 +437,30 @@ class PartnershipServiceTest {
         return new PartnershipDtos.PreviewRequest(List.of(
                 new PartnershipDtos.PreviewItemRequest(menuItemId, quantity)));
     }
+
+    @Test
+    void isWithinWindowAtHandlesAllBranchCombinations() {
+        LocalTime t10 = LocalTime.of(10, 0);
+        LocalTime t14 = LocalTime.of(14, 0);
+        LocalTime t18 = LocalTime.of(18, 0);
+        LocalTime t22 = LocalTime.of(22, 0);
+        LocalTime t02 = LocalTime.of(2, 0);
+
+        // start == end -> always true
+        assertThat(PartnershipService.isWithinWindowAt(t10, t10, t10)).isTrue();
+
+        // start < end (day window: 10:00 to 18:00)
+        assertThat(PartnershipService.isWithinWindowAt(t14, t10, t18)).isTrue();
+        assertThat(PartnershipService.isWithinWindowAt(t10, t10, t18)).isTrue();
+        assertThat(PartnershipService.isWithinWindowAt(LocalTime.of(9, 0), t10, t18)).isFalse();
+        assertThat(PartnershipService.isWithinWindowAt(t18, t10, t18)).isFalse();
+        assertThat(PartnershipService.isWithinWindowAt(t22, t10, t18)).isFalse();
+
+        // start > end (overnight window: 22:00 to 02:00)
+        assertThat(PartnershipService.isWithinWindowAt(t22, t22, t02)).isTrue();
+        assertThat(PartnershipService.isWithinWindowAt(LocalTime.of(23, 0), t22, t02)).isTrue();
+        assertThat(PartnershipService.isWithinWindowAt(LocalTime.of(1, 0), t22, t02)).isTrue();
+        assertThat(PartnershipService.isWithinWindowAt(t02, t22, t02)).isFalse();
+        assertThat(PartnershipService.isWithinWindowAt(t14, t22, t02)).isFalse();
+    }
 }

@@ -10,6 +10,7 @@ import com.penaareia.dto.OrderTrackingDtos.OrderMessageRequest;
 import com.penaareia.dto.OrderTrackingDtos.PixChargeResponse;
 import com.penaareia.dto.StatusUpdateRequest;
 import com.penaareia.model.Order;
+import com.penaareia.model.User;
 import com.penaareia.service.BusinessRuleException;
 import com.penaareia.service.OrderEventStreamService;
 import com.penaareia.service.OrderService;
@@ -143,10 +144,7 @@ public class OrderController {
     })
     public OrderResponse buscar(@PathVariable String id, Authentication authentication) {
         Order order = orderService.buscarPorId(id);
-        if (!authentication.getName().equals(order.getUserId())
-                && !authentication.getName().equals(order.getCourierId())) {
-            throw new BusinessRuleException("Você não tem acesso a este pedido.");
-        }
+        validarAcessoAoPedido(order, authentication);
         return OrderResponse.fromEntity(order);
     }
 
@@ -154,11 +152,38 @@ public class OrderController {
     @Operation(summary = "Stream SSE em tempo real de status e localização do entregador")
     public SseEmitter acompanharEmTempoReal(@PathVariable String id, Authentication authentication) {
         Order order = orderService.buscarPorId(id);
-        if (!authentication.getName().equals(order.getUserId())
-                && !authentication.getName().equals(order.getCourierId())) {
+        validarAcessoAoPedido(order, authentication);
+        return streamService.subscribe(order);
+    }
+
+    private void validarAcessoAoPedido(Order order, Authentication authentication) {
+        if (authentication == null) {
             throw new BusinessRuleException("Você não tem acesso a este pedido.");
         }
-        return streamService.subscribe(order);
+        String callerId = authentication.getName();
+        if (callerId.equals(order.getUserId())) {
+            return;
+        }
+        if (order.getCourierId() != null && callerId.equals(order.getCourierId())) {
+            return;
+        }
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (isAdmin) {
+            return;
+        }
+        boolean isKioskOperator = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_KIOSK_OPERATOR".equals(a.getAuthority()));
+        if (isKioskOperator) {
+            try {
+                User user = orderService.buscarUsuario(callerId);
+                if (user != null && user.getKioskId() != null && user.getKioskId().equals(order.getKioskId())) {
+                    return;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        throw new BusinessRuleException("Você não tem acesso a este pedido.");
     }
 
     @PatchMapping("/{id}/status")

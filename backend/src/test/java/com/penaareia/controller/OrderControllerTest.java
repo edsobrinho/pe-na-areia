@@ -316,4 +316,108 @@ class OrderControllerTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.mensagem").value("Item indisponivel no cardapio: m3"));
     }
+
+    @Test
+    void buscarPedidoRetorna200ParaClienteDono() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setUserId("u1");
+        when(orderService.buscarPorId("ord-1")).thenReturn(order);
+
+        mockMvc.perform(get("/orders/ord-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("o1"));
+    }
+
+    @Test
+    void buscarPedidoRetorna422ParaUsuarioNaoAutorizado() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setUserId("outro-cliente");
+        when(orderService.buscarPorId("ord-1")).thenReturn(order);
+
+        mockMvc.perform(get("/orders/ord-1"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.mensagem").value("Você não tem acesso a este pedido."));
+    }
+
+    @Test
+    @WithMockUser(username = "admin-1", roles = "ADMIN")
+    void buscarPedidoRetorna200ParaAdmin() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setUserId("outro-cliente");
+        when(orderService.buscarPorId("ord-1")).thenReturn(order);
+
+        mockMvc.perform(get("/orders/ord-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("o1"));
+    }
+
+    @Test
+    @WithMockUser(username = "operator-1", roles = "KIOSK_OPERATOR")
+    void buscarPedidoRetorna200ParaOperadorDoQuiosque() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setUserId("outro-cliente");
+        order.setKioskId("kiosk-burgman");
+
+        com.penaareia.model.User user = new com.penaareia.model.User();
+        user.setId("operator-1");
+        user.setKioskId("kiosk-burgman");
+        user.setRole("KIOSK_OPERATOR");
+
+        when(orderService.buscarPorId("ord-1")).thenReturn(order);
+        when(orderService.buscarUsuario("operator-1")).thenReturn(user);
+
+        mockMvc.perform(get("/orders/ord-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("o1"));
+    }
+
+    @Test
+    @WithMockUser(username = "operator-1", roles = "KIOSK_OPERATOR")
+    void listarPedidosDoQuiosqueRetornaLista() throws Exception {
+        com.penaareia.model.User user = new com.penaareia.model.User();
+        user.setId("operator-1");
+        user.setKioskId("kiosk-burgman");
+
+        when(orderService.buscarUsuario("operator-1")).thenReturn(user);
+        when(workflowService.listarPedidosDoQuiosque("kiosk-burgman", "ALL"))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/orders/kiosk/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void buscarPedidoRetorna200ParaEntregadorDesignado() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setUserId("outro-cliente");
+        order.setCourierId("courier-1");
+
+        when(orderService.buscarPorId("ord-1")).thenReturn(order);
+
+        mockMvc.perform(get("/orders/ord-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("o1"));
+    }
+
+    @Test
+    @WithMockUser(username = "operator-outro", roles = "KIOSK_OPERATOR")
+    void buscarPedidoRetorna422ParaOperadorDeOutroQuiosque() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setUserId("outro-cliente");
+        order.setKioskId("kiosk-burgman");
+
+        com.penaareia.model.User user = new com.penaareia.model.User();
+        user.setId("operator-outro");
+        user.setKioskId("outro-quiosque");
+        user.setRole("KIOSK_OPERATOR");
+
+        when(orderService.buscarPorId("ord-1")).thenReturn(order);
+        when(orderService.buscarUsuario("operator-outro")).thenReturn(user);
+
+        mockMvc.perform(get("/orders/ord-1"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.mensagem").value("Você não tem acesso a este pedido."));
+    }
 }

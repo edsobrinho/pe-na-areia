@@ -96,4 +96,26 @@ class KioskControllerTest {
 
         verify(kioskService).listarAtivos();
     }
+
+    @Test
+    void listarQuiosquesComPartnershipIdDelegaParaPartnershipService() throws Exception {
+        when(partnershipService.listKiosksForPartnership("p-1")).thenReturn(List.of(Fixtures.kioskAtivo()));
+
+        mockMvc.perform(get("/kiosks").param("partnershipId", "p-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(Fixtures.KIOSK_ID));
+
+        verify(partnershipService).listKiosksForPartnership("p-1");
+    }
+
+    @Test
+    void listarQuiosquesComPartnershipIdEmBrancoDelegaParaKioskService() throws Exception {
+        when(kioskService.listarAtivos()).thenReturn(List.of(Fixtures.kioskAtivo()));
+
+        mockMvc.perform(get("/kiosks").param("partnershipId", "   "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(Fixtures.KIOSK_ID));
+
+        verify(kioskService).listarAtivos();
+    }
 }

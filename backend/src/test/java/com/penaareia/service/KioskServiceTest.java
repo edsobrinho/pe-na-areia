@@ -6,6 +6,7 @@ import com.penaareia.dto.KioskMenuDtos.UpdateStorefrontRequest;
 import com.penaareia.model.Kiosk;
 import com.penaareia.model.User;
 import com.penaareia.repository.KioskRepository;
+import com.penaareia.repository.ReferencePointRepository;
 import com.penaareia.repository.UserRepository;
 import com.penaareia.support.Fixtures;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,9 @@ class KioskServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ReferencePointRepository referencePointRepository;
 
     @InjectMocks
     private KioskService service;
@@ -233,5 +237,154 @@ class KioskServiceTest {
         assertThat(resp.kiosk().getUf()).isEqualTo("SP");
         assertThat(user.getRole()).isEqualTo("KIOSK_OPERATOR");
         assertThat(user.getKioskId()).isEqualTo(resp.kiosk().getId());
+    }
+
+    @Test
+    void setDestaquePopularAlteraFlagExclusivaDeAdmin() {
+        Kiosk kiosk = Fixtures.kioskAtivo();
+        kiosk.setDestaquePopular(false);
+        when(repository.findById(Fixtures.KIOSK_ID)).thenReturn(Optional.of(kiosk));
+        when(repository.save(any(Kiosk.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Kiosk updated = service.setDestaquePopular(Fixtures.KIOSK_ID, true);
+
+        assertThat(updated.isDestaquePopular()).isTrue();
+        verify(repository).save(kiosk);
+    }
+
+    @Test
+    void addMenuItemUsaValoresDefaultQuandoCamposOpcionaisNulosOuEmBranco() {
+        User operator = createOperator("op-1", "kiosk-1");
+        Kiosk kiosk = Fixtures.kioskAtivo();
+        kiosk.setCardapio(null);
+        when(userRepository.findById("op-1")).thenReturn(Optional.of(operator));
+        when(repository.findById("kiosk-1")).thenReturn(Optional.of(kiosk));
+        when(repository.save(any(Kiosk.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateMenuItemRequest req = new CreateMenuItemRequest(
+                "Água Mineral",
+                null,
+                new BigDecimal("5.00"),
+                null,
+                "  ",
+                null,
+                " ",
+                null
+        );
+
+        Kiosk.MenuItem item = service.addMenuItem("op-1", req);
+
+        assertThat(item.getDescricao()).isEmpty();
+        assertThat(item.isDisponivel()).isTrue();
+        assertThat(item.getCategory()).isEqualTo("Outros");
+        assertThat(item.isReturnablePackaging()).isFalse();
+        assertThat(item.getFotoUrl()).isNull();
+        assertThat(item.isDestaque()).isFalse();
+    }
+
+    @Test
+    void updateMenuItemUsaValoresDefaultQuandoCamposOpcionaisNulosOuEmBranco() {
+        User operator = createOperator("op-1", "kiosk-1");
+        Kiosk kiosk = Fixtures.kioskAtivo();
+        when(userRepository.findById("op-1")).thenReturn(Optional.of(operator));
+        when(repository.findById("kiosk-1")).thenReturn(Optional.of(kiosk));
+        when(repository.save(any(Kiosk.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest(
+                "Água de Coco Atualizada",
+                null,
+                new BigDecimal("8.00"),
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        Kiosk.MenuItem updated = service.updateMenuItem("op-1", Fixtures.MENU_ITEM_DISPONIVEL, req);
+
+        assertThat(updated.getDescricao()).isEmpty();
+        assertThat(updated.isDisponivel()).isTrue();
+        assertThat(updated.getCategory()).isEqualTo("Outros");
+        assertThat(updated.isReturnablePackaging()).isFalse();
+        assertThat(updated.getFotoUrl()).isNull();
+        assertThat(updated.isDestaque()).isFalse();
+    }
+
+    @Test
+    void updateStorefrontLimpaCamposComStringsEmBrancoEAtualizaEndereco() {
+        User operator = createOperator("op-1", "kiosk-1");
+        Kiosk kiosk = Fixtures.kioskAtivo();
+        when(userRepository.findById("op-1")).thenReturn(Optional.of(operator));
+        when(repository.findById("kiosk-1")).thenReturn(Optional.of(kiosk));
+        when(repository.save(any(Kiosk.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(referencePointRepository.findById("rp-1")).thenReturn(Optional.of(Fixtures.postoAtivo()));
+
+        UpdateStorefrontRequest req = new UpdateStorefrontRequest(
+                "   ",
+                "   ",
+                "   ",
+                false,
+                null,
+                "Quiosque do Ze",
+                " 12.345.678/0001-90 ",
+                " 11045-500 ",
+                " Av. Vicente de Carvalho ",
+                " 42 ",
+                " Em frente ao mar ",
+                " Boqueirão ",
+                " Santos ",
+                " sp ",
+                " rp-1 "
+        );
+
+        Kiosk atualizado = service.updateStorefront("op-1", req);
+
+        assertThat(atualizado.getDescricaoCurta()).isEmpty();
+        assertThat(atualizado.getFotoCapaUrl()).isNull();
+        assertThat(atualizado.getLogoUrl()).isNull();
+        assertThat(atualizado.getCnpj()).isEqualTo("12.345.678/0001-90");
+        assertThat(atualizado.getCidade()).isEqualTo("Santos");
+        assertThat(atualizado.getUf()).isEqualTo("SP");
+        assertThat(atualizado.getPontoReferenciaId()).isEqualTo("rp-1");
+    }
+
+    @Test
+    void onboardPartnerComCamposOpcionaisNulos() {
+        User user = new User();
+        user.setId("user-minimal");
+        user.setRole("CLIENT");
+        when(userRepository.findById("user-minimal")).thenReturn(Optional.of(user));
+        when(repository.save(any(Kiosk.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var req = new com.penaareia.dto.KioskMenuDtos.PartnerOnboardingRequest(
+                "Quiosque Mínimo",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                " ",
+                " ",
+                null
+        );
+
+        var resp = service.onboardPartner("user-minimal", req);
+
+        assertThat(resp.kiosk().getNome()).isEqualTo("Quiosque Mínimo");
+        assertThat(resp.kiosk().getDescricaoCurta()).isNull();
+        assertThat(resp.kiosk().getFotoCapaUrl()).isNull();
+        assertThat(resp.kiosk().getLogoUrl()).isNull();
+        assertThat(resp.kiosk().getCep()).isNull();
+        assertThat(resp.kiosk().getCidade()).isEqualTo("Santos");
+        assertThat(resp.kiosk().getUf()).isEqualTo("SP");
+        assertThat(resp.kiosk().getPontoReferenciaId()).isEqualTo("6acfd917f737c71df923a343");
     }
 }

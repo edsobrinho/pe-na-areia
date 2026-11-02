@@ -233,6 +233,8 @@ class OrderLifecycleE2ETest {
 
         Order criado = orderService.criarPedido(request);
 
+        assertThat(criado.getStatus()).isEqualTo(OrderStatus.CRIADO);
+        assertThat(criado.isPago()).isFalse();
         assertThat(criado.getTimeline().getCriadoEm()).isNotNull();
         assertThat(criado.getPixTxId()).isNotBlank();
         assertThat(criado.getPinCliente().getY()).isEqualTo(CLIENTE_PIN_LAT);

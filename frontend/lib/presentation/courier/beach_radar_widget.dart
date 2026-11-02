@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models/order.dart';
 import '../../domain/utils/beach_compass.dart';
+import '../theme/app_colors.dart';
 
-/// Painel de "Radar Pedestre / Bússola na Areia" para o entregador localizar
-/// o guarda-sol do cliente na praia.
+/// Painel de "Radar Pedestre / Bússola na Areia" integrado ao Design System
+/// "Brisa Minimalista — Sage & Apricot" (Tela 05).
 class BeachRadarWidget extends StatelessWidget {
   const BeachRadarWidget({
     super.key,
@@ -50,12 +51,14 @@ class BeachRadarWidget extends StatelessWidget {
     final hasPhoto = pin.fotoLocalUrl != null && pin.fotoLocalUrl!.isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.only(top: 10, bottom: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(top: 10, bottom: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFF7A3D).withValues(alpha: 0.45)),
+        color: AppColors.apricot100,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.apricot500.withValues(alpha: 0.35),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,19 +66,19 @@ class BeachRadarWidget extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF7A3D),
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: AppColors.apricot500,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Transform.rotate(
                     angle: ((bearing ?? 0.0) * math.pi) / 180.0,
                     child: const Icon(
-                      Icons.navigation,
+                      Icons.navigation_rounded,
                       color: Colors.white,
-                      size: 26,
+                      size: 24,
                     ),
                   ),
                 ),
@@ -88,10 +91,10 @@ class BeachRadarWidget extends StatelessWidget {
                     const Text(
                       'MODO BÚSSOLA · RADAR NA AREIA',
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
-                        color: Color(0xFFC2410C),
+                        color: AppColors.apricot600,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -99,17 +102,21 @@ class BeachRadarWidget extends StatelessWidget {
                       instruction ??
                           'Toque em "Atualizar GPS" para calcular direção e distância',
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
                       ),
                     ),
                     if (dist != null && dist <= 60)
-                      const Text(
-                        '🔦 Cliente notificado para levantar o Sinalizador Laranja!',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF15803D),
-                          fontWeight: FontWeight.w600,
+                      const Padding(
+                        padding: EdgeInsets.only(top: 3),
+                        child: Text(
+                          '🔦 Cliente notificado para levantar o Sinalizador!',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.sage700,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                   ],
@@ -119,12 +126,18 @@ class BeachRadarWidget extends StatelessWidget {
                 IconButton(
                   tooltip: 'Atualizar meu GPS na areia',
                   onPressed: onUpdateGps,
-                  icon: const Icon(Icons.my_location, color: Color(0xFFC2410C)),
+                  icon: const Icon(
+                    Icons.my_location_rounded,
+                    color: AppColors.apricot600,
+                  ),
                 ),
             ],
           ),
           if (pin.descricaoLocal.isNotEmpty || hasPhoto) ...[
-            const Divider(height: 18),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Divider(height: 1),
+            ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -132,22 +145,25 @@ class BeachRadarWidget extends StatelessWidget {
                   GestureDetector(
                     onTap: () => _showPhotoZoom(context, pin.fotoLocalUrl!),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       child: Image.network(
                         pin.fotoLocalUrl!,
-                        width: 68,
-                        height: 68,
+                        width: 64,
+                        height: 64,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
-                          width: 68,
-                          height: 68,
-                          color: Colors.orange.shade100,
-                          child: const Icon(Icons.beach_access),
+                          width: 64,
+                          height: 64,
+                          color: AppColors.placeholder,
+                          child: const Icon(
+                            Icons.beach_access_rounded,
+                            color: AppColors.sage500,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                 ],
                 Expanded(
                   child: Column(
@@ -156,9 +172,9 @@ class BeachRadarWidget extends StatelessWidget {
                       const Text(
                         'Referência visual do cliente:',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black54,
+                          color: AppColors.ink500,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -167,8 +183,9 @@ class BeachRadarWidget extends StatelessWidget {
                             ? 'Sem descrição adicional'
                             : pin.descricaoLocal,
                         style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
                         ),
                       ),
                       if (hasPhoto)
@@ -176,7 +193,10 @@ class BeachRadarWidget extends StatelessWidget {
                           padding: EdgeInsets.only(top: 4),
                           child: Text(
                             '🔍 Toque na foto do guarda-sol para ampliar',
-                            style: TextStyle(fontSize: 11, color: Colors.black54),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.ink500,
+                            ),
                           ),
                         ),
                     ],
@@ -194,12 +214,14 @@ class BeachRadarWidget extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ClipRRect(
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
+                  const BorderRadius.vertical(top: Radius.circular(20)),
               child: Image.network(
                 url,
                 fit: BoxFit.contain,
@@ -219,4 +241,3 @@ class BeachRadarWidget extends StatelessWidget {
     );
   }
 }
-

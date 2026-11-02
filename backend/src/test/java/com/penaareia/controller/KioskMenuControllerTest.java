@@ -91,5 +91,37 @@ class KioskMenuControllerTest {
         assertThat(result).isSameAs(alterado);
         verify(kioskService).setMenuItemAvailability("operator-1", "item-2", false);
     }
+
+    @Test
+    void onboardPartnerRejeitaSemAuthOuExecuta() {
+        assertThatThrownBy(() -> controller.onboardPartner(null, null))
+                .isInstanceOf(ForbiddenException.class);
+
+        var req = new com.penaareia.dto.KioskMenuDtos.PartnerOnboardingRequest(
+                "Maresia", "Desc", null, null, false, false, null, null, null, null, null, null, null, null, null);
+        var resp = new com.penaareia.dto.KioskMenuDtos.PartnerOnboardingResponse(
+                "token", "user-1", "Carlos", "KIOSK_OPERATOR", new Kiosk());
+        when(kioskService.onboardPartner("client-1", req)).thenReturn(resp);
+
+        ResponseEntity<com.penaareia.dto.KioskMenuDtos.PartnerOnboardingResponse> response =
+                controller.onboardPartner(req, clientAuth);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isSameAs(resp);
+    }
+
+    @Test
+    void getStorefrontEUpdateStorefrontDelegamParaServico() {
+        Kiosk kiosk = new Kiosk();
+        when(kioskService.getStorefrontForOperator("operator-1")).thenReturn(kiosk);
+
+        assertThat(controller.getStorefront(operatorAuth)).isSameAs(kiosk);
+
+        var req = new com.penaareia.dto.KioskMenuDtos.UpdateStorefrontRequest(
+                "Desc", null, null, true, null);
+        when(kioskService.updateStorefront("operator-1", req)).thenReturn(kiosk);
+
+        assertThat(controller.updateStorefront(req, operatorAuth)).isSameAs(kiosk);
+    }
 }
 
