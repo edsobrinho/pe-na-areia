@@ -3,6 +3,9 @@ abstract final class AppRoutes {
   /// Protótipo navegável da experiência do cliente e entregador.
   static const String prototype = '/';
 
+  /// Tela de boas-vindas / splash de entrega sustentável na praia de Santos.
+  static const String splash = '/splash';
+
   /// Login/cadastro de clientes e entregadores.
   static const String login = '/login';
 

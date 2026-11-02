@@ -6,6 +6,7 @@ import '../presentation/courier/courier_home_screen.dart';
 import '../presentation/customer/customer_home_screen.dart';
 import '../presentation/location_selection/location_selection_screen.dart';
 import '../presentation/prototype/prototype_screen.dart';
+import '../presentation/splash/splash_screen.dart';
 import '../presentation/theme/app_theme.dart';
 import 'dependencies.dart';
 import 'routes.dart';
@@ -34,6 +35,11 @@ class PeNaAreiaApp extends StatelessWidget {
 /// selecao de localizacao tem rota valida e alcancavel.
 Map<String, WidgetBuilder> buildAppRoutes(AppDependencies dependencies) => {
       AppRoutes.prototype: (context) => PrototypeScreen(
+            onLoginTap: () => Navigator.of(context).pushNamed(AppRoutes.login),
+          ),
+      AppRoutes.splash: (context) => SplashScreen(
+            onGetStarted: () =>
+                Navigator.of(context).pushReplacementNamed(AppRoutes.prototype),
             onLoginTap: () => Navigator.of(context).pushNamed(AppRoutes.login),
           ),
       AppRoutes.login: (_) => LoginScreen(

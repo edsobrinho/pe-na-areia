@@ -8,6 +8,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/pe_na_areia_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.authRepository});
@@ -96,19 +97,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Center(
-                          child: Container(
-                            width: 68,
-                            height: 68,
-                            decoration: BoxDecoration(
-                              color: AppColors.sage500,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Icon(
-                              Icons.beach_access_rounded,
-                              size: 34,
-                              color: Colors.white,
-                            ),
+                        const Center(
+                          child: PeNaAreiaLogo(
+                            size: 68,
+                            showText: false,
                           ),
                         ),
                         const SizedBox(height: 14),

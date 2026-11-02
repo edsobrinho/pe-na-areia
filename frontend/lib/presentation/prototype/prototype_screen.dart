@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../app/routes.dart';
 import '../theme/app_colors.dart';
+import '../widgets/pe_na_areia_logo.dart';
 
 class PrototypeScreen extends StatefulWidget {
   const PrototypeScreen({super.key, required this.onLoginTap});
@@ -137,18 +139,10 @@ class _PrototypeScreenState extends State<PrototypeScreen>
         padding: const EdgeInsets.fromLTRB(20, 12, 14, 12),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.sage500,
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: const Icon(
-                Icons.beach_access_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
+            const PeNaAreiaLogo(
+              size: 40,
+              showText: false,
+              asIcon: true,
             ),
             const SizedBox(width: 12),
             const Expanded(
@@ -176,6 +170,20 @@ class _PrototypeScreenState extends State<PrototypeScreen>
                 ],
               ),
             ),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(AppRoutes.splash),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.sage700,
+                side: const BorderSide(color: AppColors.sage300),
+                minimumSize: const Size(0, 38),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                shape: const StadiumBorder(),
+              ),
+              icon: const Icon(Icons.wb_sunny_outlined, size: 16),
+              label: const Text('Splash'),
+            ),
+            const SizedBox(width: 8),
             FilledButton.icon(
               onPressed: widget.onLoginTap,
               style: FilledButton.styleFrom(

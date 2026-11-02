@@ -129,58 +129,69 @@ flutter test
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
 
-#### 📱 Como Gerar o `.apk` e Instalar Manualmente no Celular Físico (Mesmo Wi-Fi + DNS Local + Docker)
+#### 📱 Como Baixar e Rodar no Celular Físico via Wi-Fi (Sem Cabos)
 
-Para testar o aplicativo diretamente no seu smartphone físico conectado na mesma rede Wi-Fi da máquina de desenvolvimento, siga os **4 passos** abaixo:
+Você pode baixar e instalar o aplicativo diretamente pelo navegador do seu celular conectado na mesma rede Wi-Fi, com o backend Spring Boot e MongoDB rodando no seu computador.
 
-##### Passo 1 — Descobrir o IP do Wi-Fi e Definir o DNS de Rede Local (`sslip.io`)
-Descubra o IPv4 da placa Wi-Fi do seu computador no PowerShell:
+##### Método Rápido Automático (1 Clique / Comando)
+Na raiz do repositório, dê **duplo clique em `scripts\iniciar-wifi.bat`** ou execute no PowerShell:
 
 ```powershell
-Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Wi-Fi*" } | Select-Object InterfaceAlias, IPAddress
+powershell -ExecutionPolicy Bypass -File .\scripts\iniciar-wifi.ps1
 ```
 
-Supondo que o IP retornado seja `192.168.0.3`, utilize o serviço gratuito de DNS curinga **`sslip.io`** (que resolve automaticamente qualquer domínio contendo seu IP local para o próprio IP na rede Wi-Fi, sem precisar alterar o roteador):
-- **DNS do Backend:** `http://api.pe-na-areia.192.168.0.3.sslip.io:8080`
-- **DNS do Cloudinary Docker:** `http://cdn.pe-na-areia.192.168.0.3.sslip.io:8099`
+O script detecta automaticamente o IP da sua rede Wi-Fi (ex.: `192.168.0.4`), inicia os containers Docker (MongoDB, Cloudinary Mock e Backend Spring Boot) e abre o **Servidor de Download Mobile** na porta `8088`.
 
-*(Alternativamente, se o seu roteador possuir **LAN DNS / Host Override**, você pode apontar um domínio como `api.penaareia.lan` para `192.168.0.3`).*
+No seu celular (conectado ao mesmo Wi-Fi), acesse:
+👉 **`http://<IP-DO-PC>:8088`** (ex.: `http://192.168.0.4:8088`)
 
-##### Passo 2 — Liberar as Portas `8080` e `8099` no Firewall do Windows
-Abra o **PowerShell como Administrador** uma única vez para permitir conexões de entrada do celular na rede local:
+Toque em **"Baixar Aplicativo (.apk)"**, abra o arquivo baixado e confirme a instalação!
 
+---
+
+##### Método Passo a Passo Manual
+
+Caso prefira rodar manualmente cada etapa:
+
+###### 1. Descobrir o IP do Wi-Fi
+No PowerShell:
 ```powershell
-New-NetFirewallRule -DisplayName "Pe na Areia Docker LAN" -Direction Inbound -LocalPort 8080,8099 -Protocol TCP -Action Allow
+(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Wi-Fi*" }).IPAddress
+```
+*Suponha que o IP seja `192.168.0.4`.*
+
+###### 2. Liberar as Portas no Firewall do Windows (uma única vez)
+Abra o PowerShell como Administrador:
+```powershell
+New-NetFirewallRule -DisplayName "Pe na Areia LAN" -Direction Inbound -LocalPort 8080,8099,8088 -Protocol TCP -Action Allow
 ```
 
-##### Passo 3 — Subir o Docker com o DNS da Rede Wi-Fi
-Na raiz do projeto, suba os containers configurando a URL pública das imagens (`CLOUDINARY_PUBLIC_BASE_URL`) e as origens de CORS (`APP_CORS_ORIGINS`):
-
+###### 3. Subir o Backend Docker na Rede Local
 ```powershell
-$env:CLOUDINARY_PUBLIC_BASE_URL="http://cdn.pe-na-areia.192.168.0.3.sslip.io:8099"
-$env:APP_CORS_ORIGINS="http://localhost:*,http://127.0.0.1:*,http://*.sslip.io:*,http://192.168.*:*"
+$env:CLOUDINARY_PUBLIC_BASE_URL="http://192.168.0.4:8099"
+$env:APP_CORS_ORIGINS="http://localhost:*,http://127.0.0.1:*,http://192.168.*:*"
 docker compose -f infrastructure/docker-compose.yml up -d
 ```
+> **Teste rápido no navegador do celular:** Acesse `http://192.168.0.4:8080/reference-points`. Se exibir o JSON dos postos da praia (`HTTP 200`), o backend está pronto.
 
-> **Teste rápido no navegador do celular:** Com o celular no mesmo Wi-Fi, acesse `http://api.pe-na-areia.192.168.0.3.sslip.io:8080/reference-points`. Se retornar o JSON dos postos (`HTTP 200`), a comunicação Wi-Fi + DNS + Docker está pronta.
-
-##### Passo 4 — Compilar o `.apk` com o DNS Embutido e Instalar no Celular
-O `AndroidManifest.xml` já está configurado com `android:usesCleartextTraffic="true"` e o Gradle Wrapper com `gradle-8.10.2-all.zip`. Para gerar o instalador `.apk` apontando para o seu DNS local:
-
+###### 4. Compilar o APK e Disponibilizar para Download
+O arquivo pré-compilado já fica disponível em `dist-mobile/pe-na-areia.apk`. Para recompilar a qualquer momento apontando para o seu IP:
 ```powershell
-Set-Location frontend
-flutter build apk --release --dart-define=API_BASE_URL=http://api.pe-na-areia.192.168.0.3.sslip.io:8080
+Push-Location frontend
+flutter build apk --release --dart-define=API_BASE_URL=http://192.168.0.4:8080
+Pop-Location
+Copy-Item frontend\build\app\outputs\flutter-apk\app-release.apk dist-mobile\pe-na-areia.apk -Force
 ```
 
-O arquivo final será gerado em:
-`frontend/build/app/outputs/flutter-apk/app-release.apk`
+###### 5. Iniciar o Servidor de Download
+```powershell
+node scripts/serve-mobile.mjs
+```
+Abra `http://192.168.0.4:8088` no navegador do celular e instale com 1 toque.
 
-**Formas de instalação manual no celular:**
-1. **Via Cabo USB / ADB:**
-   ```powershell
-   adb install -r build\app\outputs\flutter-apk\app-release.apk
-   ```
-2. **Sem Cabo (WhatsApp / Google Drive / Telegram):** Envie o arquivo `app-release.apk` para o celular, toque nele para instalar e autorize *"Instalar de fontes desconhecidas"*.
+*Formas alternativas de instalação:*
+- **Via Cabo USB / ADB:** `adb install -r dist-mobile\pe-na-areia.apk`
+- **Via WhatsApp Web / Google Drive:** Envie o arquivo `dist-mobile\pe-na-areia.apk` para o seu próprio WhatsApp ou Drive e toque para instalar.
 
 ### 3. Portal Web (React 19 + TypeScript + Vite)
 

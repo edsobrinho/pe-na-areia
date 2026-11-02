@@ -37,12 +37,18 @@ export function AppShell({
               else onSelectTab('identity')
             }}
           >
-            <span className="brand-mark" aria-hidden="true">
-              🏖️
+            <span className="brand-mark" aria-hidden="true" style={{ background: 'transparent', boxShadow: 'none' }}>
+              <img
+                src="/brand/app-icon.svg"
+                alt="Pé na Areia"
+                width={42}
+                height={42}
+                style={{ borderRadius: 12, display: 'block' }}
+              />
             </span>
             <span>
               Pé na Areia
-              <small>Portal do Parceiro · Quiosques &amp; Restaurantes</small>
+              <small>Portal do Parceiro · Entrega na Praia de Santos</small>
             </span>
           </a>
 

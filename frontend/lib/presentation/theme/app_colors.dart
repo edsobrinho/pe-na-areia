@@ -52,6 +52,15 @@ class AppColors {
   static const danger100 = Color(0xFFFEECEC);
 
   // ===========================================================================
+  // 6. IDENTIDADE OFICIAL DO LOGO PÉ NA AREIA (GUARDA-SOL, SOL & AREIA)
+  // ===========================================================================
+  static const logoUmbrellaRed = Color(0xFFE52E2D);
+  static const logoSun = Color(0xFFFFA500);
+  static const logoSandMound = Color(0xFFE8D5B5);
+  static const logoOceanDark = Color(0xFF0C383F);
+  static const logoOceanText = Color(0xFF0B3B40);
+
+  // ===========================================================================
   // ALIASES DE COMPATIBILIDADE SEMÂNTICA DO ECOSSISTEMA
   // ===========================================================================
   static const ocean900 = ink;
