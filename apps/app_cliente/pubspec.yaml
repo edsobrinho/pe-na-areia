@@ -1,0 +1,31 @@
+name: pe_na_areia_cliente
+description: App do Cliente Pé na Areia · Pedidos na areia da praia de Santos
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  core_shared:
+    path: ../../packages/core_shared
+  google_maps_flutter: ^2.14.0
+  image_picker: ^1.1.2
+  provider: ^6.1.2
+  http: ^1.2.1
+  flutter_secure_storage: ^9.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+

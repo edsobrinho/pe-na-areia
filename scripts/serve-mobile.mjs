@@ -7,17 +7,43 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const apkPath = path.join(rootDir, 'dist-mobile', 'pe-na-areia.apk');
 
-// Detect active LAN/Wi-Fi IPv4 address
+const apks = {
+  cliente: {
+    name: 'App do Cliente (Banista)',
+    badge: 'Pedidos & Farol Visual',
+    icon: '🏖️',
+    path: path.join(rootDir, 'dist-mobile', 'cliente', 'pe-na-areia-cliente.apk'),
+    route: '/cliente.apk',
+    fallbackPath: path.join(rootDir, 'apps', 'app_cliente', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk'),
+    desc: 'Catálogo de quiosques, pin do guarda-sol, pagamento Pix, Farol de Tela Cheia e Live Tracking.'
+  },
+  entregador: {
+    name: 'App do Entregador (Courier)',
+    badge: 'Radar & Bússola na Areia',
+    icon: '🧭',
+    path: path.join(rootDir, 'dist-mobile', 'entregador', 'pe-na-areia-entregador.apk'),
+    route: '/entregador.apk',
+    fallbackPath: path.join(rootDir, 'apps', 'app_entregador', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk'),
+    desc: 'Modo Bússola / Radar Pedestre na areia, telemetria GPS contínua e confirmação de entrega a 60m.'
+  },
+  prototipo: {
+    name: 'Protótipo Interativo',
+    badge: 'Showcase & Demonstração',
+    icon: '📱',
+    path: path.join(rootDir, 'dist-mobile', 'prototipo', 'pe-na-areia-prototipo.apk'),
+    route: '/prototipo.apk',
+    fallbackPath: path.join(rootDir, 'apps', 'app_prototipo', 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk'),
+    desc: 'Showcase completo com mapa de fluxos, simulação lado a lado e tela de Splash de Santos.'
+  }
+};
+
 function getLanIp() {
   const nets = os.networkInterfaces();
-  let wifiIp = null;
   let fallbackIp = null;
 
   for (const name of Object.keys(nets)) {
     for (const net of nets[name]) {
-      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
       if (net.family === 'IPv4' && !net.internal) {
         if (/wi-fi|wlan|wireless/i.test(name)) {
           return net.address;
@@ -28,20 +54,60 @@ function getLanIp() {
       }
     }
   }
-  return wifiIp || fallbackIp || '192.168.0.4';
+  return fallbackIp || '192.168.0.4';
 }
 
 const lanIp = process.env.LAN_IP || getLanIp();
 const port = parseInt(process.env.DOWNLOAD_PORT || '8088', 10);
 const backendUrl = `http://${lanIp}:8080`;
 
-function renderHtml(apkSizeMb) {
+function getApkFilePath(key) {
+  const apk = apks[key];
+  if (!apk) return null;
+  if (fs.existsSync(apk.path)) return apk.path;
+  if (fs.existsSync(apk.fallbackPath)) return apk.fallbackPath;
+  return null;
+}
+
+function renderHtml() {
+  const cardsHtml = Object.entries(apks).map(([key, item]) => {
+    const targetFile = getApkFilePath(key);
+    let sizeText = 'Disponível para compilação';
+    let isReady = false;
+
+    if (targetFile) {
+      isReady = true;
+      const stats = fs.statSync(targetFile);
+      sizeText = `${(stats.size / (1024 * 1024)).toFixed(1)} MB · Pronto`;
+    }
+
+    return `
+      <div class="app-card ${isReady ? 'ready' : 'pending'}">
+        <div class="card-head">
+          <span class="app-icon">${item.icon}</span>
+          <div>
+            <h3 class="app-title">${item.name}</h3>
+            <span class="badge">${item.badge}</span>
+          </div>
+        </div>
+        <p class="app-desc">${item.desc}</p>
+        <div class="card-action">
+          <a href="${item.route}" class="btn-download ${isReady ? '' : 'disabled'}" download>
+            <span>📥</span>
+            <span>${isReady ? 'Baixar APK' : 'Gerando build...'}</span>
+          </a>
+          <span class="apk-size">${sizeText}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pé na Areia · Download do App Android</title>
+  <title>Pé na Areia · Central de Aplicativos Mobile</title>
   <style>
     :root {
       --ocean-900: #092C32;
@@ -58,150 +124,64 @@ function renderHtml(apkSizeMb) {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: linear-gradient(180deg, #0C383F 0%, #0E5C63 45%, #F8F6F0 45%, #F8F6F0 100%);
+      background: linear-gradient(180deg, #0C383F 0%, #0E5C63 320px, #F8F6F0 320px, #F8F6F0 100%);
       min-height: 100vh;
       color: var(--ink);
       padding: 24px 16px 40px;
     }
-    .container {
-      max-width: 480px;
-      margin: 0 auto;
-    }
-    .header {
-      text-align: center;
-      color: #FFFFFF;
-      padding-bottom: 24px;
-    }
+    .container { max-width: 520px; margin: 0 auto; }
+    .header { text-align: center; color: #FFFFFF; padding-bottom: 24px; }
     .logo-badge {
-      width: 72px;
-      height: 72px;
-      background: #FFFFFF;
-      border-radius: 24px;
-      margin: 0 auto 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 72px; height: 72px; background: #FFFFFF; border-radius: 24px;
+      margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 10px 25px rgba(0,0,0,0.25);
     }
     .logo-badge svg { width: 50px; height: 50px; }
-    .title {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      margin-bottom: 6px;
-    }
-    .subtitle {
-      font-size: 13.5px;
-      color: rgba(255,255,255,0.85);
-      line-height: 1.4;
-    }
-    .card {
-      background: var(--surface);
-      border-radius: 24px;
-      padding: 24px 20px;
-      box-shadow: 0 12px 36px rgba(12, 56, 63, 0.12);
-      border: 1px solid rgba(0,0,0,0.06);
-      margin-bottom: 20px;
-    }
+    .title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .subtitle { font-size: 13.5px; color: rgba(255,255,255,0.85); }
     .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--sage-100);
-      color: #0E5C63;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 16px;
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.15); color: #FFFFFF;
+      padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700;
+      margin-top: 12px; border: 1px solid rgba(255,255,255,0.25);
     }
     .pulse-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10B981;
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+      width: 8px; height: 8px; border-radius: 50%; background: #10B981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35);
     }
+    .app-card {
+      background: var(--surface); border-radius: 22px; padding: 20px;
+      box-shadow: 0 8px 28px rgba(12, 56, 63, 0.08); border: 1px solid rgba(0,0,0,0.06);
+      margin-bottom: 18px;
+    }
+    .card-head { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; }
+    .app-icon { font-size: 32px; line-height: 1; }
+    .app-title { font-size: 18px; font-weight: 800; color: var(--ocean-800); }
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      background: var(--sage-100); color: var(--ocean-700);
+      padding: 2px 8px; border-radius: 6px; margin-top: 2px;
+    }
+    .app-desc { font-size: 13px; color: var(--ink-muted); line-height: 1.45; margin-bottom: 14px; }
+    .card-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .btn-download {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: #FF9749;
-      color: #FFFFFF;
-      text-decoration: none;
-      font-size: 18px;
-      font-weight: 800;
-      padding: 16px 20px;
-      border-radius: 999px;
-      box-shadow: 0 8px 24px rgba(255, 151, 73, 0.4);
-      transition: transform 0.1s ease;
-      text-align: center;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--apricot-500); color: #FFFFFF; text-decoration: none;
+      font-size: 14.5px; font-weight: 800; padding: 12px 20px; border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(255, 151, 73, 0.35); flex: 1; text-align: center;
     }
-    .btn-download:active {
-      transform: scale(0.98);
+    .btn-download.disabled {
+      background: #D1D5DB; box-shadow: none; pointer-events: none;
     }
-    .btn-meta {
-      display: block;
-      text-align: center;
-      font-size: 12px;
-      color: var(--ink-muted);
-      margin-top: 10px;
-    }
-    .steps {
-      margin-top: 24px;
-      border-top: 1px solid #ECECEC;
-      padding-top: 20px;
-    }
-    .steps-title {
-      font-size: 14px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--ocean-800);
-      margin-bottom: 14px;
-    }
-    .step-item {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-    .step-num {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: #E8F3F0;
-      color: #0E5C63;
-      font-size: 13px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .step-text {
-      font-size: 13.5px;
-      line-height: 1.4;
-      color: var(--ink);
-    }
-    .step-text strong {
-      color: var(--ocean-800);
-    }
+    .apk-size { font-size: 11.5px; color: var(--ink-muted); font-weight: 600; white-space: nowrap; }
     .server-card {
-      background: #FFFFFF;
-      border-radius: 18px;
-      padding: 16px;
-      border: 1px solid #ECECEC;
-      font-size: 12.5px;
+      background: #FFFFFF; border-radius: 18px; padding: 16px;
+      border: 1px solid #ECECEC; font-size: 12px; margin-top: 10px;
     }
-    .server-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
+    .server-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
     .server-row:last-child { margin-bottom: 0; }
     .label { color: var(--ink-muted); font-weight: 600; }
-    .val { font-family: monospace; font-weight: 700; color: var(--ocean-800); word-break: break-all; }
+    .val { font-family: monospace; font-weight: 700; color: var(--ocean-800); }
   </style>
 </head>
 <body>
@@ -223,37 +203,14 @@ function renderHtml(apkSizeMb) {
         </svg>
       </div>
       <h1 class="title">Pé na Areia</h1>
-      <p class="subtitle">Instalação direta no celular · Orla de Santos</p>
-    </div>
-
-    <div class="card">
-      <div class="status-badge" id="status-badge">
+      <p class="subtitle">Central de Aplicativos Mobile · Orla de Santos</p>
+      <div class="status-badge">
         <span class="pulse-dot"></span>
-        <span id="status-text">Backend Wi-Fi Conectado (${lanIp}:8080)</span>
-      </div>
-
-      <a href="/pe-na-areia.apk" class="btn-download" download="pe-na-areia.apk">
-        <span>📥</span>
-        <span>Baixar Aplicativo (.apk)</span>
-      </a>
-      <span class="btn-meta">Tamanho: ~${apkSizeMb} MB · Android 7.0+ (Release Build)</span>
-
-      <div class="steps">
-        <div class="steps-title">3 Passos para Instalar</div>
-        <div class="step-item">
-          <div class="step-num">1</div>
-          <div class="step-text">Toque no botão laranja acima para <strong>baixar o arquivo pe-na-areia.apk</strong>.</div>
-        </div>
-        <div class="step-item">
-          <div class="step-num">2</div>
-          <div class="step-text">Abra o arquivo baixado nas notificações e, se solicitado, autorize <strong>"Instalar aplicativos de fontes desconhecidas"</strong> no navegador.</div>
-        </div>
-        <div class="step-item">
-          <div class="step-num">3</div>
-          <div class="step-text">Abra o app <strong>Pé na Areia</strong>! Ele já se conectará automaticamente à API rodando no computador.</div>
-        </div>
+        <span>Backend Wi-Fi Conectado (${lanIp}:8080)</span>
       </div>
     </div>
+
+    ${cardsHtml}
 
     <div class="server-card">
       <div class="server-row">
@@ -265,8 +222,8 @@ function renderHtml(apkSizeMb) {
         <span class="val">${lanIp}</span>
       </div>
       <div class="server-row">
-        <span class="label">Teste Rápido:</span>
-        <a class="val" href="${backendUrl}/reference-points" target="_blank" style="text-decoration: underline;">Abrir /reference-points</a>
+        <span class="label">Status:</span>
+        <a class="val" href="${backendUrl}/reference-points" target="_blank" style="text-decoration: underline;">Testar /reference-points</a>
       </div>
     </div>
   </div>
@@ -278,37 +235,35 @@ const server = http.createServer((req, res) => {
   const url = req.url || '/';
 
   if (url === '/' || url === '/index.html') {
-    let apkSizeMb = '49.6';
-    if (fs.existsSync(apkPath)) {
-      const stats = fs.statSync(apkPath);
-      apkSizeMb = (stats.size / (1024 * 1024)).toFixed(1);
-    }
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-cache',
     });
-    res.end(renderHtml(apkSizeMb));
+    res.end(renderHtml());
     return;
   }
 
-  if (url === '/pe-na-areia.apk' || url === '/app.apk') {
-    if (!fs.existsSync(apkPath)) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('APK não encontrado. Execute: flutter build apk --release');
+  // Route matches
+  for (const [key, item] of Object.entries(apks)) {
+    if (url === item.route || (url === '/pe-na-areia.apk' && key === 'cliente')) {
+      const filePath = getApkFilePath(key);
+      if (!filePath || !fs.existsSync(filePath)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(`APK ${item.name} não encontrado. Execute: .\\scripts\\build-all.ps1 -Target ${key}`);
+        return;
+      }
+
+      const stats = fs.statSync(filePath);
+      res.writeHead(200, {
+        'Content-Type': 'application/vnd.android.package-archive',
+        'Content-Length': stats.size,
+        'Content-Disposition': `attachment; filename="${path.basename(filePath)}"`,
+        'Cache-Control': 'no-cache',
+      });
+
+      fs.createReadStream(filePath).pipe(res);
       return;
     }
-
-    const stats = fs.statSync(apkPath);
-    res.writeHead(200, {
-      'Content-Type': 'application/vnd.android.package-archive',
-      'Content-Length': stats.size,
-      'Content-Disposition': 'attachment; filename="pe-na-areia.apk"',
-      'Cache-Control': 'no-cache',
-    });
-
-    const stream = fs.createReadStream(apkPath);
-    stream.pipe(res);
-    return;
   }
 
   res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -317,14 +272,14 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, '0.0.0.0', () => {
   console.log('\n================================================================');
-  console.log('🏖️  PÉ NA AREIA — SERVIDOR DE DOWNLOAD DO APP NO CELULAR');
+  console.log('🏖️  PÉ NA AREIA — CENTRAL DE APLICATIVOS MOBILE NA REDE WI-FI');
   console.log('================================================================');
-  console.log(`\n📱 No navegador do seu celular (conectado ao mesmo Wi-Fi), acesse:`);
+  console.log(`\n📱 Acesse no navegador do seu smartphone:`);
   console.log(`\n👉  http://${lanIp}:${port}\n`);
-  console.log(`🔗 Link direto do arquivo APK:`);
-  console.log(`    http://${lanIp}:${port}/pe-na-areia.apk\n`);
-  console.log(`⚙️  API Backend configurada:`);
-  console.log(`    ${backendUrl}`);
+  console.log(`📦 Aplicativos disponíveis para download:`);
+  console.log(`    🏖️  Cliente:    http://${lanIp}:${port}/cliente.apk`);
+  console.log(`    🧭  Entregador: http://${lanIp}:${port}/entregador.apk`);
+  console.log(`    📱  Protótipo:  http://${lanIp}:${port}/prototipo.apk\n`);
+  console.log(`⚙️  API Backend: ${backendUrl}`);
   console.log('================================================================\n');
 });
-

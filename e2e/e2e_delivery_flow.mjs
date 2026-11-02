@@ -1,48 +1,86 @@
-// Teste E2E Completo Pé na Areia v2.1 (Backend + MongoDB Docker + Cloudinary Mock Docker + 6 Telas Costeiras + Vitrine Web)
-// Executar: node e2e/e2e_delivery_flow.mjs
+// Integração HTTP dos contratos do portal web, app cliente e app entregador.
+// Executar após subir a infraestrutura isolada descrita em e2e/qa/PROMPT_QA_SENIOR.md.
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 const BASE = process.env.API_BASE_URL || 'http://localhost:8080';
+const MONGODB_CONTAINER = process.env.MONGODB_CONTAINER;
 const POSTO5_ID = '6acfd917f737c71df923a343';
 const KIOSK_ID = 'kiosk-santos-1';
 const PARTNERSHIP_ID = 'pe-na-areia-app';
 // Posto 5: lat -23.9689, lng -46.3336
 const PIN = { latitude: -23.9691, longitude: -46.3334 }; // ~30 m do Posto 5 (dentro de 500 m)
 
-// Garante dados base no MongoDB Docker (kiosk-santos-1 com _id nos subdocumentos do cardápio)
-try {
-  const seedScript = `
-    db.kiosk_partnerships.deleteMany({ kioskId: "kiosk-santos-1" });
-    db.kiosks.updateOne(
-      { _id: "kiosk-santos-1" },
-      {
-        $set: {
-          nome: "Quiosque Pé na Areia",
-          pontoReferenciaId: "${POSTO5_ID}",
-          localizacao: { type: "Point", coordinates: [-46.3338, -23.969] },
-          aceitaEmbalagemSustentavel: true,
-          ativo: true,
-          destaquePopular: true,
-          avaliacaoMedia: 4.9,
-          cardapio: [
-            { _id: "agua-coco", nome: "Água de Coco", descricao: "Coco gelado 500ml", preco: "12.00", disponivel: true, category: "Bebidas", returnablePackaging: true, fotoUrl: null, destaque: true },
-            { _id: "pastel-camarao", nome: "Pastel de Camarão", descricao: "6 unidades", preco: "38.50", disponivel: true, category: "Porções", returnablePackaging: false, fotoUrl: null, destaque: true },
-            { _id: "sundae", nome: "Sundae", descricao: "Chocolate", preco: "15.00", disponivel: true, category: "Sobremesas", returnablePackaging: false, fotoUrl: null, destaque: false },
-            { _id: "item-agotado", nome: "Rabo de Tatu", descricao: "Fora do menu temporada", preco: "60.00", disponivel: false, category: "Outros", returnablePackaging: false, fotoUrl: null, destaque: false }
-          ]
-        }
-      },
-      { upsert: true }
-    );
-  `;
-  execSync('docker exec -i pe-na-areia-mongodb-1 mongosh pe_na_areia --quiet', {
-    input: seedScript,
-    stdio: ['pipe', 'ignore', 'ignore'],
-  });
-} catch {
-  // Ignora se mongosh não estiver acessível via CLI local
+if (!MONGODB_CONTAINER) {
+  throw new Error('Defina MONGODB_CONTAINER para apontar explicitamente ao MongoDB de teste isolado.');
 }
+
+function runMongoScript(script) {
+  execFileSync('docker', [
+    'exec', '-i', MONGODB_CONTAINER, 'mongosh', 'pe_na_areia', '--quiet',
+  ], {
+    input: script,
+    stdio: ['pipe', 'ignore', 'inherit'],
+  });
+}
+
+// Garante dados base no MongoDB Docker (kiosk-santos-1 com _id nos subdocumentos do cardápio)
+const seedScript = `
+  db.reference_points.deleteOne({ _id: "${POSTO5_ID}" });
+  db.reference_points.updateOne(
+    { _id: ObjectId("${POSTO5_ID}") },
+    {
+      $set: {
+        numero: 5,
+        nome: "Posto 5",
+        trecho: "Gonzaga",
+        localizacao: { type: "Point", coordinates: [-46.3336, -23.9689] },
+        ativo: true
+      }
+    },
+    { upsert: true }
+  );
+  db.kiosk_partnerships.deleteMany({ kioskId: "kiosk-santos-1" });
+  db.kiosks.updateOne(
+    { _id: "kiosk-santos-1" },
+    {
+      $set: {
+        nome: "Quiosque Pé na Areia",
+        pontoReferenciaId: "${POSTO5_ID}",
+        localizacao: { type: "Point", coordinates: [-46.3338, -23.969] },
+        aceitaEmbalagemSustentavel: true,
+        ativo: true,
+        destaquePopular: true,
+        avaliacaoMedia: 4.9,
+        cardapio: [
+          { _id: "agua-coco", nome: "Água de Coco", descricao: "Coco gelado 500ml", preco: "12.00", disponivel: true, category: "Bebidas", returnablePackaging: true, fotoUrl: null, destaque: true },
+          { _id: "pastel-camarao", nome: "Pastel de Camarão", descricao: "6 unidades", preco: "38.50", disponivel: true, category: "Porções", returnablePackaging: false, fotoUrl: null, destaque: true },
+          { _id: "sundae", nome: "Sundae", descricao: "Chocolate", preco: "15.00", disponivel: true, category: "Sobremesas", returnablePackaging: false, fotoUrl: null, destaque: false },
+          { _id: "item-agotado", nome: "Rabo de Tatu", descricao: "Fora do menu temporada", preco: "60.00", disponivel: false, category: "Outros", returnablePackaging: false, fotoUrl: null, destaque: false }
+        ]
+      }
+    },
+    { upsert: true }
+  );
+`;
+runMongoScript(seedScript);
+
+async function waitForApi() {
+  let lastError;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    try {
+      const response = await fetch(`${BASE}/auth/login`, { method: 'OPTIONS' });
+      if (response.status < 500) return;
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  throw new Error(`API não ficou pronta em 30 segundos: ${lastError}`);
+}
+
+await waitForApi();
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -152,10 +190,7 @@ await aparelhoOp.register({
   name: 'Operador Quiosque', email: `op.e2e.${stamp}@exemplo.com`, phone: '13990000099',
   password: 'senha123', role: 'CLIENT',
 });
-execSync('docker exec -i pe-na-areia-mongodb-1 mongosh pe_na_areia --quiet', {
-  input: `db.users.updateOne({ email: "op.e2e.${stamp}@exemplo.com" }, { $set: { role: "KIOSK_OPERATOR", kioskId: "kiosk-santos-1" } });`,
-  stdio: ['pipe', 'ignore', 'ignore'],
-});
+runMongoScript(`db.users.updateOne({ email: "op.e2e.${stamp}@exemplo.com" }, { $set: { role: "KIOSK_OPERATOR", kioskId: "kiosk-santos-1" } });`);
 await aparelhoOp.login({ email: `op.e2e.${stamp}@exemplo.com`, password: 'senha123' });
 
 const configPartnership = await aparelhoOp.call('PUT', `/kiosk/me/partnerships/${PARTNERSHIP_ID}`, {
@@ -346,7 +381,7 @@ const webhookPix = await fetch(BASE + '/webhooks/pix', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'X-Pix-Webhook-Token': process.env.PIX_WEBHOOK_TOKEN || 'pe-na-areia-pix-webhook-secret',
+    'X-Pix-Webhook-Token': process.env.PIX_WEBHOOK_TOKEN || 'dev-pix-webhook-token-secret-12345',
   },
   body: JSON.stringify({
     txId: order.pixTxId,

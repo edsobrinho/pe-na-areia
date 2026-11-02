@@ -1,5 +1,27 @@
 # Relatório de Homologação QA Sênior — Pé na Areia v2.1
 
+## Reexecução na estrutura multi-app — 02/11/2026
+
+| Camada / Suíte | Comando / escopo | Resultado |
+| :--- | :--- | :--- |
+| **E2E de integração HTTP** | `node e2e/e2e_delivery_flow.mjs`, com backend, MongoDB e Cloudinary Mock isolados | ✅ **56 PASS / 0 FAIL** |
+| **Backend (Spring Boot)** | `backend\gradlew.bat test --rerun-tasks` | ✅ **227 testes / 0 falhas** |
+| **Core Flutter compartilhado** | `packages/core_shared`: `flutter analyze` + `flutter test` | ✅ **107 testes; análise sem issues** |
+| **App do Cliente** | `apps/app_cliente`: `flutter analyze` + `flutter test` | ✅ **19 testes; análise sem issues** |
+| **App do Entregador** | `apps/app_entregador`: `flutter analyze` + `flutter test` | ✅ **3 testes; análise sem issues** |
+| **Protótipo Flutter** | `apps/app_prototipo`: `flutter analyze` + `flutter test` | ✅ **9 testes; análise sem issues** |
+| **Portal Web** | `web`: `npm.cmd run build` + `npm.cmd test` | ✅ **Build concluído; 26 testes / 0 falhas** |
+
+**Escopo E2E:** as 56 verificações simulam os três perfis através de chamadas HTTP à API. Uploads são exercitados contra o Cloudinary Mock. O teste não dirige as telas do navegador nem as UIs Flutter; os testes Flutter executados são de análise, unidade e widget. Portanto, não há automação visual ponta a ponta entre as interfaces nesta execução.
+
+**Isolamento:** execução feita com `e2e/docker-compose.yml`, portas `18080`, `18099` e `27117`, e volumes E2E dedicados; os volumes de desenvolvimento `pe-na-areia-mongodb-data` e `pe-na-areia-cloudinary-data` não foram usados.
+
+**Ajustes de confiabilidade:** o E2E agora exige `MONGODB_CONTAINER`, falha explicitamente se a preparação do MongoDB não puder ocorrer, espera a API responder, semeia o Posto 5 com o `ObjectId` esperado pelo backend e não depende mais do nome fixo do container. O script `scripts/test-all.ps1` agora interrompe a execução se análise ou testes Flutter falharem.
+
+---
+
+## Registro histórico — execução de 28/10/2026
+
 **Data da Execução:** 28/10/2026  
 **Cenário Simulado:** *"Dia de Sol no Posto 5 — Santos/SP"* (`kiosk-santos-1`, `pe-na-areia-app`, Posto 5 `6acfd917f737c71df923a343`)  
 **Status Final:** ✅ **APROVADO SEM RESSALVAS (100% PASS)**

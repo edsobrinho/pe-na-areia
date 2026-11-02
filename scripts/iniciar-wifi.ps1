@@ -1,5 +1,5 @@
 # ==============================================================================
-# 🏖️ Pé na Areia — Iniciar Backend na Rede Wi-Fi & Servidor de Download Mobile
+# 🏖️ Pé na Areia — Iniciar Backend na Rede Wi-Fi & Central de Download Mobile
 # ==============================================================================
 # Execução: .\scripts\iniciar-wifi.ps1
 
@@ -36,25 +36,7 @@ try {
     # Caso não esteja rodando como admin, continua normalmente
 }
 
-# 2. Verificar o arquivo APK em dist-mobile/
-$apkDest = "dist-mobile\pe-na-areia.apk"
-$flutterApk = "frontend\build\app\outputs\flutter-apk\app-release.apk"
-
-if (-not (Test-Path $apkDest)) {
-    if (Test-Path $flutterApk) {
-        New-Item -ItemType Directory -Force -Path "dist-mobile" | Out-Null
-        Copy-Item $flutterApk $apkDest -Force
-    } else {
-        Write-Host "`n📦 Compilando APK do Flutter apontando para $backendUrl..." -ForegroundColor Yellow
-        Push-Location frontend
-        flutter build apk --release --dart-define=API_BASE_URL=$backendUrl
-        Pop-Location
-        New-Item -ItemType Directory -Force -Path "dist-mobile" | Out-Null
-        Copy-Item $flutterApk $apkDest -Force
-    }
-}
-
-# 3. Subir containers Docker do Backend na rede local
+# 2. Subir containers Docker do Backend na rede local
 Write-Host "`n🐳 Iniciando containers Docker (MongoDB, Cloudinary Mock e Backend Spring Boot)..." -ForegroundColor Cyan
 $env:CLOUDINARY_PUBLIC_BASE_URL = $cdnUrl
 $env:APP_CORS_ORIGINS = "http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://*.sslip.io:*"
@@ -63,9 +45,8 @@ docker compose -f infrastructure/docker-compose.yml up -d
 Write-Host "`n⏳ Aguardando inicialização da API..." -ForegroundColor Cyan
 Start-Sleep -Seconds 3
 
-# 4. Iniciar servidor de download do aplicativo
-Write-Host "`n📱 Iniciando servidor de download para o seu celular..." -ForegroundColor Green
+# 3. Iniciar servidor central de download dos aplicativos
+Write-Host "`n📱 Iniciando central de download dos aplicativos..." -ForegroundColor Green
 $env:LAN_IP = $wifiIp
 $env:DOWNLOAD_PORT = "$downloadPort"
 node scripts/serve-mobile.mjs
-

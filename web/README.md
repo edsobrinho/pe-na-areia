@@ -4,7 +4,7 @@ Portal web B2B do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **
 - **Parceiros, Quiosques e Restaurantes (`KIOSK_OPERATOR`)**: Auto-cadastro do estabelecimento, envio de **logomarca e foto de capa**, cadastro de **endereço tradicional e posto de referência na orla (sem necessidade de mapa)**, gestão de **produtos agrupados nas devidas categorias** com upload de fotos no Cloudinary e configuração de canais de parceria e repasse;
 - **Administradores (`ADMIN`)**: Governança global dos canais de venda e vínculo de operadores aos quiosques.
 
-*(Nota: A jornada de pedidos do banhista na areia, mapa interativo e Farol Visual vive exclusivamente no App Mobile Flutter em `frontend/`).*
+*(Nota: A jornada de pedidos do banhista na areia, mapa interativo e Farol Visual vive no App Mobile do Cliente em `apps/app_cliente/`, enquanto o entregador opera com `apps/app_entregador/`).*
 
 ---
 

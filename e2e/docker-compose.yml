@@ -1,0 +1,21 @@
+services:
+  mongodb:
+    container_name: pe-na-areia-e2e-mongodb
+    ports: !override
+      - "127.0.0.1:27117:27017"
+
+  cloudinary-mock:
+    ports: !override
+      - "127.0.0.1:18099:8099"
+    environment:
+      PUBLIC_BASE_URL: http://localhost:18099
+
+  backend:
+    ports: !override
+      - "127.0.0.1:18080:8080"
+
+volumes:
+  mongodb-data:
+    name: pe-na-areia-e2e-mongodb-data
+  cloudinary-data:
+    name: pe-na-areia-e2e-cloudinary-data

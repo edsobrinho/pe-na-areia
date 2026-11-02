@@ -2,31 +2,52 @@
 
 Plataforma full-stack de pedidos e logística de última milha para entrega na faixa de areia da orla de Santos/SP. O cliente escolhe produtos com foto de quiosques parceiros, paga antecipadamente via **Pix Copia e Cola / QR Code**, fixa o **pin exato do seu guarda-sol no mapa** e utiliza o **Farol Visual de Tela Cheia** quando o entregador se aproxima; o entregador navega pela areia usando o **Modo Bússola / Radar Pedestre**, transmite sua localização em tempo real e confirma a entrega validada por GPS (raio de 60 metros).
 
-Leia os documentos de produto para detalhes de arquitetura e regras de negócio:
-- [PRD Principal v2.0](PRD.md) — Logística na faixa de areia, Farol Visual, Radar Pedestre, Live Tracking SSE, Canal Rápido e Pix com Webhook.
-- [PRD v1.1 — Parcerias e Gestão de Cardápio por Quiosque](PRD-v1.1-parcerias-quiosques.md) — CRUD de cardápio com fotos, canais de venda, comissões e snapshot de preços.
+---
+
+## 📚 Documentação do Ecossistema
+
+Consulte a documentação dedicada de cada projeto e arquitetura:
+- 🚀 **[Plano de Deploy e Distribuição Contínua](DEPLOY.md)** — Guia completo de deploy Wi-Fi (LAN), conteinerização, MongoDB Atlas, Cloudinary oficial, gateways Pix e publicação nas lojas Google Play Store e Apple App Store.
+- ⚙️ **[Backend API (Spring Boot 3.3 + Java 21)](backend/README.md)** — Arquitetura de microserviço, Virtual Threads, GeoJSON, transações ACID, SSE, upload Cloudinary e suíte de 227 testes com JaCoCo.
+- 💻 **[Portal Web do Parceiro & Admin (React 19 + TypeScript)](web/README.md)** — Painel de auto-cadastro de quiosques, catálogo com fotos, gestão de categorias, canais de parceria e simulador de repasse.
+- 📦 **[Módulo Core Shared (Flutter)](packages/core_shared/README.md)** — Design System unificado (Sage & Apricot), modelos de domínio, cliente HTTP, algoritmos geodésicos (`BeachCompass`) e máscaras.
+- 🏖️ **[App do Cliente / Banista](apps/app_cliente/README.md)** — Aplicação para pedidos na areia, pin no mapa, pagamento Pix, Live Tracking SSE e Farol Visual (`SignalBeaconScreen`).
+- 🧭 **[App do Entregador / Courier](apps/app_entregador/README.md)** — Navegação por Radar Pedestre na areia, bússola geodésica, telemetria contínua e confirmação validada por Geofencing (60m).
+- 📱 **[Protótipo Funcional & Showcase](apps/app_prototipo/README.md)** — Demonstração interativa completa e multiplataforma (Web, Android e iOS) sem dependência de backend.
+- 📄 **[PRD Principal v2.0](PRD.md)** — Especificação funcional da logística costeira, Farol Visual e radar de areia.
+- 📄 **[PRD v1.1 — Parcerias e Cardápio](PRD-v1.1-parcerias-quiosques.md)** — CRUD de cardápio com fotos, canais de venda, comissões e snapshot de preços.
 
 ---
 
-## Estrutura do Repositório
+## 🧩 Estrutura do Repositório (Arquitetura Monorepo Multi-App)
 
 ```text
 pe-na-areia/
-├── backend/                     # Java 21, Spring Boot 3.3, MongoDB GeoJSON, SSE, JWT, Pix e Cloudinary
-├── frontend/                    # App Mobile Flutter 3.29+ (Cliente e Entregador)
-├── web/                         # Portal Web React 19 + TypeScript + Vite (Cliente, Operador e Admin)
-├── infrastructure/              # Docker Compose (MongoDB rs0, Cloudinary Mock e Backend)
+├── backend/                     # [Java 21 + Spring Boot 3.3] API REST, GeoJSON, SSE, Pix e Cloudinary
+├── web/                         # [React 19 + Vite + TS] Portal Web B2B (Quiosque, Parceiro e Admin)
+├── packages/
+│   └── core_shared/             # [Flutter Package] Design System, Modelos, HTTP, Repositórios e Geodésia
+├── apps/
+│   ├── app_cliente/             # [Flutter App] App do Cliente / Banista (com.penaareia.cliente)
+│   ├── app_entregador/          # [Flutter App] App do Entregador / Courier (com.penaareia.entregador)
+│   └── app_prototipo/           # [Flutter App] Protótipo Navegável & Showcase Multiplataforma
+├── dist-mobile/                 # Instaladores Android organizados para distribuição
+│   ├── cliente/                 # pe-na-areia-cliente.apk
+│   ├── entregador/              # pe-na-areia-entregador.apk
+│   └── prototipo/               # pe-na-areia-prototipo.apk
+├── scripts/                     # Automação multi-app (test-all, build-all, iniciar-wifi, serve-mobile)
+├── infrastructure/              # Docker Compose (MongoDB rs0, Cloudinary Mock e Backend Spring Boot)
 │   ├── docker-compose.yml
 │   └── cloudinary-mock/         # Emulador local compatível com o SDK oficial do Cloudinary
 └── e2e/
-    └── e2e_delivery_flow.mjs    # Suíte End-to-End automatizada (44 asserções full-stack)
+    └── e2e_delivery_flow.mjs    # Integração HTTP automatizada (56 verificações; sem automação visual)
 ```
 
 ---
 
-## Principais Funcionalidades Implementadas
+## 🎯 Principais Funcionalidades Implementadas
 
-### 1. Para Clientes (App Flutter e Portal Web)
+### 1. Para Clientes (App do Cliente e Portal Web)
 - **Autenticação e Validações:** Cadastro e login JWT (`CLIENT`) com validação e máscaras de entrada (e-mail, nome, senha, telefone brasileiro `(XX) XXXXX-XXXX` e limite de 140 caracteres na descrição do ponto).
 - **Catálogo Visual por Parceria:** Escolha do canal de venda (`partnershipId`), visualização de quiosques ativos e cardápios com **fotos reais dos produtos (`fotoUrl`)**, filtro de disponibilidade e preferência por embalagem sustentável/retornável.
 - **Pin Interativo na Faixa de Areia:** Seleção do ponto exato no Google Maps, sugestão automática do Posto de Salvamento mais próximo (validado até 500 m no servidor), descrição textual do guarda-sol e upload de foto do local (`POST /uploads/location-photo`).
@@ -35,7 +56,7 @@ pe-na-areia/
 - **🔦 Farol Visual Inteligente de Tela Cheia (`SignalBeaconScreen`):** Botão habilitado automaticamente quando o status do pedido é `CHEGOU_NO_LOCAL` **ou** quando está `A_CAMINHO` a **`<= 60 metros`**. Ao tocar, o celular entra em tela cheia imersiva alternando cores solares de alto contraste (**Laranja Neon `#FF7A3D`**, **Amarelo Solar `#FFD600`** e **Branco**), com cronômetro regressivo de 3 minutos e código curto do pedido para localização imediata na multidão.
 - **💬 Canal Rápido de Contato na Praia:** Atalhos de 1 toque (*"🌊 A maré subiu, mudei alguns metros para trás"*, *"🔦 Estou levantando o Sinalizador na tela"*) e botão direto para **WhatsApp** com mensagem pré-formatada, habilitados exclusivamente enquanto o pedido está `A_CAMINHO` ou `CHEGOU_NO_LOCAL`.
 
-### 2. Para Entregadores (App Flutter)
+### 2. Para Entregadores (App do Entregador)
 - **Painel de Entregas:** Consulta de pedidos prontos (`EM_PREPARO`) com paginação por cursor e entregas ativas sob responsabilidade do entregador.
 - **🧭 Modo Bússola / Radar Pedestre na Areia (`BeachRadarWidget` + `BeachCompass`):**
   - Como rotas veiculares do Google Maps não entram na faixa de areia, o app calcula em tempo real a **distância direta em metros (Haversine)**, o **azimute em graus (`0°–360°`)** e a **direção cardeal/colateral em português** (ex.: *"A 45 m a Sudeste (135°) do Posto 4"*).
@@ -51,13 +72,13 @@ pe-na-areia/
 
 ---
 
-## Infraestrutura Local em Docker (MongoDB + Cloudinary Mock + Backend)
+## 🐳 Infraestrutura Local em Docker (MongoDB + Cloudinary Mock + Backend)
 
 Requisitos: **Docker** com **Docker Compose v2**.
 
 A infraestrutura local sobe três containers orquestrados com healthchecks:
 1. **`mongodb` (`mongo:7`)**: Replica Set de nó único (`rs0`) na porta `27017`, necessário para transações multi-documento do Spring Data MongoDB.
-2. **`cloudinary-mock` (`node:22-alpine`)**: Servidor local na porta `8099` 100% compatível com o SDK oficial `cloudinary-http44` do Java (`POST /v1_1/:cloudName/image/upload` e `GET /:cloudName/image/upload/v1/...`), permitindo testar uploads de fotos do local e do cardápio sem depender de conta externa na nuvem.
+2. **`cloudinary-mock` (`node:22-alpine`)**: Servidor local na porta `8099` 100% compatível com o SDK oficial `cloudinary-http45` do Java (`POST /v1_1/:cloudName/image/upload` e `GET /:cloudName/image/upload/v1/...`), permitindo testar uploads de fotos do local e do cardápio sem depender de conta externa na nuvem.
 3. **`backend` (`eclipse-temurin:21`)**: API Spring Boot na porta `8080`, pré-configurada com `CLOUDINARY_UPLOAD_PREFIX=http://cloudinary-mock:8099`.
 
 Na raiz do repositório, execute no PowerShell:
@@ -87,21 +108,28 @@ docker compose --env-file .env -f infrastructure/docker-compose.yml down
 
 ### Executar o Teste End-to-End (E2E)
 
-Com os containers Docker rodando, execute a suíte E2E completa (que valida cadastro, parceria, upload de foto no Cloudinary Docker, criação de pedido com Pix, Live Tracking na areia, alerta de 60m, mensagens rápidas, geofencing de entrega e CRUD de cardápio com foto):
+Suba a infraestrutura E2E isolada. Ela usa portas e volumes próprios e não altera os dados Docker de desenvolvimento:
 
 ```powershell
+docker compose -p pe-na-areia-e2e -f infrastructure/docker-compose.yml -f e2e/docker-compose.yml up -d --build --wait
+$env:API_BASE_URL = "http://localhost:18080"
+$env:MONGODB_CONTAINER = "pe-na-areia-e2e-mongodb"
+$env:PIX_WEBHOOK_TOKEN = "dev-pix-webhook-token-secret-12345"
 node e2e/e2e_delivery_flow.mjs
+
+# Remova os containers e volumes de teste ao terminar
+docker compose -p pe-na-areia-e2e -f infrastructure/docker-compose.yml -f e2e/docker-compose.yml down -v
 ```
 
-Resultado esperado: `PASS: 44  FAIL: 0`.
+Resultado esperado: `PASS: 56  FAIL: 0`. Esta suíte valida os contratos HTTP dos perfis de operador, cliente e entregador; não automatiza navegador nem telas Flutter.
 
 ---
 
-## Executando Cada Camada em Desenvolvimento
+## 🚀 Executando Cada Camada em Desenvolvimento
 
-### 1. Backend (Java 21 + Spring Boot)
+### 1. Backend (Java 21 + Spring Boot 3.3)
 
-Para rodar o backend diretamente no host (com `mongodb` e `cloudinary-mock` no Docker):
+Consulte o [README do Backend](backend/README.md) para detalhes completos de endpoints, DTOs e serviços.
 
 ```powershell
 docker compose --env-file .env -f infrastructure/docker-compose.yml up -d mongodb cloudinary-mock
@@ -117,21 +145,31 @@ Set-Location backend
 .\gradlew.bat check jacocoTestReport
 ```
 
-### 2. App Mobile (Flutter 3.29+)
+---
 
-Consulte o [README do Frontend](frontend/README.md) para detalhes de configuração da chave do Google Maps em Android/iOS.
+### 2. Ecossistema Mobile Multi-App (Flutter 3.29+)
 
+O ecossistema mobile é desacoplado em 3 aplicativos e 1 módulo compartilhado:
+- **`packages/core_shared`**: Design System, Modelos de Domínio, Cliente HTTP, Repositórios e Validadores.
+- **`apps/app_cliente`**: App do Cliente (`com.penaareia.cliente`) — Catálogo, Pin do Guarda-sol, Pix e Farol Visual.
+- **`apps/app_entregador`**: App do Entregador (`com.penaareia.entregador`) — Radar Pedestre, Bússola e Telemetria GPS.
+- **`apps/app_prototipo`**: Protótipo Interativo e Showcase (`com.penaareia.prototipo`) — Multiplataforma (Web e Android).
+
+Para executar testes e análise estática em todos os projetos mobile de uma só vez:
 ```powershell
-Set-Location frontend
-flutter pub get
-flutter analyze
-flutter test
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
+powershell -ExecutionPolicy Bypass -File .\scripts\test-all.ps1
 ```
+
+Para compilar os APKs de produção de todos os aplicativos:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-all.ps1 -Target all
+```
+
+---
 
 #### 📱 Como Baixar e Rodar no Celular Físico via Wi-Fi (Sem Cabos)
 
-Você pode baixar e instalar o aplicativo diretamente pelo navegador do seu celular conectado na mesma rede Wi-Fi, com o backend Spring Boot e MongoDB rodando no seu computador.
+Você pode baixar e instalar qualquer um dos aplicativos diretamente pelo navegador do seu celular conectado na mesma rede Wi-Fi, com o backend Spring Boot e MongoDB rodando no seu computador.
 
 ##### Método Rápido Automático (1 Clique / Comando)
 Na raiz do repositório, dê **duplo clique em `scripts\iniciar-wifi.bat`** ou execute no PowerShell:
@@ -143,9 +181,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\iniciar-wifi.ps1
 O script detecta automaticamente o IP da sua rede Wi-Fi (ex.: `192.168.0.4`), inicia os containers Docker (MongoDB, Cloudinary Mock e Backend Spring Boot) e abre o **Servidor de Download Mobile** na porta `8088`.
 
 No seu celular (conectado ao mesmo Wi-Fi), acesse:
-👉 **`http://<IP-DO-PC>:8088`** (ex.: `http://192.168.0.4:8088`)
+👉 **`http://<IP-DO-PC>:8088`** *(ex.: `http://192.168.0.4:8088`)*
 
-Toque em **"Baixar Aplicativo (.apk)"**, abra o arquivo baixado e confirme a instalação!
+A página exibirá a central de downloads responsiva com os cards dos três aplicativos:
+- 🏖️ **App do Cliente**
+- 🧭 **App do Entregador**
+- 📱 **Protótipo Interativo**
+
+Toque no botão de download do app desejado, abra o arquivo baixado e confirme a instalação!
 
 ---
 
@@ -158,12 +201,12 @@ No PowerShell:
 ```powershell
 (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -like "*Wi-Fi*" }).IPAddress
 ```
-*Suponha que o IP seja `192.168.0.4`.*
+*Suponha que o IP retornado seja `192.168.0.4`.*
 
 ###### 2. Liberar as Portas no Firewall do Windows (uma única vez)
 Abra o PowerShell como Administrador:
 ```powershell
-New-NetFirewallRule -DisplayName "Pe na Areia LAN" -Direction Inbound -LocalPort 8080,8099,8088 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "Pe na Areia LAN Services" -Direction Inbound -LocalPort 8080,8088,8099,5173 -Protocol TCP -Action Allow
 ```
 
 ###### 3. Subir o Backend Docker na Rede Local
@@ -174,14 +217,14 @@ docker compose -f infrastructure/docker-compose.yml up -d
 ```
 > **Teste rápido no navegador do celular:** Acesse `http://192.168.0.4:8080/reference-points`. Se exibir o JSON dos postos da praia (`HTTP 200`), o backend está pronto.
 
-###### 4. Compilar o APK e Disponibilizar para Download
-O arquivo pré-compilado já fica disponível em `dist-mobile/pe-na-areia.apk`. Para recompilar a qualquer momento apontando para o seu IP:
+###### 4. Compilar os APKs Multi-App Apontando para o seu IP
 ```powershell
-Push-Location frontend
-flutter build apk --release --dart-define=API_BASE_URL=http://192.168.0.4:8080
-Pop-Location
-Copy-Item frontend\build\app\outputs\flutter-apk\app-release.apk dist-mobile\pe-na-areia.apk -Force
+powershell -ExecutionPolicy Bypass -File .\scripts\build-all.ps1 -Target all -ApiBaseUrl http://192.168.0.4:8080
 ```
+Os APKs gerados ficam salvos em:
+- `dist-mobile/cliente/pe-na-areia-cliente.apk`
+- `dist-mobile/entregador/pe-na-areia-entregador.apk`
+- `dist-mobile/prototipo/pe-na-areia-prototipo.apk`
 
 ###### 5. Iniciar o Servidor de Download
 ```powershell
@@ -189,13 +232,11 @@ node scripts/serve-mobile.mjs
 ```
 Abra `http://192.168.0.4:8088` no navegador do celular e instale com 1 toque.
 
-*Formas alternativas de instalação:*
-- **Via Cabo USB / ADB:** `adb install -r dist-mobile\pe-na-areia.apk`
-- **Via WhatsApp Web / Google Drive:** Envie o arquivo `dist-mobile\pe-na-areia.apk` para o seu próprio WhatsApp ou Drive e toque para instalar.
+---
 
 ### 3. Portal Web (React 19 + TypeScript + Vite)
 
-Consulte o [README do Portal Web](web/README.md) para o guia completo de variáveis de ambiente e perfis de acesso.
+Consulte o [README do Portal Web](web/README.md) para o guia completo de variáveis de ambiente e perfis de acesso (`KIOSK_OPERATOR` e `ADMIN`).
 
 ```powershell
 Set-Location web
@@ -210,7 +251,7 @@ O portal web ficará acessível em **`http://localhost:5173`**.
 
 ---
 
-## Referência Completa de Endpoints da API
+## 📡 Referência Completa de Endpoints da API
 
 | Método | Rota | Acesso | Descrição |
 | :--- | :--- | :--- | :--- |
@@ -248,12 +289,12 @@ O portal web ficará acessível em **`http://localhost:5173`**.
 
 ---
 
-## Observabilidade, Segurança e Qualidade
+## 🛡️ Observabilidade, Segurança e Qualidade
 
 - **Logs Estruturados e Tracing:** Cada requisição HTTP emite log JSON com `requestId`, `traceId`, `spanId`, rota normalizada, status e duração (`HttpRequestLoggingFilter` + `ApplicationLayerLoggingAspect`), sem vazar payloads sensíveis ou credenciais.
 - **Java 21 & Virtual Threads:** Configurado com `spring.threads.virtual.enabled=true` para alta vazão em chamadas I/O ao MongoDB, Cloudinary e gateway Pix.
 - **Cobertura de Testes Automatizados:**
-  - **Backend:** JUnit 5 + JaCoCo com exigência mínima de 80% de cobertura (`.\gradlew.bat test`).
-  - **Frontend Flutter:** 124 testes unitários e de widget cobrindo modelos, mappers, validações, bússola geodésica e farol visual (`flutter test`).
-  - **Portal Web React:** 26 testes automatizados cobrindo validações, máscaras e regras de negócio (`npm test`).
-  - **E2E Full-Stack:** 44 verificações integradas contra os containers Docker (`node e2e/e2e_delivery_flow.mjs`).
+  - **Backend:** 227 testes JUnit 5 + JaCoCo com exigência mínima de 80% de cobertura de linhas e ramos (`.\gradlew.bat test`).
+  - **Ecossistema Mobile Multi-App:** 138 testes automatizados em Dart/Flutter cobrindo o `core_shared` e os 3 aplicativos (`.\scripts\test-all.ps1`).
+  - **Portal Web React:** 26 testes automatizados cobrindo validações e regras de negócio com `node:test` (`npm test`).
+  - **Integração E2E HTTP:** 56 verificações contra a infraestrutura Docker isolada (`node e2e/e2e_delivery_flow.mjs`); não é automação de UI.

@@ -59,9 +59,9 @@ sequenceDiagram
 
 ---
 
-## 2. App Mobile do Cliente (`frontend/` — Perfil `CLIENT`)
+## 2. App Mobile do Cliente (`apps/app_cliente/` — Perfil `CLIENT`)
 
-A jornada do banhista no [`CustomerHomeScreen`](file:///c:/_development/workspace/pe-na-areia/frontend/lib/presentation/customer/customer_home_screen.dart) é dividida em **3 abas inferiores (`Início`, `Pedidos`, `Conta`)** e **6 Telas Costeiras**:
+A jornada do banhista no [`CustomerHomeScreen`](file:///c:/_development/workspace/pe-na-areia/apps/app_cliente/lib/presentation/customer/customer_home_screen.dart) é dividida em **3 abas inferiores (`Início`, `Pedidos`, `Conta`)** e **6 Telas Costeiras**:
 
 ### Passo 2.1 — Tela 2: Aba `Início` (Descoberta da Orla)
 1. **Cabeçalho Costeiro**: Exibe o Ponto na Praia ativo (ex.: *"Posto 5 — Boqueirão"*). Toque nele para ajustar o pin na faixa de areia.
@@ -69,21 +69,21 @@ A jornada do banhista no [`CustomerHomeScreen`](file:///c:/_development/workspac
 3. **Pílulas de Filtro Rápido**: Ative `♻️ Embalagem Retornável`, `🏃 Entrega grátis na areia` ou altere a ordenação (`Distância do Posto`, `Melhor avaliação`, `Menor tempo na areia`).
 4. **Seção "Quiosques populares na orla"**: Carrossel com os quiosques em destaque. Toque em **"Ver todos →"** para abrir a Tela 3.
 
-### Passo 2.2 — Tela 3: Vitrine `"Quiosques Populares na Orla"` ([`PopularKiosksScreen`](file:///c:/_development/workspace/pe-na-areia/frontend/lib/presentation/customer/popular_kiosks_screen.dart))
+### Passo 2.2 — Tela 3: Vitrine `"Quiosques Populares na Orla"` ([`PopularKiosksScreen`](file:///c:/_development/workspace/pe-na-areia/apps/app_cliente/lib/presentation/customer/popular_kiosks_screen.dart))
 1. Visualize os cards fotográficos `16:9` com foto de capa, logo circular, selo do Posto de Salvamento, nota média (`★ 4.9`), tempo estimado na areia, taxa de entrega e distância até o seu guarda-sol.
 2. Toque em um quiosque para abrir sua Loja Dedicada (Tela 4).
 
-### Passo 2.3 — Tela 4: Loja / Cardápio Dedicado do Quiosque ([`KioskStorefrontScreen`](file:///c:/_development/workspace/pe-na-areia/frontend/lib/presentation/customer/kiosk_storefront_screen.dart))
+### Passo 2.3 — Tela 4: Loja / Cardápio Dedicado do Quiosque ([`KioskStorefrontScreen`](file:///c:/_development/workspace/pe-na-areia/apps/app_cliente/lib/presentation/customer/kiosk_storefront_screen.dart))
 1. Confira as **3 métricas operacionais**: `Tempo na areia`, `Taxa de entrega` e `No Guarda-Sol (Raio <= 500m)`.
 2. Navegue pelo carrossel horizontal **"🔥 Mais pedidos na areia"** (itens com `destaque: true`) e toque no botão **`+`** para adicionar à sacola.
 3. Na barra inferior, acompanhe o progresso do **Pedido Mínimo** da parceria e toque em **"Ver sacola"** para abrir a Tela 5.
 
-### Passo 2.4 — Tela 5: Minha Sacola na Praia ([`BeachCartScreen`](file:///c:/_development/workspace/pe-na-areia/frontend/lib/presentation/customer/beach_cart_screen.dart))
+### Passo 2.4 — Tela 5: Minha Sacola na Praia ([`BeachCartScreen`](file:///c:/_development/workspace/pe-na-areia/apps/app_cliente/lib/presentation/customer/beach_cart_screen.dart))
 1. Ajuste a quantidade de cada item com o seletor **`- 1 +`** ou limpe a sacola.
 2. Ative o switch **"♻️ Preferir embalagem retornável / sustentável"**.
 3. Escolha a forma de pagamento (**PIX Copia e Cola — Pagamento 100% antecipado na areia**) e toque em **"Continuar"**.
 
-### Passo 2.5 — Tela 1: Cadastro Detalhado do `"Ponto na Praia"` ([`BeachSpotFormScreen`](file:///c:/_development/workspace/pe-na-areia/frontend/lib/presentation/customer/beach_spot_screen.dart))
+### Passo 2.5 — Tela 1: Cadastro Detalhado do `"Ponto na Praia"` ([`BeachSpotFormScreen`](file:///c:/_development/workspace/pe-na-areia/apps/app_cliente/lib/presentation/customer/beach_spot_form_screen.dart))
 1. **Mapa no Topo**: Confira ou reposicione o pin na faixa de areia (a até `500m` do Posto de Salvamento selecionado).
 2. **Referências Visuais**:
    - **Referência da Barraca / Guarda-sol** (`referenciaBarraca`): ex. *"Guarda-sol listrado azul com 2 cadeiras brancas"*.
@@ -98,19 +98,19 @@ A jornada do banhista no [`CustomerHomeScreen`](file:///c:/_development/workspac
 1. Na **Aba `Pedidos`**:
    - Visualize o card do **Pix Antecipado** com botão para copiar o código **Pix Copia e Cola**.
    - Quando o entregador está `A_CAMINHO`, acompanhe a distância em metros no mapa, envie **mensagens rápidas de 1 toque** (*"A maré subiu, mudei alguns metros para trás"*) ou chame no WhatsApp.
-   - Assim que o entregador entra no **raio de 60 metros** (ou marca `CHEGOU_NO_LOCAL`), toque no botão **"🔦 Ativar Sinalizador na Praia"** para abrir o [`SignalBeaconScreen`](file:///c:/_development/workspace/pe-na-areia/frontend/lib/presentation/customer/signal_beacon_screen.dart) em tela cheia piscante de alto contraste solar.
+   - Assim que o entregador entra no **raio de 60 metros** (ou marca `CHEGOU_NO_LOCAL`), toque no botão **"🔦 Ativar Sinalizador na Praia"** para abrir o [`SignalBeaconScreen`](file:///c:/_development/workspace/pe-na-areia/apps/app_cliente/lib/presentation/beacon/signal_beacon_screen.dart) em tela cheia piscante de alto contraste solar.
 2. Na **Aba `Conta`**:
    - Acesse os 3 atalhos rápidos (`Ponto na Areia`, `Pagamento`, `Pedidos`), gerencie os pontos salvos e teste o Sinalizador a qualquer momento pelo botão **"Testar"**.
 
 ---
 
-## 3. App Mobile do Entregador (`frontend/` — Perfil `COURIER`)
+## 3. App Mobile do Entregador (`apps/app_entregador/` — Perfil `COURIER`)
 
-### Passo 3.1 — Aceitar Corrida na Orla ([`CourierHomeScreen`](file:///c:/_development/workspace/pe-na-areia/frontend/lib/presentation/courier/courier_home_screen.dart))
+### Passo 3.1 — Aceitar Corrida na Orla ([`CourierHomeScreen`](file:///c:/_development/workspace/pe-na-areia/apps/app_entregador/lib/presentation/courier/courier_home_screen.dart))
 1. Faça login como `COURIER`.
 2. Na lista **"Pedidos Prontos nos Quiosques"**, veja os pedidos com status `EM_PREPARO` / `PRONTO_PARA_ENTREGA` e toque em **"Aceitar Entrega"** (`status -> A_CAMINHO`).
 
-### Passo 3.2 — Navegar pela Faixa de Areia com o Modo Bússola / Radar Pedestre ([`BeachRadarWidget`](file:///c:/_development/workspace/pe-na-areia/frontend/lib/presentation/courier/beach_radar_widget.dart))
+### Passo 3.2 — Navegar pela Faixa de Areia com o Modo Bússola / Radar Pedestre ([`BeachRadarWidget`](file:///c:/_development/workspace/pe-na-areia/apps/app_entregador/lib/presentation/courier/beach_radar_widget.dart))
 1. Com a entrega ativa, o app exibe automaticamente:
    - **Mapa com Linha Reta Tracejada Pedestre** ligando a posição atual do entregador ao `pinCliente` na areia.
    - **Painel Bússola / Radar na Areia**: distância direta em metros (Haversine), ângulo em graus e direção cardeal em português (ex.: *"A 22m a Sudeste (135°) do Posto 5"*).
