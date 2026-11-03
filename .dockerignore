@@ -2,6 +2,8 @@
 .env
 **/.gradle
 **/target
-frontend
+apps
+packages
+dist-mobile
 **/.dart_tool
 **/build

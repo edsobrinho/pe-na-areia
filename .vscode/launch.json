@@ -1,25 +1,62 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "frontend",
-            "cwd": "frontend",
+            "name": "App Cliente (Debug)",
+            "cwd": "apps/app_cliente",
             "request": "launch",
             "type": "dart"
         },
         {
-            "name": "frontend (profile mode)",
-            "cwd": "frontend",
+            "name": "App Cliente (Profile)",
+            "cwd": "apps/app_cliente",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "frontend (release mode)",
-            "cwd": "frontend",
+            "name": "App Cliente (Release)",
+            "cwd": "apps/app_cliente",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "App Entregador (Debug)",
+            "cwd": "apps/app_entregador",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "App Entregador (Profile)",
+            "cwd": "apps/app_entregador",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "App Entregador (Release)",
+            "cwd": "apps/app_entregador",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "App Prototipo (Debug)",
+            "cwd": "apps/app_prototipo",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "App Prototipo (Profile)",
+            "cwd": "apps/app_prototipo",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "App Prototipo (Release)",
+            "cwd": "apps/app_prototipo",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

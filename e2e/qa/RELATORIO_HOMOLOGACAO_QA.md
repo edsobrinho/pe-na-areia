@@ -35,7 +35,7 @@
 | **Infraestrutura Docker** | `docker compose -f infrastructure/docker-compose.yml ps` | ✅ **3/3 UP & HEALTHY** | `mongodb` (`rs0`, `:27017`), `cloudinary-mock` (`:8099`), `backend` (`:8080`) |
 | **E2E Full-Stack (3 Atores)** | `node e2e/e2e_delivery_flow.mjs` | ✅ **53 PASS / 0 FAIL** | Simulação completa: Operador Web (`KIOSK_OPERATOR`), Cliente na Areia (`CLIENT`) e Entregador (`COURIER`) |
 | **Backend (Spring Boot 3)** | `cd backend && .\gradlew.bat test` | ✅ **BUILD SUCCESSFUL** | Testes unitários e de serviço (`OrderServiceTest`, `KioskServiceTest`, `PartnershipServiceTest`, `CloudinaryStorageServiceTest`, etc.) |
-| **Frontend Mobile (Flutter 3)** | `cd frontend && flutter analyze && flutter test` | ✅ **0 Issues / 127 PASS** | Análise estática limpa + 127 testes de unidade, validadores, radar pedestre e widgets |
+| **Ecossistema Mobile Modular** | `powershell -ExecutionPolicy Bypass -File scripts/test-all.ps1` | ✅ **0 Issues / 138 PASS** | Análise estática limpa + 138 testes nos 4 módulos (`packages/core_shared`, `apps/app_cliente`, `apps/app_entregador`, `apps/app_prototipo`) |
 | **Painel Web (React 19 + TS)** | `cd web && npm.cmd run build && npm.cmd test` | ✅ **Build OK / 26 PASS** | Compilação TypeScript + Vite (`248ms`) + 26 testes de máscaras e validadores brasileiros |
 
 ---

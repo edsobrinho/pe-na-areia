@@ -3,9 +3,19 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
-      <excludeFolder url="file://$MODULE_DIR$/frontend/.dart_tool" />
-      <excludeFolder url="file://$MODULE_DIR$/frontend/.pub" />
-      <excludeFolder url="file://$MODULE_DIR$/frontend/build" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_cliente/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_cliente/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_cliente/build" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_entregador/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_entregador/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_entregador/build" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_prototipo/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_prototipo/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/app_prototipo/build" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/core_shared/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/core_shared/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/core_shared/build" />
+      <excludeFolder url="file://$MODULE_DIR$/dist-mobile" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
