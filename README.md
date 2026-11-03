@@ -14,8 +14,7 @@ Consulte a documentação dedicada de cada projeto e arquitetura:
 - 🏖️ **[App do Cliente / Banista](apps/app_cliente/README.md)** — Aplicação para pedidos na areia, pin no mapa, pagamento Pix, Live Tracking SSE e Farol Visual (`SignalBeaconScreen`).
 - 🧭 **[App do Entregador / Courier](apps/app_entregador/README.md)** — Navegação por Radar Pedestre na areia, bússola geodésica, telemetria contínua e confirmação validada por Geofencing (60m).
 - 📱 **[Protótipo Funcional & Showcase](apps/app_prototipo/README.md)** — Demonstração interativa completa e multiplataforma (Web, Android e iOS) sem dependência de backend.
-- 📄 **[PRD Principal v2.0](PRD.md)** — Especificação funcional da logística costeira, Farol Visual e radar de areia.
-- 📄 **[PRD v1.1 — Parcerias e Cardápio](PRD-v1.1-parcerias-quiosques.md)** — CRUD de cardápio com fotos, canais de venda, comissões e snapshot de preços.
+- 📄 **[PRD Consolidado v2.1](PRD.md)** — Especificação completa do ecossistema: logística na praia, Farol Visual, Radar Pedestre, gestão de quiosques, cardápio com fotos, parcerias e regras de negócio.
 
 ---
 

@@ -31,13 +31,16 @@ Navegação guiada pelas 5 etapas fundamentais:
 - **Farol Visual (`SignalBeacon`):** Demonstração da tela cheia solar de alta visibilidade com alternância de cores solares e temporizador.
 
 ### 2. Mapa de Fluxo do Entregador (Courier)
+
 Navegação pelas 4 etapas de logística:
+
 - **Fila de Pedidos:** Listagem de pedidos com cards informativos e tempo de espera.
 - **Rota & Modo Bússola:** Visualização do radar geodésico na areia e cálculo de azimute.
 - **Confirmação:** Simulação do Geofencing de entrega.
 - **Chat de Praia:** Mensagens rápidas e contextualizadas com o cliente.
 
 ### 3. Tela de Boas-Vindas e Splash Sustentável
+
 - Tela de apresentação com o tema de **Entrega Sustentável na Praia de Santos**, valorizando o cuidado ambiental da orla e o comércio local.
 
 ---
@@ -45,6 +48,7 @@ Navegação pelas 4 etapas de logística:
 ## 🌐 Suporte Multiplataforma (Web, Android e iOS)
 
 O protótipo foi projetado para rodar nativamente em:
+
 - **Navegadores Web (Flutter Web):** Ideal para apresentações em reuniões, pitches ou demonstrações em desktops sem instalação.
 - **Smartphones Android (.apk):** Teste tátil e de responsividade em aparelhos reais.
 - **iOS:** Simulação no Xcode e dispositivos Apple.

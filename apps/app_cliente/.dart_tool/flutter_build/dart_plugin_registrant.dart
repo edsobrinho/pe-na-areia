@@ -6,28 +6,28 @@
 // @dart = 3.3
 
 import 'dart:io'; // flutter_ignore: dart_io_import.
-import 'package:geolocator_android/geolocator_android.dart';
-import 'package:google_maps_flutter_android/google_maps_flutter_android.dart';
-import 'package:image_picker_android/image_picker_android.dart';
-import 'package:path_provider_android/path_provider_android.dart';
-import 'package:geolocator_apple/geolocator_apple.dart';
-import 'package:google_maps_flutter_ios/google_maps_flutter_ios.dart';
-import 'package:image_picker_ios/image_picker_ios.dart';
-import 'package:path_provider_foundation/path_provider_foundation.dart';
-import 'package:file_selector_linux/file_selector_linux.dart';
-import 'package:geolocator_linux/geolocator_linux.dart';
-import 'package:image_picker_linux/image_picker_linux.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider_linux/path_provider_linux.dart';
-import 'package:file_selector_macos/file_selector_macos.dart';
-import 'package:geolocator_apple/geolocator_apple.dart';
-import 'package:image_picker_macos/image_picker_macos.dart';
-import 'package:path_provider_foundation/path_provider_foundation.dart';
-import 'package:file_selector_windows/file_selector_windows.dart';
-import 'package:flutter_secure_storage_windows/flutter_secure_storage_windows.dart';
-import 'package:image_picker_windows/image_picker_windows.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider_windows/path_provider_windows.dart';
+import 'package:geolocator_android/geolocator_android.dart' as geolocator_android;
+import 'package:google_maps_flutter_android/google_maps_flutter_android.dart' as google_maps_flutter_android;
+import 'package:image_picker_android/image_picker_android.dart' as image_picker_android;
+import 'package:path_provider_android/path_provider_android.dart' as path_provider_android;
+import 'package:geolocator_apple/geolocator_apple.dart' as geolocator_apple;
+import 'package:google_maps_flutter_ios/google_maps_flutter_ios.dart' as google_maps_flutter_ios;
+import 'package:image_picker_ios/image_picker_ios.dart' as image_picker_ios;
+import 'package:path_provider_foundation/path_provider_foundation.dart' as path_provider_foundation;
+import 'package:file_selector_linux/file_selector_linux.dart' as file_selector_linux;
+import 'package:geolocator_linux/geolocator_linux.dart' as geolocator_linux;
+import 'package:image_picker_linux/image_picker_linux.dart' as image_picker_linux;
+import 'package:package_info_plus/package_info_plus.dart' as package_info_plus;
+import 'package:path_provider_linux/path_provider_linux.dart' as path_provider_linux;
+import 'package:file_selector_macos/file_selector_macos.dart' as file_selector_macos;
+import 'package:geolocator_apple/geolocator_apple.dart' as geolocator_apple;
+import 'package:image_picker_macos/image_picker_macos.dart' as image_picker_macos;
+import 'package:path_provider_foundation/path_provider_foundation.dart' as path_provider_foundation;
+import 'package:file_selector_windows/file_selector_windows.dart' as file_selector_windows;
+import 'package:flutter_secure_storage_windows/flutter_secure_storage_windows.dart' as flutter_secure_storage_windows;
+import 'package:image_picker_windows/image_picker_windows.dart' as image_picker_windows;
+import 'package:package_info_plus/package_info_plus.dart' as package_info_plus;
+import 'package:path_provider_windows/path_provider_windows.dart' as path_provider_windows;
 
 @pragma('vm:entry-point')
 class _PluginRegistrant {
@@ -36,7 +36,7 @@ class _PluginRegistrant {
   static void register() {
     if (Platform.isAndroid) {
       try {
-        GeolocatorAndroid.registerWith();
+        geolocator_android.GeolocatorAndroid.registerWith();
       } catch (err) {
         print(
           '`geolocator_android` threw an error: $err. '
@@ -45,7 +45,7 @@ class _PluginRegistrant {
       }
 
       try {
-        GoogleMapsFlutterAndroid.registerWith();
+        google_maps_flutter_android.GoogleMapsFlutterAndroid.registerWith();
       } catch (err) {
         print(
           '`google_maps_flutter_android` threw an error: $err. '
@@ -54,7 +54,7 @@ class _PluginRegistrant {
       }
 
       try {
-        ImagePickerAndroid.registerWith();
+        image_picker_android.ImagePickerAndroid.registerWith();
       } catch (err) {
         print(
           '`image_picker_android` threw an error: $err. '
@@ -63,7 +63,7 @@ class _PluginRegistrant {
       }
 
       try {
-        PathProviderAndroid.registerWith();
+        path_provider_android.PathProviderAndroid.registerWith();
       } catch (err) {
         print(
           '`path_provider_android` threw an error: $err. '
@@ -73,7 +73,7 @@ class _PluginRegistrant {
 
     } else if (Platform.isIOS) {
       try {
-        GeolocatorApple.registerWith();
+        geolocator_apple.GeolocatorApple.registerWith();
       } catch (err) {
         print(
           '`geolocator_apple` threw an error: $err. '
@@ -82,7 +82,7 @@ class _PluginRegistrant {
       }
 
       try {
-        GoogleMapsFlutterIOS.registerWith();
+        google_maps_flutter_ios.GoogleMapsFlutterIOS.registerWith();
       } catch (err) {
         print(
           '`google_maps_flutter_ios` threw an error: $err. '
@@ -91,7 +91,7 @@ class _PluginRegistrant {
       }
 
       try {
-        ImagePickerIOS.registerWith();
+        image_picker_ios.ImagePickerIOS.registerWith();
       } catch (err) {
         print(
           '`image_picker_ios` threw an error: $err. '
@@ -100,7 +100,7 @@ class _PluginRegistrant {
       }
 
       try {
-        PathProviderFoundation.registerWith();
+        path_provider_foundation.PathProviderFoundation.registerWith();
       } catch (err) {
         print(
           '`path_provider_foundation` threw an error: $err. '
@@ -110,7 +110,7 @@ class _PluginRegistrant {
 
     } else if (Platform.isLinux) {
       try {
-        FileSelectorLinux.registerWith();
+        file_selector_linux.FileSelectorLinux.registerWith();
       } catch (err) {
         print(
           '`file_selector_linux` threw an error: $err. '
@@ -119,7 +119,7 @@ class _PluginRegistrant {
       }
 
       try {
-        GeolocatorLinux.registerWith();
+        geolocator_linux.GeolocatorLinux.registerWith();
       } catch (err) {
         print(
           '`geolocator_linux` threw an error: $err. '
@@ -128,7 +128,7 @@ class _PluginRegistrant {
       }
 
       try {
-        ImagePickerLinux.registerWith();
+        image_picker_linux.ImagePickerLinux.registerWith();
       } catch (err) {
         print(
           '`image_picker_linux` threw an error: $err. '
@@ -137,7 +137,7 @@ class _PluginRegistrant {
       }
 
       try {
-        PackageInfoPlusLinuxPlugin.registerWith();
+        package_info_plus.PackageInfoPlusLinuxPlugin.registerWith();
       } catch (err) {
         print(
           '`package_info_plus` threw an error: $err. '
@@ -146,7 +146,7 @@ class _PluginRegistrant {
       }
 
       try {
-        PathProviderLinux.registerWith();
+        path_provider_linux.PathProviderLinux.registerWith();
       } catch (err) {
         print(
           '`path_provider_linux` threw an error: $err. '
@@ -156,7 +156,7 @@ class _PluginRegistrant {
 
     } else if (Platform.isMacOS) {
       try {
-        FileSelectorMacOS.registerWith();
+        file_selector_macos.FileSelectorMacOS.registerWith();
       } catch (err) {
         print(
           '`file_selector_macos` threw an error: $err. '
@@ -165,7 +165,7 @@ class _PluginRegistrant {
       }
 
       try {
-        GeolocatorApple.registerWith();
+        geolocator_apple.GeolocatorApple.registerWith();
       } catch (err) {
         print(
           '`geolocator_apple` threw an error: $err. '
@@ -174,7 +174,7 @@ class _PluginRegistrant {
       }
 
       try {
-        ImagePickerMacOS.registerWith();
+        image_picker_macos.ImagePickerMacOS.registerWith();
       } catch (err) {
         print(
           '`image_picker_macos` threw an error: $err. '
@@ -183,7 +183,7 @@ class _PluginRegistrant {
       }
 
       try {
-        PathProviderFoundation.registerWith();
+        path_provider_foundation.PathProviderFoundation.registerWith();
       } catch (err) {
         print(
           '`path_provider_foundation` threw an error: $err. '
@@ -193,7 +193,7 @@ class _PluginRegistrant {
 
     } else if (Platform.isWindows) {
       try {
-        FileSelectorWindows.registerWith();
+        file_selector_windows.FileSelectorWindows.registerWith();
       } catch (err) {
         print(
           '`file_selector_windows` threw an error: $err. '
@@ -202,7 +202,7 @@ class _PluginRegistrant {
       }
 
       try {
-        FlutterSecureStorageWindows.registerWith();
+        flutter_secure_storage_windows.FlutterSecureStorageWindows.registerWith();
       } catch (err) {
         print(
           '`flutter_secure_storage_windows` threw an error: $err. '
@@ -211,7 +211,7 @@ class _PluginRegistrant {
       }
 
       try {
-        ImagePickerWindows.registerWith();
+        image_picker_windows.ImagePickerWindows.registerWith();
       } catch (err) {
         print(
           '`image_picker_windows` threw an error: $err. '
@@ -220,7 +220,7 @@ class _PluginRegistrant {
       }
 
       try {
-        PackageInfoPlusWindowsPlugin.registerWith();
+        package_info_plus.PackageInfoPlusWindowsPlugin.registerWith();
       } catch (err) {
         print(
           '`package_info_plus` threw an error: $err. '
@@ -229,7 +229,7 @@ class _PluginRegistrant {
       }
 
       try {
-        PathProviderWindows.registerWith();
+        path_provider_windows.PathProviderWindows.registerWith();
       } catch (err) {
         print(
           '`path_provider_windows` threw an error: $err. '

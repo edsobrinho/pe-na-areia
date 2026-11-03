@@ -831,7 +831,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: DropdownButtonFormField<Partnership>(
-                    value: _selectedPartnership,
+                    key: ValueKey(_selectedPartnership?.id ?? 'all'),
+                    initialValue: _selectedPartnership,
                     isDense: true,
                     decoration: InputDecoration(
                       contentPadding: const EdgeInsets.symmetric(
@@ -1553,8 +1554,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               border: Border.all(color: AppColors.line),
               boxShadow: AppTheme.softCardShadow,
             ),
-            child: Column(
-              children: [
+            child: Material(
+              type: MaterialType.transparency,
+              child: Column(
+                children: [
                 ListTile(
                   leading: const Icon(
                     Icons.credit_card_outlined,
@@ -1621,6 +1624,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               ],
             ),
           ),
+        ),
         ],
       );
 

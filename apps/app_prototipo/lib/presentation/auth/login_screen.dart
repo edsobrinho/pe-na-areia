@@ -134,14 +134,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             formatters: [PhoneInputFormatter()],
                             validator: AppValidators.validatePhone,
                           ),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            activeTrackColor: AppColors.sage500,
-                            title: const Text('Sou entregador'),
-                            subtitle: const Text('Veículo: a pé'),
-                            value: _courierMode,
-                            onChanged: (value) =>
-                                setState(() => _courierMode = value),
+                          Material(
+                            type: MaterialType.transparency,
+                            child: SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              activeTrackColor: AppColors.sage500,
+                              title: const Text('Sou entregador'),
+                              subtitle: const Text('Veículo: a pé'),
+                              value: _courierMode,
+                              onChanged: (value) =>
+                                  setState(() => _courierMode = value),
+                            ),
                           ),
                           const SizedBox(height: 8),
                         ],
