@@ -5,11 +5,13 @@ import com.penaareia.dto.CreateOrderRequest;
 import com.penaareia.dto.ErrorResponse;
 import com.penaareia.dto.OrderCursorSlice;
 import com.penaareia.dto.OrderResponse;
+import com.penaareia.dto.OrderReviewRequest;
 import com.penaareia.dto.OrderTrackingDtos.CourierLocationUpdateRequest;
 import com.penaareia.dto.OrderTrackingDtos.OrderMessageRequest;
 import com.penaareia.dto.OrderTrackingDtos.PixChargeResponse;
 import com.penaareia.dto.StatusUpdateRequest;
 import com.penaareia.model.Order;
+import com.penaareia.model.OrderStatus;
 import com.penaareia.model.User;
 import com.penaareia.service.BusinessRuleException;
 import com.penaareia.service.OrderEventStreamService;
@@ -73,7 +75,7 @@ public class OrderController {
             @RequestParam(defaultValue = "50") @Min(1) @Max(100) int size,
             @RequestParam(required = false) String cursor) {
         requireRole(authentication, "ROLE_COURIER");
-        return cursorResponse(workflowService.listarDisponiveis(size, cursor));
+        return cursorResponseForCourier(workflowService.listarDisponiveis(size, cursor));
     }
 
     @GetMapping("/courier/active")
@@ -84,7 +86,7 @@ public class OrderController {
             @RequestParam(defaultValue = "50") @Min(1) @Max(100) int size,
             @RequestParam(required = false) String cursor) {
         requireRole(authentication, "ROLE_COURIER");
-        return cursorResponse(workflowService.listarEmRota(authentication.getName(), size, cursor));
+        return cursorResponseForCourier(workflowService.listarEmRota(authentication.getName(), size, cursor));
     }
 
     @GetMapping("/kiosk/me")
@@ -103,6 +105,17 @@ public class OrderController {
     private static ResponseEntity<List<OrderResponse>> cursorResponse(OrderCursorSlice slice) {
         List<OrderResponse> orders = slice.orders().stream()
                 .map(OrderResponse::fromEntity)
+                .toList();
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok();
+        if (slice.nextCursor() != null) {
+            response.header("X-Next-Cursor", slice.nextCursor());
+        }
+        return response.body(orders);
+    }
+
+    private static ResponseEntity<List<OrderResponse>> cursorResponseForCourier(OrderCursorSlice slice) {
+        List<OrderResponse> orders = slice.orders().stream()
+                .map(o -> OrderResponse.fromEntityForCourier(o, null))
                 .toList();
         ResponseEntity.BodyBuilder response = ResponseEntity.ok();
         if (slice.nextCursor() != null) {
@@ -145,6 +158,11 @@ public class OrderController {
     public OrderResponse buscar(@PathVariable String id, Authentication authentication) {
         Order order = orderService.buscarPorId(id);
         validarAcessoAoPedido(order, authentication);
+        boolean isCourier = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_COURIER".equals(a.getAuthority()));
+        if (isCourier && order.getStatus() != OrderStatus.ENTREGUE) {
+            return OrderResponse.fromEntityForCourier(order, null);
+        }
         return OrderResponse.fromEntity(order);
     }
 
@@ -236,6 +254,17 @@ public class OrderController {
         requireRole(authentication, "ROLE_COURIER");
         return OrderResponse.fromEntity(workflowService.confirmarEntrega(
                 id, request, authentication.getName()));
+    }
+
+    @PostMapping("/{id}/review")
+    @Operation(summary = "Registra a avaliação do cliente (1 a 5 estrelas) após a entrega do pedido")
+    public ResponseEntity<OrderResponse> avaliarPedido(
+            @PathVariable String id,
+            @Valid @RequestBody OrderReviewRequest request,
+            Authentication authentication) {
+        requireRole(authentication, "ROLE_CLIENT");
+        Order order = orderService.avaliarPedido(id, request, authentication.getName());
+        return ResponseEntity.ok(OrderResponse.fromEntity(order));
     }
 
     private void requireRole(Authentication authentication, String role) {

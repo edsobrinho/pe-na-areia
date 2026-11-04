@@ -121,18 +121,46 @@ class OrderRepository {
     }
   }
 
-  /// Confirma a entrega com a posição GPS atual do entregador.
+  /// Confirma a entrega com a posição GPS atual do entregador e o código de 4 dígitos.
   Future<Order> confirmDelivery({
     required String orderId,
     required String courierId,
     required double latitude,
     required double longitude,
+    String? codigoEntrega,
   }) async {
     final path = '$_basePath/$orderId/confirm-delivery';
-    final json = await _apiClient.postJson(path, {
+    final payload = <String, dynamic>{
       'courierId': courierId,
       'courierLocation': {'lat': latitude, 'lng': longitude},
-    });
+    };
+    if (codigoEntrega != null && codigoEntrega.trim().isNotEmpty) {
+      payload['codigoEntrega'] = codigoEntrega.trim();
+    }
+    final json = await _apiClient.postJson(path, payload);
+    try {
+      return OrderMapper.fromJson(json);
+    } on TypeError catch (error) {
+      throw ApiParsingException(_apiClient.resolve(path), error);
+    }
+  }
+
+  /// Envia a avaliação do cliente (1 a 5 estrelas) após a entrega (`POST /orders/{id}/review`).
+  Future<Order> reviewOrder({
+    required String orderId,
+    required int notaPedido,
+    required int notaEntrega,
+    String? comentario,
+  }) async {
+    final path = '$_basePath/$orderId/review';
+    final payload = <String, dynamic>{
+      'notaPedido': notaPedido,
+      'notaEntrega': notaEntrega,
+    };
+    if (comentario != null && comentario.trim().isNotEmpty) {
+      payload['comentario'] = comentario.trim();
+    }
+    final json = await _apiClient.postJson(path, payload);
     try {
       return OrderMapper.fromJson(json);
     } on TypeError catch (error) {

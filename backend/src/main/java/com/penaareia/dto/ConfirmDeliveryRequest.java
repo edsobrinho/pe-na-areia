@@ -8,8 +8,13 @@ import jakarta.validation.constraints.NotNull;
 
 public record ConfirmDeliveryRequest(
         @NotBlank String courierId,
-        @NotNull @Valid CourierLocation courierLocation
+        @NotNull @Valid CourierLocation courierLocation,
+        String codigoEntrega
 ) {
+    public ConfirmDeliveryRequest(String courierId, CourierLocation courierLocation) {
+        this(courierId, courierLocation, null);
+    }
+
     public record CourierLocation(
             @NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double lat,
             @NotNull @DecimalMin("-180.0") @DecimalMax("180.0") Double lng

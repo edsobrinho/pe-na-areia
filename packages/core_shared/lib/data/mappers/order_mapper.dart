@@ -47,6 +47,8 @@ abstract final class OrderMapper {
         courierNome: json['courierNome'] as String?,
         courierTelefone: json['courierTelefone'] as String?,
         courierVeiculo: json['courierVeiculo'] as String?,
+        codigoEntrega: json['codigoEntrega'] as String?,
+        avaliacao: _reviewFromJson(json['avaliacao'] as Map<String, dynamic>?),
       );
 
   /// Corpo JSON de `POST /orders`, conforme contrato compartilhado com o backend.
@@ -88,6 +90,19 @@ abstract final class OrderMapper {
         texto: json['texto'] as String? ?? '',
         enviadoEm: dateTimeFromJson(json['enviadoEm']),
       );
+
+  static OrderReview? _reviewFromJson(Map<String, dynamic>? json) {
+    if (json == null) return null;
+    final notaPedido = (json['notaPedido'] as num?)?.toInt();
+    final notaEntrega = (json['notaEntrega'] as num?)?.toInt();
+    if (notaPedido == null || notaEntrega == null) return null;
+    return OrderReview(
+      notaPedido: notaPedido,
+      notaEntrega: notaEntrega,
+      comentario: json['comentario'] as String?,
+      avaliadoEm: dateTimeFromJson(json['avaliadoEm']),
+    );
+  }
 }
 
 /// Mapeamento JSON explicito de [OrderTimeline].

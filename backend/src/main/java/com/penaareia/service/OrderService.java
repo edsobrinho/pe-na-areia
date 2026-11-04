@@ -1,6 +1,7 @@
 package com.penaareia.service;
 
 import com.penaareia.dto.CreateOrderRequest;
+import com.penaareia.dto.OrderReviewRequest;
 import com.penaareia.dto.OrderTrackingDtos.PixChargeResponse;
 import com.penaareia.dto.OrderTrackingDtos.PixWebhookRequest;
 import com.penaareia.model.Kiosk;
@@ -19,6 +20,8 @@ import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,6 +39,7 @@ public class OrderService {
     private final PartnershipService partnershipService;
     private final PixPaymentGateway pixPaymentGateway;
     private final OrderEventStreamService streamService;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public OrderService(OrderRepository orderRepository,
                         UserRepository userRepository,
@@ -196,6 +200,10 @@ public class OrderService {
                 : usuario.getTelefone());
         order.setEtiquetaLocal(request.getEtiquetaLocal());
 
+        // Codigo de confirmacao de entrega de 4 digitos numericos para validacao verbal na areia
+        String codigoEntrega = String.format("%04d", secureRandom.nextInt(10000));
+        order.setCodigoEntrega(codigoEntrega);
+
         if (request.getFormaPagamento() == PaymentMethod.PIX) {
             PixPaymentGateway.PixCharge charge = pixPaymentGateway.gerarCobranca(order);
             order.setPixTxId(charge.txId());
@@ -266,5 +274,52 @@ public class OrderService {
     public User buscarUsuario(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + userId));
+    }
+
+    public Order avaliarPedido(String orderId, OrderReviewRequest request, String callerId) {
+        Order order = buscarPorId(orderId);
+        if (!callerId.equals(order.getUserId())) {
+            throw new BusinessRuleException("Somente o cliente deste pedido pode avaliá-lo.");
+        }
+        if (order.getStatus() != OrderStatus.ENTREGUE) {
+            throw new BusinessRuleException("Somente pedidos entregues podem ser avaliados.");
+        }
+        if (order.getAvaliacao() != null) {
+            throw new BusinessRuleException("Este pedido já foi avaliado anteriormente.");
+        }
+
+        Order.OrderReview review = new Order.OrderReview(
+                request.notaPedido(),
+                request.notaEntrega(),
+                request.comentario() != null ? request.comentario().trim() : null,
+                Instant.now()
+        );
+        order.setAvaliacao(review);
+        Order savedOrder = orderRepository.save(order);
+
+        // Recalcular avaliacaoMedia do quiosque
+        recalcularMediaQuiosque(order.getKioskId());
+
+        // Notificar via stream para atualizacoes em tempo real
+        streamService.publish(savedOrder);
+
+        return savedOrder;
+    }
+
+    private void recalcularMediaQuiosque(String kioskId) {
+        if (kioskId == null) return;
+        List<Order> avaliados = orderRepository.findByKioskId(kioskId).stream()
+                .filter(o -> o.getAvaliacao() != null && o.getAvaliacao().getNotaPedido() != null)
+                .toList();
+        if (avaliados.isEmpty()) return;
+        double media = avaliados.stream()
+                .mapToInt(o -> o.getAvaliacao().getNotaPedido())
+                .average()
+                .orElse(5.0);
+        double mediaArredondada = Math.round(media * 10.0) / 10.0;
+        kioskRepository.findById(kioskId).ifPresent(kiosk -> {
+            kiosk.setAvaliacaoMedia(mediaArredondada);
+            kioskRepository.save(kiosk);
+        });
     }
 }

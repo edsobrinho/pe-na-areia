@@ -12,10 +12,12 @@ class SignalBeaconScreen extends StatefulWidget {
     super.key,
     this.orderId,
     this.descricaoLocal,
+    this.codigoEntrega,
   });
 
   final String? orderId;
   final String? descricaoLocal;
+  final String? codigoEntrega;
 
   @override
   State<SignalBeaconScreen> createState() => _SignalBeaconScreenState();
@@ -189,6 +191,37 @@ class _SignalBeaconScreenState extends State<SignalBeaconScreen>
                       'O sinal se encerrará automaticamente',
                       style: TextStyle(fontSize: 13, color: corTextoSec),
                     ),
+                    if (widget.codigoEntrega != null &&
+                        widget.codigoEntrega!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: corTexto.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.key_rounded, size: 20, color: corTexto),
+                            const SizedBox(width: 8),
+                            Text(
+                              'CÓDIGO: ${widget.codigoEntrega}',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2,
+                                color: corTexto,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     if (widget.orderId != null) ...[
                       const SizedBox(height: 8),
                       Text(

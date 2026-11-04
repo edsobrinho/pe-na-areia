@@ -72,6 +72,12 @@ public class Order {
     // --- Canal Rapido de Mensagens (A_CAMINHO / CHEGOU_NO_LOCAL) ---
     private List<OrderMessage> mensagens = new ArrayList<>();
 
+    // --- Codigo de Confirmacao de Entrega (4 digitos numericos para validar na areia) ---
+    private String codigoEntrega;
+
+    // --- Avaliacao Pos-Entrega (1 a 5 estrelas) ---
+    private OrderReview avaliacao;
+
     /** Uma vez PAGO, o pin nao pode mais ser alterado (trava, como no modelo Dominos) */
     private boolean localizacaoTravada = false;
 
@@ -104,6 +110,20 @@ public class Order {
             String texto,
             Instant enviadoEm
     ) {
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OrderReview {
+        private Integer notaPedido;   // 1 a 5 estrelas (comida / quiosque)
+        private Integer notaEntrega;  // 1 a 5 estrelas (entregador / pontualidade)
+        private String comentario;    // opcional (ate 300 caracteres)
+        private Instant avaliadoEm = Instant.now();
+
+        public OrderReview(Integer notaPedido, Integer notaEntrega, String comentario) {
+            this(notaPedido, notaEntrega, comentario, Instant.now());
+        }
     }
 
     public record PricingSnapshot(

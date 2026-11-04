@@ -56,6 +56,12 @@ public class OrderResponse {
     private String courierVeiculo;
     private Order.StatusTimeline timeline;
 
+    /** Codigo de 4 digitos numericos para validacao verbal na areia */
+    private String codigoEntrega;
+
+    /** Avaliacao de 1 a 5 estrelas feita pelo cliente */
+    private Order.OrderReview avaliacao;
+
     public static OrderResponse fromEntity(Order order) {
         return fromEntityWithCourier(order, null);
     }
@@ -101,7 +107,17 @@ public class OrderResponse {
                 courier != null ? courier.getNome() : null,
                 courier != null ? courier.getTelefone() : null,
                 veiculoStr,
-                order.getTimeline()
+                order.getTimeline(),
+                order.getCodigoEntrega(),
+                order.getAvaliacao()
         );
+    }
+
+    public static OrderResponse fromEntityForCourier(Order order, com.penaareia.model.Courier courier) {
+        OrderResponse resp = fromEntityWithCourier(order, courier);
+        if (order.getStatus() != OrderStatus.ENTREGUE) {
+            resp.setCodigoEntrega(null);
+        }
+        return resp;
     }
 }

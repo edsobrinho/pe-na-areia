@@ -520,6 +520,10 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
     final courierLatLng =
         (cLat != null && cLng != null) ? LatLng(cLat, cLng) : null;
 
+    if (!GoogleMapsChecker.isReady) {
+      return _buildMapFallback(order, location, courierLatLng);
+    }
+
     final markers = <Marker>{
       Marker(
         markerId: MarkerId('destino-${order.id}'),
@@ -577,6 +581,141 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
       ),
     );
   }
+
+  Widget _buildMapFallback(
+    Order order,
+    OrderLocation location,
+    LatLng? courierLatLng,
+  ) {
+    double? distance;
+    if (courierLatLng != null) {
+      distance = distanceMeters(
+        GeoPoint(
+          latitude: courierLatLng.latitude,
+          longitude: courierLatLng.longitude,
+        ),
+        GeoPoint(
+          latitude: location.latitude,
+          longitude: location.longitude,
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.apricot100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.beach_access_rounded,
+                  color: AppColors.apricot600,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Destino na Faixa de Areia',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: AppColors.ink800,
+                      ),
+                    ),
+                    Text(
+                      location.descricaoLocal.isEmpty
+                          ? 'Santos - SP'
+                          : location.descricaoLocal,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.ink500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (distance != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: distance <= 60
+                        ? AppColors.sage100
+                        : AppColors.sand200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${distance.toStringAsFixed(0)}m',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: distance <= 60
+                          ? AppColors.sage700
+                          : AppColors.ink700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.gps_fixed_rounded,
+                  size: 14,
+                  color: AppColors.sage700,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'GPS: ${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      color: AppColors.ink700,
+                    ),
+                  ),
+                ),
+                const Text(
+                  'Orla Santos',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   String _locationSummary(Order order) {
     final location = order.localizacao;

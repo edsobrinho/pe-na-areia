@@ -296,6 +296,13 @@ public class OrderWorkflowService {
             throw new BusinessRuleException("Este pedido não pertence a este entregador.");
         }
 
+        // Validação do Código de 4 Dígitos falado pelo cliente na areia
+        if (order.getCodigoEntrega() != null && !order.getCodigoEntrega().isBlank()) {
+            if (request.codigoEntrega() == null || !order.getCodigoEntrega().equals(request.codigoEntrega().trim())) {
+                throw new BusinessRuleException("Código de confirmação de entrega inválido. Solicite o código de 4 dígitos ao cliente.");
+            }
+        }
+
         ConfirmDeliveryRequest.CourierLocation location = request.courierLocation();
         double distance = distanceMeters(
                 order.getPinCliente().getY(), order.getPinCliente().getX(),

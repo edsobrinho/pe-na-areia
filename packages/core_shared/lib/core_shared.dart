@@ -44,3 +44,6 @@ export 'data/services/location_service.dart';
 export 'forms/formatters.dart';
 export 'forms/validators.dart';
 
+// Platform & Map Utils
+export 'utils/maps_checker/google_maps_checker.dart';
+

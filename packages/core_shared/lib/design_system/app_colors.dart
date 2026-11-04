@@ -81,4 +81,9 @@ class AppColors {
 
   static const seafoam700 = sage700;
   static const seafoam500 = sage600;
+
+  static const ink800 = ink;
+  static const ink900 = ink;
+  static const surfaceSoft = sand50;
+  static const apricot700 = apricot600;
 }

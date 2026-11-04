@@ -11,6 +11,8 @@ import 'beach_spot_form_screen.dart';
 import 'kiosk_storefront_screen.dart';
 import 'menu_item_details_sheet.dart';
 import 'popular_kiosks_screen.dart';
+import 'order_details_sheet.dart';
+import 'order_review_dialog.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({
@@ -325,7 +327,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     });
     try {
       final latest = await widget.orderRepository.fetchOrderById(order.id);
-      if (mounted) setState(() => _order = latest);
+      if (mounted) {
+        final wasDelivered = _order?.status == OrderStatus.entregue;
+        setState(() => _order = latest);
+        if (!wasDelivered && latest.status == OrderStatus.entregue && latest.avaliacao == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _openReviewDialog(latest);
+          });
+        }
+      }
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } finally {
@@ -1532,6 +1542,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       MaterialPageRoute(
                         builder: (_) => SignalBeaconScreen(
                           orderId: _order?.id ?? 'DEMO01',
+                          codigoEntrega: _order?.codigoEntrega ?? '4819',
                           descricaoLocal:
                               _currentBeachSpot?.descricaoLocal ??
                               'Guarda-sol de demonstração no Posto 4',
@@ -2155,6 +2166,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         builder: (_) => SignalBeaconScreen(
                           orderId: order.id,
                           descricaoLocal: order.localizacao?.descricaoLocal,
+                          codigoEntrega: order.codigoEntrega,
                         ),
                       ),
                     ),
@@ -2167,22 +2179,152 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 const SizedBox(height: 12),
                 _buildClientQuickMessages(order),
               ],
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _refreshingOrder ? null : _refreshOrder,
-                  child: Text(
-                    _refreshingOrder
-                        ? 'ATUALIZANDO...'
-                        : 'ATUALIZAR DETALHES',
+              if (order.codigoEntrega != null &&
+                  order.codigoEntrega!.isNotEmpty &&
+                  order.status != OrderStatus.entregue) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.apricot100,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.apricot500.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.key_rounded, color: AppColors.apricot600, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'CÓDIGO DE CONFIRMAÇÃO',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.apricot700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              order.codigoEntrega!,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.apricot700,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      FilledButton.tonal(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.apricot700,
+                        ),
+                        onPressed: () => OrderDetailsSheet.show(
+                          context,
+                          order: order,
+                          onReviewTap: () => _openReviewDialog(order),
+                        ),
+                        child: const Text('DETALHES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      ),
+                    ],
                   ),
                 ),
+              ],
+              if (order.status == OrderStatus.entregue) ...[
+                const SizedBox(height: 12),
+                if (order.avaliacao != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.sage100,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.sage600.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: AppColors.sage700, size: 22),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Pedido Entregue e Avaliado ⭐',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.sage700),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => OrderDetailsSheet.show(
+                            context,
+                            order: order,
+                            onReviewTap: () => _openReviewDialog(order),
+                          ),
+                          child: const Text('VER NOTA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.amber.shade700,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => _openReviewDialog(order),
+                      icon: const Icon(Icons.star_rounded, size: 20),
+                      label: const Text('AVALIAR PEDIDO E ENTREGA (1 A 5 ★)'),
+                    ),
+                  ),
+                ],
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => OrderDetailsSheet.show(
+                        context,
+                        order: order,
+                        onReviewTap: () => _openReviewDialog(order),
+                      ),
+                      icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                      label: const Text('DETALHES'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _refreshingOrder ? null : _refreshOrder,
+                      child: Text(
+                        _refreshingOrder
+                            ? 'ATUALIZANDO...'
+                            : 'ATUALIZAR',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  void _openReviewDialog(Order order) {
+    OrderReviewDialog.show(
+      context,
+      orderId: order.id,
+      orderRepository: widget.orderRepository,
+      onReviewSubmitted: (updated) {
+        if (mounted) {
+          setState(() => _order = updated);
+        }
+      },
     );
   }
 
@@ -2370,6 +2512,72 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final courierLatLng = courier != null
         ? LatLng(courier.latitude, courier.longitude)
         : null;
+
+    if (!GoogleMapsChecker.isReady) {
+      return Container(
+        height: 160,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceSoft,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.apricot100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.beach_access_rounded, color: AppColors.apricot600, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ponto na Areia (Santos - SP)',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.ink800),
+                      ),
+                      Text(
+                        location.descricaoLocal.isEmpty ? 'Localização do guarda-sol' : location.descricaoLocal,
+                        style: const TextStyle(fontSize: 12, color: AppColors.ink500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'GPS: ${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppColors.ink700),
+                  ),
+                  const Text('Orla da Praia', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.sage700)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return SizedBox(
       height: 215,

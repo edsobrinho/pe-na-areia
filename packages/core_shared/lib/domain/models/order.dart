@@ -65,6 +65,22 @@ class OrderTimeline {
   final DateTime? entregueEm;
 }
 
+/// Avaliação de satisfação feita pelo cliente após a entrega do pedido (1 a 5 estrelas).
+class OrderReview {
+  const OrderReview({
+    required this.notaPedido,
+    required this.notaEntrega,
+    this.comentario,
+    this.avaliadoEm,
+  })  : assert(notaPedido >= 1 && notaPedido <= 5, 'notaPedido deve estar entre 1 e 5'),
+        assert(notaEntrega >= 1 && notaEntrega <= 5, 'notaEntrega deve estar entre 1 e 5');
+
+  final int notaPedido;
+  final int notaEntrega;
+  final String? comentario;
+  final DateTime? avaliadoEm;
+}
+
 /// Pedido criado pelo cliente. Nasce em `POST /orders` e volta com status,
 /// estado de pagamento e timeline de acompanhamento.
 class Order {
@@ -93,6 +109,8 @@ class Order {
     this.courierNome,
     this.courierTelefone,
     this.courierVeiculo,
+    this.codigoEntrega,
+    this.avaliacao,
   });
 
   final String id;
@@ -131,6 +149,12 @@ class Order {
 
   final OrderStatus status;
   final OrderTimeline timeline;
+
+  /// Código numérico de 4 dígitos para confirmação falada na areia.
+  final String? codigoEntrega;
+
+  /// Avaliação do cliente (1 a 5 estrelas) após a conclusão.
+  final OrderReview? avaliacao;
 
   String get descricaoLocal => localizacao?.descricaoLocal ?? '';
   String get fotoLocalUrl => localizacao?.fotoLocalUrl ?? '';

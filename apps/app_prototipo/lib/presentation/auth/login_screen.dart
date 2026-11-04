@@ -134,16 +134,54 @@ class _LoginScreenState extends State<LoginScreen> {
                             formatters: [PhoneInputFormatter()],
                             validator: AppValidators.validatePhone,
                           ),
-                          Material(
-                            type: MaterialType.transparency,
-                            child: SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              activeTrackColor: AppColors.sage500,
-                              title: const Text('Sou entregador'),
-                              subtitle: const Text('Veículo: a pé'),
-                              value: _courierMode,
-                              onChanged: (value) =>
-                                  setState(() => _courierMode = value),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceSoft,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.line),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.directions_walk_rounded,
+                                  color: AppColors.sage700,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Sou entregador',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: AppColors.ink800,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Veículo: a pé na orla',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.ink500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: _courierMode,
+                                  activeTrackColor: AppColors.sage500,
+                                  onChanged: (value) =>
+                                      setState(() => _courierMode = value),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 8),

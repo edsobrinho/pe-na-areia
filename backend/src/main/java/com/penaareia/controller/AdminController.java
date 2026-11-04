@@ -1,8 +1,13 @@
 package com.penaareia.controller;
 
+import com.penaareia.dto.OrderResponse;
+import com.penaareia.dto.PlatformMetricsResponse;
 import com.penaareia.model.Kiosk;
+import com.penaareia.model.Order;
+import com.penaareia.model.OrderStatus;
 import com.penaareia.model.User;
 import com.penaareia.model.Partnership;
+import com.penaareia.repository.OrderRepository;
 import com.penaareia.service.AdminService;
 import com.penaareia.service.ForbiddenException;
 import com.penaareia.service.KioskService;
@@ -12,6 +17,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +26,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 @RestController
 @Validated
 @RequestMapping("/admin")
@@ -27,15 +36,23 @@ public class AdminController {
 
     private final AdminService adminService;
     private final KioskService kioskService;
+    private final OrderRepository orderRepository;
 
     public AdminController(AdminService adminService) {
-        this(adminService, null);
+        this(adminService, null, null);
+    }
+
+    public AdminController(AdminService adminService, KioskService kioskService) {
+        this(adminService, kioskService, null);
     }
 
     @Autowired
-    public AdminController(AdminService adminService, @Autowired(required = false) KioskService kioskService) {
+    public AdminController(AdminService adminService,
+                           @Autowired(required = false) KioskService kioskService,
+                           @Autowired(required = false) OrderRepository orderRepository) {
         this.adminService = adminService;
         this.kioskService = kioskService;
+        this.orderRepository = orderRepository;
     }
 
     @PatchMapping("/kiosk-operators")
@@ -95,6 +112,50 @@ public class AdminController {
             throw new IllegalStateException("KioskService não configurado.");
         }
         return kioskService.setDestaquePopular(id, request.destaquePopular());
+    }
+
+    @GetMapping("/metrics")
+    public PlatformMetricsResponse getPlatformMetrics(Authentication authentication) {
+        requireAdmin(authentication);
+        if (orderRepository == null) {
+            return new PlatformMetricsResponse(0, 0, BigDecimal.valueOf(5.0), BigDecimal.valueOf(5.0), 0);
+        }
+        long totalOrders = orderRepository.count();
+        List<Order> reviews = orderRepository.findByAvaliacaoIsNotNull();
+        long totalDelivered = orderRepository.findAll().stream()
+                .filter(o -> o.getStatus() == OrderStatus.ENTREGUE)
+                .count();
+
+        double avgFood = reviews.stream()
+                .filter(o -> o.getAvaliacao() != null && o.getAvaliacao().getNotaPedido() != null)
+                .mapToInt(o -> o.getAvaliacao().getNotaPedido())
+                .average()
+                .orElse(5.0);
+
+        double avgDelivery = reviews.stream()
+                .filter(o -> o.getAvaliacao() != null && o.getAvaliacao().getNotaEntrega() != null)
+                .mapToInt(o -> o.getAvaliacao().getNotaEntrega())
+                .average()
+                .orElse(5.0);
+
+        return new PlatformMetricsResponse(
+                totalOrders,
+                totalDelivered,
+                BigDecimal.valueOf(Math.round(avgFood * 10.0) / 10.0),
+                BigDecimal.valueOf(Math.round(avgDelivery * 10.0) / 10.0),
+                reviews.size()
+        );
+    }
+
+    @GetMapping("/reviews")
+    public List<OrderResponse> getRecentReviews(Authentication authentication) {
+        requireAdmin(authentication);
+        if (orderRepository == null) {
+            return List.of();
+        }
+        return orderRepository.findByAvaliacaoIsNotNull().stream()
+                .map(OrderResponse::fromEntity)
+                .toList();
     }
 
     public record DestaquePopularRequest(boolean destaquePopular) {
