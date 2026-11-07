@@ -7,6 +7,7 @@ Bem-vindo ao repositório do **Pé na Areia**, a plataforma de delivery hiperloc
 ## 1. Visão Geral e Contexto de Negócio
 
 O **Pé na Areia** resolve a complexidade logística de entregar comidas e bebidas geladas diretamente ao banhista na praia.
+
 * **Cliente na Areia:** Localiza-se via GPS, seleciona ponto de referência (número do canal, posto de bombeiros, cor do guarda-sol), faz o pedido, paga via Pix antecipado, acompanha a rota em tempo real e aciona o **Farol Visual (SignalBeacon)** com cor e pulso para guiar o entregador.
 * **Código de Entrega de 4 Dígitos (PIN OTP):** Na finalização do pedido, é gerado um código numérico de 4 dígitos exclusivo. O cliente dita verbalmente esse código ao entregador no momento do encontro na areia.
 * **Entregador na Praia:** Utiliza o radar pedestre, caminha até o local indicado e digita o PIN informado pelo cliente. A entrega só é confirmada se o código for válido e se o entregador estiver dentro do **raio de geofencing de 60 metros** do cliente.
