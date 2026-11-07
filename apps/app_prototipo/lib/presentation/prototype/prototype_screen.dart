@@ -650,14 +650,17 @@ class _PrototypeScreenState extends State<PrototypeScreen>
                     ),
                   ],
                 const Divider(height: 28),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Embalagem sustentável'),
-                  subtitle: const Text('Menos plástico na sua entrega'),
-                  activeTrackColor: AppColors.positive,
-                  value: _sustainablePackage,
-                  onChanged: (value) =>
-                      setState(() => _sustainablePackage = value),
+                Material(
+                  color: Colors.transparent,
+                  child: SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Embalagem sustentável'),
+                    subtitle: const Text('Menos plástico na sua entrega'),
+                    activeTrackColor: AppColors.positive,
+                    value: _sustainablePackage,
+                    onChanged: (value) =>
+                        setState(() => _sustainablePackage = value),
+                  ),
                 ),
                 const Divider(height: 24),
                 Row(
