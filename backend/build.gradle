@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.penaareia'
-version = '0.1.4-SNAPSHOT'
+version = '0.1.5-SNAPSHOT'
 description = 'Backend do app de entrega sustentavel na orla de Santos'
 
 java {

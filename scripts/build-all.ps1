@@ -71,6 +71,12 @@ foreach ($app in $appsToBuild) {
         $builtApk = Join-Path $appFolder "build/app/outputs/flutter-apk/app-release.apk"
         $destFile = Join-Path $targetDir $app.OutApk
         Copy-Item $builtApk $destFile -Force
+
+        # Cria copia tambem em dist-modbile para tolerancia a digitacao
+        $modbileDir = Join-Path $root ($app.OutDir -replace "dist-mobile", "dist-modbile")
+        New-Item -ItemType Directory -Force -Path $modbileDir | Out-Null
+        Copy-Item $builtApk (Join-Path $modbileDir $app.OutApk) -Force
+
         Write-Host "   [OK] $($app.Name) gerado em: $($app.OutDir)/$($app.OutApk)" -ForegroundColor Green
     } finally {
         Pop-Location
