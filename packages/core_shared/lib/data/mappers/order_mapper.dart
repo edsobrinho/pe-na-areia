@@ -115,6 +115,7 @@ abstract final class OrderTimelineMapper {
       criadoEm: dateTimeFromJson(value['criadoEm']),
       pagoEm: dateTimeFromJson(value['pagoEm']),
       emPreparoEm: dateTimeFromJson(value['emPreparoEm']),
+      prontoEntregaEm: dateTimeFromJson(value['prontoEntregaEm']),
       aCaminhoEm: dateTimeFromJson(value['aCaminhoEm']),
       chegouNoLocalEm: dateTimeFromJson(value['chegouNoLocalEm']),
       entregueEm: dateTimeFromJson(value['entregueEm']),

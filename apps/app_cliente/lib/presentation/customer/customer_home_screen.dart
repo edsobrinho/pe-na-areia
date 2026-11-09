@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -81,6 +83,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String? _error;
   Order? _order;
   int _catalogRequestId = 0;
+  Timer? _orderTimer;
 
   int get _totalCartUnits =>
       _quantities.values.fold<int>(0, (sum, qty) => sum + qty);
@@ -89,6 +92,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   void initState() {
     super.initState();
     _loadCatalog();
+    _orderTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _order != null && _order!.isActive) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _orderTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCatalog({Partnership? selectedPartnership}) async {
@@ -2028,8 +2042,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          order.courierVeiculo?.isNotEmpty == true
-                              ? '${_statusLabel(order.status)} · ${order.courierVeiculo}'
+                          order.courierVeiculoLabel.isNotEmpty
+                              ? '${_statusLabel(order.status)} · ${order.courierVeiculoLabel}'
                               : _statusLabel(order.status),
                           style: const TextStyle(
                             fontSize: 12,
@@ -2095,14 +2109,51 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'PEDIDO #${order.id}',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.7,
-                      color: AppColors.ink,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'CÓDIGO DO PEDIDO #${order.codigoCurtoPedido}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.7,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: order.isDelayed()
+                              ? const Color(0xFFFFE4E6)
+                              : AppColors.sage100,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.timer_outlined,
+                              size: 13,
+                              color: order.isDelayed()
+                                  ? AppColors.danger500
+                                  : AppColors.sage700,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              order.formatElapsed(),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: order.isDelayed()
+                                    ? AppColors.danger500
+                                    : AppColors.sage700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   Text(
                     'R\$ ${order.valorTotal.toStringAsFixed(2)}',
@@ -2114,6 +2165,39 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   ),
                 ],
               ),
+              if (order.isDelayed()) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.danger500.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: AppColors.danger500,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Pedido em atraso (${order.formatElapsed()} decorridos) — passou de 28 min. O restaurante e o entregador foram alertados.',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.danger500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               _buildOrderInfoTile(
                 icon: Icons.location_on_outlined,
@@ -2192,14 +2276,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.key_rounded, color: AppColors.apricot600, size: 22),
+                      const Icon(Icons.pin_outlined, color: AppColors.apricot600, size: 22),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'CÓDIGO DE CONFIRMAÇÃO',
+                              'CÓDIGO DO PEDIDO',
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.bold,
@@ -2657,12 +2741,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   String _statusLabel(OrderStatus status) => switch (status) {
         OrderStatus.criado => 'Pedido criado',
-        OrderStatus.pago => 'Pago',
-        OrderStatus.emPreparo => 'Em preparo',
-        OrderStatus.aCaminho => 'A caminho',
-        OrderStatus.chegouNoLocal => 'Entregador chegou',
-        OrderStatus.entregue => 'Entregue',
-        OrderStatus.cancelado => 'Cancelado',
+        OrderStatus.pago => 'Pagamento confirmado',
+        OrderStatus.emPreparo => 'Em preparo no restaurante',
+        OrderStatus.prontoEntrega =>
+          'O pedido está sendo retirado do local de entrega',
+        OrderStatus.aCaminho => 'Entregador a caminho',
+        OrderStatus.chegouNoLocal => 'Entregador chegou no local',
+        OrderStatus.entregue => 'Pedido entregue',
+        OrderStatus.cancelado => 'Pedido cancelado',
         OrderStatus.naoEncontrado => 'Não encontrado na praia',
         OrderStatus.desconhecido => 'Status atualizado',
       };

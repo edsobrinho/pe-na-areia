@@ -182,7 +182,7 @@ class SplashScreen extends StatelessWidget {
                                 const SizedBox(width: 10),
                                 const Expanded(
                                   child: Text(
-                                    'ORLA DE SANTOS · POSTOS 1 AO 6',
+                                    'ORLA DE SANTOS',
                                     style: TextStyle(
                                       color: Color(0xFFE8D5B5),
                                       fontSize: 11,
@@ -215,7 +215,7 @@ class SplashScreen extends StatelessWidget {
                               iconColor: const Color(0xFF7DD3FC),
                               title: 'Entrega na Orla Santista',
                               description:
-                                  'Couriers a pé na areia e pela ciclovia da orla com rapidez.',
+                                  'Entregadores a pé na areia e pela ciclovia da orla com rapidez.',
                             ),
                           ],
                         ),
@@ -278,7 +278,7 @@ class SplashScreen extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              child: const Text('Já possui conta? Entrar ou Cadastrar Quiosque'),
+                              child: const Text('Já possui conta? Entrar ou Cadastrar'),
                             ),
                           ),
                         ],

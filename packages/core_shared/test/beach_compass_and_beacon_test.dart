@@ -207,5 +207,49 @@ void main() {
       expect(offerKioskPays.isFreeDelivery, isTrue);
       expect(offerKioskPays.estimatedTimeRangeLabel, '20 a 30 min');
     });
+
+    test('OrderStatus.prontoEntrega, timer de 28min e codigoCurtoPedido sem chave do banco', () {
+      expect(OrderStatus.fromWire('PRONTO_ENTREGA'), OrderStatus.prontoEntrega);
+      expect(
+        OrderStatus.prontoEntrega.customerLabel,
+        'O pedido está sendo retirado do local de entrega',
+      );
+      expect(
+        OrderStatus.prontoEntrega.courierLabel,
+        'Pronto no restaurante para retirada',
+      );
+
+      final createdAt = DateTime.utc(2026, 11, 8, 14, 0, 0);
+      final order = Order(
+        id: '6ae605b0ddbac77806f2b493',
+        userId: 'u1',
+        kioskId: 'k1',
+        valorTotal: 42.0,
+        formaPagamento: PaymentMethod.pix,
+        status: OrderStatus.prontoEntrega,
+        courierVeiculo: 'BICICLETA',
+        codigoEntrega: '4829',
+        timeline: OrderTimeline(criadoEm: createdAt),
+      );
+
+      expect(order.codigoCurtoPedido, '4829');
+      expect(order.courierVeiculoLabel, 'De bicicleta');
+      expect(order.isDelayed(createdAt.add(const Duration(minutes: 27, seconds: 59))), isFalse);
+      expect(order.isDelayed(createdAt.add(const Duration(minutes: 28))), isTrue);
+      expect(order.formatElapsed(createdAt.add(const Duration(minutes: 28, seconds: 5))), '28:05');
+
+      final maskedForCourier = Order(
+        id: '6ae605b0ddbac77806f2b493',
+        userId: 'u1',
+        kioskId: 'k1',
+        valorTotal: 42.0,
+        formaPagamento: PaymentMethod.pix,
+        status: OrderStatus.prontoEntrega,
+        codigoEntrega: null,
+        timeline: OrderTimeline(criadoEm: createdAt),
+      );
+      expect(maskedForCourier.codigoCurtoPedido.length, 4);
+      expect(maskedForCourier.codigoCurtoPedido, isNot(contains('6ae605')));
+    });
   });
 }

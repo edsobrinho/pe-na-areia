@@ -39,17 +39,24 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
   double? _courierLat;
   double? _courierLng;
   Timer? _liveTrackingTimer;
+  Timer? _clockTimer;
 
   @override
   void initState() {
     super.initState();
     _refresh();
     _startPeriodicLiveTracking();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && (_available.isNotEmpty || _active.isNotEmpty)) {
+        setState(() {});
+      }
+    });
   }
 
   @override
   void dispose() {
     _liveTrackingTimer?.cancel();
+    _clockTimer?.cancel();
     super.dispose();
   }
 
@@ -272,58 +279,120 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
         ),
       );
 
-  Widget _buildAvailableOrder(Order order) => Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.line),
-          boxShadow: AppTheme.softCardShadow,
+  Widget _buildAvailableOrder(Order order) {
+    final isReadyAtRestaurant = order.status == OrderStatus.prontoEntrega;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: order.isDelayed()
+              ? AppColors.danger500.withValues(alpha: 0.6)
+              : isReadyAtRestaurant
+                  ? AppColors.sage600
+                  : AppColors.line,
+          width: isReadyAtRestaurant || order.isDelayed() ? 1.5 : 1.0,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'PEDIDO #${order.id}',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: AppColors.ink,
+        boxShadow: AppTheme.softCardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'CÓDIGO DO PEDIDO #${order.codigoCurtoPedido}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: AppColors.ink,
+                    ),
                   ),
+                  const SizedBox(width: 8),
+                  _buildTimerBadge(order),
+                ],
+              ),
+              Text(
+                'R\$ ${order.valorTotal.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.apricot400,
                 ),
-                Text(
-                  'R\$ ${order.valorTotal.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.apricot400,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isReadyAtRestaurant
+                  ? AppColors.sage100
+                  : AppColors.apricot100,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isReadyAtRestaurant
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.restaurant_rounded,
+                  size: 16,
+                  color: isReadyAtRestaurant
+                      ? AppColors.sage700
+                      : AppColors.apricot700,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isReadyAtRestaurant
+                        ? 'Pedido pronto no restaurante — retirar para entrega'
+                        : order.status.courierLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isReadyAtRestaurant
+                          ? AppColors.sage700
+                          : AppColors.apricot700,
+                    ),
                   ),
                 ),
               ],
             ),
+          ),
+          if (order.isDelayed()) ...[
             const SizedBox(height: 10),
-            _buildInfoTile(
-              icon: Icons.location_on_outlined,
-              label: 'Destino na Faixa de Areia',
-              value: _locationSummary(order),
-            ),
-            if (order.localizacao != null) ...[
-              const SizedBox(height: 12),
-              _buildDestinationMap(order),
-            ],
-            const SizedBox(height: 14),
-            FilledButton(
-              onPressed: _loading ? null : () => _accept(order),
-              child: const Text('ACEITAR ENTREGA'),
-            ),
+            _buildDelayedAlertBanner(order),
           ],
-        ),
-      );
+          const SizedBox(height: 10),
+          _buildInfoTile(
+            icon: Icons.location_on_outlined,
+            label: 'Destino na Faixa de Areia',
+            value: _locationSummary(order),
+          ),
+          if (order.localizacao != null) ...[
+            const SizedBox(height: 12),
+            _buildDestinationMap(order),
+          ],
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed: _loading ? null : () => _accept(order),
+            child: Text(
+              isReadyAtRestaurant
+                  ? 'RETIRAR NO RESTAURANTE E INICIAR ENTREGA'
+                  : 'ACEITAR ENTREGA',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildActiveOrder(Order order) => Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -331,7 +400,12 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.line),
+          border: Border.all(
+            color: order.isDelayed()
+                ? AppColors.danger500.withValues(alpha: 0.6)
+                : AppColors.line,
+            width: order.isDelayed() ? 1.5 : 1.0,
+          ),
           boxShadow: AppTheme.softCardShadow,
         ),
         child: Column(
@@ -340,14 +414,20 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'PEDIDO #${order.id}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: AppColors.ink,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'CÓDIGO DO PEDIDO #${order.codigoCurtoPedido}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildTimerBadge(order),
+                  ],
                 ),
                 Container(
                   padding:
@@ -357,7 +437,7 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    order.status.wireValue,
+                    order.status.courierLabel,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -367,6 +447,10 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                 ),
               ],
             ),
+            if (order.isDelayed()) ...[
+              const SizedBox(height: 10),
+              _buildDelayedAlertBanner(order),
+            ],
             const SizedBox(height: 10),
             _buildInfoTile(
               icon: Icons.pin_drop_outlined,
@@ -393,6 +477,67 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                 onPressed: _loading ? null : () => _confirmDelivery(order),
                 child: const Text('CONFIRMAR ENTREGA'),
               ),
+          ],
+        ),
+      );
+
+  Widget _buildTimerBadge(Order order) {
+    final delayed = order.isDelayed();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: delayed ? const Color(0xFFFFE4E6) : AppColors.sage100,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer_outlined,
+            size: 13,
+            color: delayed ? AppColors.danger500 : AppColors.sage700,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            order.formatElapsed(),
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: delayed ? AppColors.danger500 : AppColors.sage700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDelayedAlertBanner(Order order) => Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF1F2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.danger500.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.danger500,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Pedido em atraso (${order.formatElapsed()} decorridos) — passou de 28 min! Priorize esta entrega.',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.danger500,
+                ),
+              ),
+            ),
           ],
         ),
       );

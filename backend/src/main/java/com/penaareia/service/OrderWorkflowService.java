@@ -41,7 +41,8 @@ public class OrderWorkflowService {
     private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
             OrderStatus.CRIADO, Set.of(OrderStatus.PAGO, OrderStatus.CANCELADO),
             OrderStatus.PAGO, Set.of(OrderStatus.EM_PREPARO, OrderStatus.CANCELADO),
-            OrderStatus.EM_PREPARO, Set.of(OrderStatus.A_CAMINHO, OrderStatus.CANCELADO),
+            OrderStatus.EM_PREPARO, Set.of(OrderStatus.PRONTO_ENTREGA, OrderStatus.A_CAMINHO, OrderStatus.CANCELADO),
+            OrderStatus.PRONTO_ENTREGA, Set.of(OrderStatus.A_CAMINHO, OrderStatus.CANCELADO),
             OrderStatus.A_CAMINHO, Set.of(OrderStatus.CHEGOU_NO_LOCAL, OrderStatus.CANCELADO, OrderStatus.NAO_ENCONTRADO),
             OrderStatus.CHEGOU_NO_LOCAL, Set.of(OrderStatus.ENTREGUE, OrderStatus.CANCELADO, OrderStatus.NAO_ENCONTRADO),
             OrderStatus.ENTREGUE, Set.of(),
@@ -113,14 +114,18 @@ public class OrderWorkflowService {
             }
             if (newStatus == OrderStatus.A_CAMINHO) {
                 Instant now = Instant.now();
+                Update claimUpdate = new Update()
+                        .set("courierId", callerId)
+                        .set("status", OrderStatus.A_CAMINHO)
+                        .set("timeline.aCaminhoEm", now);
+                if (order.getTimeline() == null || order.getTimeline().getProntoEntregaEm() == null) {
+                    claimUpdate.set("timeline.prontoEntregaEm", now);
+                }
                 Order claimedOrder = mongoTemplate.findAndModify(
                         Query.query(Criteria.where("id").is(orderId)
-                                .and("status").is(OrderStatus.EM_PREPARO)
+                                .and("status").is(order.getStatus())
                                 .and("courierId").is(null)),
-                        new Update()
-                                .set("courierId", callerId)
-                                .set("status", OrderStatus.A_CAMINHO)
-                                .set("timeline.aCaminhoEm", now),
+                        claimUpdate,
                         FindAndModifyOptions.options().returnNew(true),
                         Order.class);
                 if (claimedOrder == null) {
@@ -144,8 +149,8 @@ public class OrderWorkflowService {
             } else if (!callerId.equals(order.getCourierId())) {
                 throw new BusinessRuleException("Este pedido não pertence a este entregador.");
             }
-        } else if (newStatus == OrderStatus.EM_PREPARO) {
-            // Quiosque aceita o pedido pago para iniciar preparo na cozinha
+        } else if (newStatus == OrderStatus.EM_PREPARO || newStatus == OrderStatus.PRONTO_ENTREGA) {
+            // Quiosque aceita o pedido pago para iniciar preparo ou marca como pronto para entrega
             if (!isOwnerKiosk && !clientRole && !adminRole) {
                 throw new BusinessRuleException("Somente o quiosque do pedido pode aceitar e iniciar o preparo.");
             }
@@ -343,7 +348,10 @@ public class OrderWorkflowService {
     }
 
     public OrderCursorSlice listarDisponiveis(int size, String cursorValue) {
-        return listar(Query.query(Criteria.where("status").is(OrderStatus.EM_PREPARO)), size, cursorValue);
+        return listar(
+                Query.query(Criteria.where("status").in(OrderStatus.PRONTO_ENTREGA, OrderStatus.EM_PREPARO)),
+                size,
+                cursorValue);
     }
 
     public OrderCursorSlice listarEmRota(String courierId, int size, String cursorValue) {
@@ -358,7 +366,7 @@ public class OrderWorkflowService {
         if (statusFilter != null && !statusFilter.isBlank() && !statusFilter.equalsIgnoreCase("ALL")) {
             switch (statusFilter.toUpperCase()) {
                 case "PENDING" -> criteria.and("status").in(OrderStatus.PAGO, OrderStatus.CRIADO);
-                case "PREPARING" -> criteria.and("status").is(OrderStatus.EM_PREPARO);
+                case "PREPARING" -> criteria.and("status").in(OrderStatus.EM_PREPARO, OrderStatus.PRONTO_ENTREGA);
                 case "IN_ROUTE" -> criteria.and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL);
                 case "COMPLETED" -> criteria.and("status").in(OrderStatus.ENTREGUE, OrderStatus.CANCELADO, OrderStatus.NAO_ENCONTRADO);
                 default -> {

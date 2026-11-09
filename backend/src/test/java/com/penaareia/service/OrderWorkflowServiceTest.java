@@ -603,6 +603,39 @@ class OrderWorkflowServiceTest {
     }
 
     @Test
+    void kioskOrAdminCanMarkOrderProntoEntregaAndCourierCanAcceptIt() {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order readyOrder = service().atualizarStatus(
+                "order-1",
+                OrderStatus.PRONTO_ENTREGA,
+                "admin-1",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+
+        assertThat(readyOrder.getStatus()).isEqualTo(OrderStatus.PRONTO_ENTREGA);
+        assertThat(readyOrder.getTimeline().getProntoEntregaEm()).isNotNull();
+
+        Order claimedOrder = orderAtStatus(OrderStatus.A_CAMINHO);
+        claimedOrder.setCourierId("courier-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(readyOrder));
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class))).thenReturn(claimedOrder);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
+
+        Order inRoute = service().atualizarStatus(
+                "order-1",
+                OrderStatus.A_CAMINHO,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER")));
+
+        assertThat(inRoute.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
+        assertThat(inRoute.getCourierId()).isEqualTo("courier-1");
+    }
+
+    @Test
     void clientCanCancelOrderBeforePreparo() {
         Order order = orderAtStatus(OrderStatus.CRIADO);
         order.setUserId("client-1");

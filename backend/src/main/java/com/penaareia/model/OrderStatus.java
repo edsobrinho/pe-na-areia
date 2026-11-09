@@ -4,6 +4,7 @@ public enum OrderStatus {
     CRIADO,
     PAGO,
     EM_PREPARO,
+    PRONTO_ENTREGA,
     A_CAMINHO,
     CHEGOU_NO_LOCAL,
     ENTREGUE,

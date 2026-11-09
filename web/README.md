@@ -1,6 +1,7 @@
 # Pé na Areia · Portal do Parceiro / Quiosque / Restaurante (React 19 + TypeScript + Vite)
 
 Portal web B2B do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **TypeScript** e **Vite 8** com arquitetura de layouts e componentes reutilizáveis. A aplicação é dedicada a:
+
 - **Parceiros, Quiosques e Restaurantes (`KIOSK_OPERATOR`)**: Auto-cadastro do estabelecimento, envio de **logomarca e foto de capa**, cadastro de **endereço tradicional e posto de referência na orla (sem necessidade de mapa)**, gestão de **produtos agrupados nas devidas categorias** com upload de fotos no Cloudinary e configuração de canais de parceria e repasse;
 - **Administradores (`ADMIN`)**: Governança global dos canais de venda e vínculo de operadores aos quiosques.
 
@@ -24,6 +25,7 @@ Portal web B2B do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **
 ## 🎯 Visão Geral e Funcionalidades
 
 ### 1. Auto-Cadastro e Onboarding do Parceiro / Quiosque / Restaurante (`PartnerAuthPanel`)
+
 - **Cadastro Direto como Parceiro (`POST /auth/register` + `POST /kiosk/me/onboarding`)**: O parceiro cria sua conta informando responsável, WhatsApp com máscara `(13) 99999-9999`, nome do Quiosque/Restaurante, endereço tradicional e Posto de Salvamento de referência, sendo promovido automaticamente para `KIOSK_OPERATOR` com seu estabelecimento pronto para operar.
 - **1. Identidade Visual & Logomarca (`StorefrontIdentityForm`)**:
   - Upload da **Logomarca Circular (`logoUrl`)** e da **Foto de Capa (`fotoCapaUrl`)** integrados ao Cloudinary (`POST /uploads/menu-item-photo`) com preview imediato.
@@ -40,6 +42,7 @@ Portal web B2B do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **
   - **Simulador de Repasse (`POST /kiosk/me/partnerships/{id}/preview`)**: Cálculo prévio de subtotal, comissão da plataforma, total do cliente e valor líquido do quiosque.
 
 ### 2. Área Administrativa (`AdminPanel`)
+
 - Disponível para usuários com a role `ADMIN`.
 - Criação de novos canais de parceria globais (`POST /admin/partnerships`).
 - Associação manual de operadores a quiosques existentes (`PATCH /admin/kiosk-operators`).

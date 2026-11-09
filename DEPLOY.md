@@ -1,6 +1,7 @@
 # Pé na Areia · Plano de Deploy e Distribuição Contínua 🚀
 
 Guia completo e detalhado de arquitetura de implantação, distribuição local para testes em rede Wi-Fi e publicação em ambiente de produção para todo o ecossistema **Pé na Areia**:
+
 1. **Backend API** (Java 21 + Spring Boot 3.3 + MongoDB 7 Replica Set)
 2. **Portal Web do Parceiro & Admin** (React 19 + TypeScript + Vite 8)
 3. **App do Cliente** (`com.penaareia.cliente`)
@@ -81,9 +82,11 @@ O ambiente de teste local permite validar a comunicação ponta a ponta entre ce
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\iniciar-wifi.ps1
 ```
+
 *(Ou dê duplo clique no atalho `scripts\iniciar-wifi.bat`).*
 
 **O que o script faz automaticamente:**
+
 - Descobre o endereço IPv4 ativo do seu adaptador Wi-Fi (ex.: `192.168.0.4`).
 - Sobe os containers Docker com as variáveis `CLOUDINARY_PUBLIC_BASE_URL` e `APP_CORS_ORIGINS` apontando para o seu IP.
 - Inicia o servidor HTTP da Central de Download Mobile na porta `8088`.
@@ -122,6 +125,7 @@ No celular conectado à mesma rede Wi-Fi, abra o navegador e acesse:
 👉 **`http://<IP-DO-SEU-PC>:8088`** *(ex.: `http://192.168.0.4:8088`)*
 
 A página exibirá os 3 cards com status de compilação, tamanho em MB e botão de download imediato:
+
 - **🏖️ App do Cliente** (`cliente.apk`)
 - **🧭 App do Entregador** (`entregador.apk`)
 - **📱 Protótipo Interativo** (`prototipo.apk`)
@@ -161,6 +165,7 @@ ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 ### 3.3 Armazenamento em Nuvem (Cloudinary Oficial)
 
 Para produção, substitua o emulador local pelas credenciais da sua conta no [Cloudinary](https://cloudinary.com/):
+
 - `CLOUDINARY_CLOUD_NAME`: Nome do seu cloud (ex.: `penaareia-prod`)
 - `CLOUDINARY_API_KEY`: Chave de API
 - `CLOUDINARY_API_SECRET`: Segredo da API
@@ -206,6 +211,7 @@ Set-Location web
 npm install
 npm run build
 ```
+
 O build estático otimizado é gerado na pasta `web/dist/`.
 
 ### 4.2 Hospedagem em Vercel, Netlify ou Cloudflare Pages
@@ -225,6 +231,7 @@ VITE_API_BASE_URL=https://api.penaareia.com.br
 Como o React Router lida com as rotas no frontend, requisições diretas a rotas como `/admin` ou `/kiosk/menu` devem retornar o `index.html`.
 
 - **Para Vercel (`web/vercel.json`):**
+
 ```json
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
@@ -232,6 +239,7 @@ Como o React Router lida com as rotas no frontend, requisições diretas a rotas
 ```
 
 - **Para Netlify (`web/public/_redirects`):**
+
 ```text
 /*    /index.html   200
 ```
@@ -263,23 +271,27 @@ storeFile=/caminho/absoluto/ou/relativo/pe-na-areia-release.jks
 ### 5.2 Publicação do App do Cliente (`com.penaareia.cliente`)
 
 1. Gere o Android App Bundle de produção:
+
 ```powershell
 Set-Location apps/app_cliente
 flutter build appbundle --release --dart-define=API_BASE_URL=https://api.penaareia.com.br
 ```
-2. O arquivo gerado fica em:
+
+1. O arquivo gerado fica em:
    `apps/app_cliente/build/app/outputs/bundle/release/app-release.aab`
-3. Suba o `.aab` na **Google Play Console** na faixa de Teste Fechado ou Produção.
-4. Para iOS, abra `apps/app_cliente/ios` no **Xcode**, configure o Team ID e execute `Product > Archive` para distribuição via **TestFlight**.
+2. Suba o `.aab` na **Google Play Console** na faixa de Teste Fechado ou Produção.
+3. Para iOS, abra `apps/app_cliente/ios` no **Xcode**, configure o Team ID e execute `Product > Archive` para distribuição via **TestFlight**.
 
 ### 5.3 Publicação do App do Entregador e Requisitos de Segundo Plano
 
 1. Gere o App Bundle de produção:
+
 ```powershell
 Set-Location apps/app_entregador
 flutter build appbundle --release --dart-define=API_BASE_URL=https://api.penaareia.com.br
 ```
-2. **Declaração de Localização em Segundo Plano (Google Play Policy):**
+
+1. **Declaração de Localização em Segundo Plano (Google Play Policy):**
    - No Google Play Console, vá em **Conteúdo do App > Permissões Sensíveis > Localização em segundo plano**.
    - **Finalidade:** Selecione *"Funcionalidade principal do app de entrega / logística"*.
    - **Vídeo de Demonstração Obrigatório:** Suba um vídeo de 30 a 60 segundos demonstrando que o entregador coloca o celular no bolso ou bloqueia a tela enquanto caminha na areia, e o cliente recebe a atualização de localização contínua até os 60 metros.

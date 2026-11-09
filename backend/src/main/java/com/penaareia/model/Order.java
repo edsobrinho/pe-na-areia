@@ -155,6 +155,7 @@ public class Order {
         private Instant criadoEm = Instant.now();
         private Instant pagoEm;
         private Instant emPreparoEm;
+        private Instant prontoEntregaEm;
         private Instant aCaminhoEm;
         private Instant chegouNoLocalEm;
         private Instant entregueEm;
@@ -172,6 +173,7 @@ public class Order {
                 this.timeline.setPagoEm(now);
             }
             case EM_PREPARO -> this.timeline.setEmPreparoEm(now);
+            case PRONTO_ENTREGA -> this.timeline.setProntoEntregaEm(now);
             case A_CAMINHO -> this.timeline.setACaminhoEm(now);
             case CHEGOU_NO_LOCAL -> this.timeline.setChegouNoLocalEm(now);
             case ENTREGUE -> this.timeline.setEntregueEm(now);

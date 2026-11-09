@@ -20,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _registerMode = false;
-  bool _courierMode = false;
   bool _loading = false;
   String? _error;
 
@@ -37,8 +36,8 @@ class _LoginScreenState extends State<LoginScreen> {
               email: _emailController.text.trim().toLowerCase(),
               phone: AppValidators.stripNonDigits(_phoneController.text),
               password: _passwordController.text,
-              role: _courierMode ? 'COURIER' : 'CLIENT',
-              vehicle: _courierMode ? 'PE' : null,
+              role: 'CLIENT',
+              vehicle: null,
             )
           : await widget.authRepository.login(
               email: _emailController.text.trim().toLowerCase(),
@@ -139,57 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             formatters: [PhoneInputFormatter()],
                             validator: AppValidators.validatePhone,
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceSoft,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.line),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.directions_walk_rounded,
-                                  color: AppColors.sage700,
-                                  size: 22,
-                                ),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Sou entregador',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                          color: AppColors.ink800,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Veículo: a pé na orla',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.ink500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Switch(
-                                  value: _courierMode,
-                                  activeTrackColor: AppColors.sage500,
-                                  onChanged: (value) =>
-                                      setState(() => _courierMode = value),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
                         ],
                         AppTextField(
                           controller: _emailController,

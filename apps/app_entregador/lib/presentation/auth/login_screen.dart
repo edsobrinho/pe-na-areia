@@ -20,7 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _registerMode = false;
-  bool _courierMode = false;
+  String _selectedVehicle = 'PE';
   bool _loading = false;
   String? _error;
 
@@ -37,8 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
               email: _emailController.text.trim().toLowerCase(),
               phone: AppValidators.stripNonDigits(_phoneController.text),
               password: _passwordController.text,
-              role: _courierMode ? 'COURIER' : 'CLIENT',
-              vehicle: _courierMode ? 'PE' : null,
+              role: 'COURIER',
+              vehicle: _selectedVehicle,
             )
           : await widget.authRepository.login(
               email: _emailController.text.trim().toLowerCase(),
@@ -136,57 +136,42 @@ class _LoginScreenState extends State<LoginScreen> {
                             formatters: [PhoneInputFormatter()],
                             validator: AppValidators.validatePhone,
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceSoft,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.line),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.directions_walk_rounded,
-                                  color: AppColors.sage700,
-                                  size: 22,
-                                ),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Sou entregador',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                          color: AppColors.ink800,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Veículo: a pé na orla',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.ink500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Switch(
-                                  value: _courierMode,
-                                  activeTrackColor: AppColors.sage500,
-                                  onChanged: (value) =>
-                                      setState(() => _courierMode = value),
-                                ),
-                              ],
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Como você realiza as entregas?',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: AppColors.ink700,
                             ),
                           ),
                           const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _VehicleOptionCard(
+                                  icon: Icons.directions_walk_rounded,
+                                  title: 'A pé',
+                                  subtitle: 'Na areia da orla',
+                                  selected: _selectedVehicle == 'PE',
+                                  onTap: () =>
+                                      setState(() => _selectedVehicle = 'PE'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _VehicleOptionCard(
+                                  icon: Icons.pedal_bike_rounded,
+                                  title: 'Bicicleta',
+                                  subtitle: 'Ciclovia da praia',
+                                  selected: _selectedVehicle == 'BIKE',
+                                  onTap: () =>
+                                      setState(() => _selectedVehicle = 'BIKE'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
                         ],
                         AppTextField(
                           controller: _emailController,
@@ -256,4 +241,78 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     super.dispose();
   }
+}
+
+class _VehicleOptionCard extends StatelessWidget {
+  const _VehicleOptionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.sage100 : AppColors.surfaceSoft,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: selected ? AppColors.sage600 : AppColors.line,
+                width: selected ? 1.5 : 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(
+                      icon,
+                      color: selected ? AppColors.sage700 : AppColors.ink500,
+                      size: 22,
+                    ),
+                    if (selected)
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.sage700,
+                        size: 16,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: selected ? AppColors.ink : AppColors.ink700,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: selected ? AppColors.sage700 : AppColors.ink500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 }

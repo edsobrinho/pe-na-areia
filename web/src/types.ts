@@ -137,6 +137,7 @@ export type OrderStatus =
   | 'CRIADO'
   | 'PAGO'
   | 'EM_PREPARO'
+  | 'PRONTO_ENTREGA'
   | 'A_CAMINHO'
   | 'CHEGOU_NO_LOCAL'
   | 'ENTREGUE'
@@ -179,11 +180,13 @@ export interface KioskOrder {
   courierNome?: string | null
   courierTelefone?: string | null
   courierVeiculo?: 'A_PE' | 'BICICLETA' | null
+  codigoEntrega?: string | null
   motivoCancelamento?: string | null
   timeline: {
     criadoEm: string
     pagoEm?: string
     emPreparoEm?: string
+    prontoEntregaEm?: string
     aCaminhoEm?: string
     chegouNoLocalEm?: string
     entregueEm?: string

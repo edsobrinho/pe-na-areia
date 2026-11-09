@@ -22,7 +22,6 @@ if (-not $wifiIp) {
 
 Write-Host "✅ IP Wi-Fi identificado: $wifiIp" -ForegroundColor Green
 $downloadPort = 8088
-$backendUrl = "http://${wifiIp}:8080"
 $cdnUrl = "http://${wifiIp}:8099"
 
 # 1. Regra de Firewall do Windows
@@ -37,7 +36,7 @@ try {
 }
 
 # 2. Subir containers Docker do Backend na rede local
-Write-Host "`n🐳 Iniciando containers Docker (MongoDB, Cloudinary Mock e Backend Spring Boot)..." -ForegroundColor Cyan
+Write-Host "`n🐳 Iniciando containers Docker MongoDB Cloudinary Mock e Backend Spring Boot..." -ForegroundColor Cyan
 $env:CLOUDINARY_PUBLIC_BASE_URL = $cdnUrl
 $env:APP_CORS_ORIGINS = "http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://*.sslip.io:*"
 docker compose -f infrastructure/docker-compose.yml up -d

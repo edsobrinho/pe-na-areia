@@ -49,6 +49,30 @@ function timeAgo(isoString?: string): string {
   }
 }
 
+function getOrderCode(order: KioskOrder): string {
+  const code = order.codigoEntrega?.trim()
+  if (code && code !== '****') return code
+  let hash = 0
+  for (let i = 0; i < order.id.length; i++) {
+    hash = ((hash * 31) + order.id.charCodeAt(i)) & 0x7fffffff
+  }
+  return String(1000 + (hash % 9000))
+}
+
+function getElapsedInfo(order: KioskOrder, nowMs: number): { formatted: string; minutes: number; isDelayed: boolean } {
+  const startIso = order.timeline?.criadoEm
+  if (!startIso) return { formatted: '00:00', minutes: 0, isDelayed: false }
+  const startMs = new Date(startIso).getTime()
+  const endMs = order.timeline?.entregueEm ? new Date(order.timeline.entregueEm).getTime() : nowMs
+  const diffSec = Math.max(0, Math.floor((endMs - startMs) / 1000))
+  const mins = Math.floor(diffSec / 60)
+  const secs = diffSec % 60
+  const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  const isActive =
+    order.status !== 'ENTREGUE' && order.status !== 'CANCELADO' && order.status !== 'NAO_ENCONTRADO'
+  return { formatted, minutes: mins, isDelayed: isActive && mins >= 28 }
+}
+
 export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
   const [orders, setOrders] = useState<KioskOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,6 +81,14 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
   const [activeTab, setActiveTab] = useState<OrderFilterTab>('ALL')
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; title: string } | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMs(Date.now())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Cancel dialog state
   const [cancelingOrder, setCancelingOrder] = useState<KioskOrder | null>(null)
@@ -100,7 +132,9 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
   // Counters
   const counts = useMemo(() => {
     const pending = orders.filter((o) => o.status === 'PAGO' || o.status === 'CRIADO').length
-    const preparing = orders.filter((o) => o.status === 'EM_PREPARO').length
+    const preparing = orders.filter(
+      (o) => o.status === 'EM_PREPARO' || o.status === 'PRONTO_ENTREGA',
+    ).length
     const inRoute = orders.filter((o) => o.status === 'A_CAMINHO' || o.status === 'CHEGOU_NO_LOCAL').length
     const completed = orders.filter(
       (o) => o.status === 'ENTREGUE' || o.status === 'CANCELADO' || o.status === 'NAO_ENCONTRADO',
@@ -112,7 +146,9 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       if (activeTab === 'PENDING') return o.status === 'PAGO' || o.status === 'CRIADO'
-      if (activeTab === 'PREPARING') return o.status === 'EM_PREPARO'
+      if (activeTab === 'PREPARING') {
+        return o.status === 'EM_PREPARO' || o.status === 'PRONTO_ENTREGA'
+      }
       if (activeTab === 'IN_ROUTE') return o.status === 'A_CAMINHO' || o.status === 'CHEGOU_NO_LOCAL'
       if (activeTab === 'COMPLETED') {
         return o.status === 'ENTREGUE' || o.status === 'CANCELADO' || o.status === 'NAO_ENCONTRADO'
@@ -126,11 +162,32 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
     setError(null)
     setSuccess(null)
     try {
-      await api.acceptOperatorOrder(orderId)
-      setSuccess(`Pedido #${orderId.slice(-6).toUpperCase()} aceito! Iniciando preparo na cozinha.`)
+      const updated = await api.acceptOperatorOrder(orderId)
+      setSuccess(`Código do pedido #${getOrderCode(updated)} aceito! Iniciando preparo na cozinha.`)
       await loadOrders(true)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível aceitar o pedido.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleMarkReadyOrder = async (orderId: string) => {
+    setActionLoadingId(orderId)
+    setError(null)
+    setSuccess(null)
+    try {
+      const updated = await api.markOrderReadyForPickup(orderId)
+      setSuccess(
+        `Código do pedido #${getOrderCode(updated)} marcado como pronto para retirada pelo entregador!`,
+      )
+      await loadOrders(true)
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'Não foi possível marcar o pedido como pronto para entrega.',
+      )
     } finally {
       setActionLoadingId(null)
     }
@@ -147,7 +204,7 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
     setSuccess(null)
     try {
       await api.cancelOperatorOrder(cancelingOrder.id, reasonText)
-      setSuccess(`Pedido #${cancelingOrder.id.slice(-6).toUpperCase()} cancelado.`)
+      setSuccess(`Código do pedido #${getOrderCode(cancelingOrder)} cancelado.`)
       setCancelingOrder(null)
       setSelectedReason(CANCEL_REASONS[0])
       setCustomReason('')
@@ -166,6 +223,8 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
         return <Badge tone="warning">🟡 Aguardando Aceite</Badge>
       case 'EM_PREPARO':
         return <Badge tone="info">🔵 Em Preparo na Cozinha</Badge>
+      case 'PRONTO_ENTREGA':
+        return <Badge tone="eco">🟢 Pronto no Restaurante — Aguardando Retirada</Badge>
       case 'A_CAMINHO':
         return <Badge tone="highlight">🏃 A Caminho da Areia</Badge>
       case 'CHEGOU_NO_LOCAL':
@@ -177,7 +236,7 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
       case 'NAO_ENCONTRADO':
         return <Badge tone="danger">⚠️ Cliente Não Encontrado</Badge>
       default:
-        return <Badge tone="default">{status}</Badge>
+        return <Badge tone="default">Em andamento</Badge>
     }
   }
 
@@ -276,27 +335,44 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
           {filteredOrders.map((order) => {
             const isPending = order.status === 'PAGO' || order.status === 'CRIADO'
             const isPreparing = order.status === 'EM_PREPARO'
+            const isReadyForPickup = order.status === 'PRONTO_ENTREGA'
             const isInRoute = order.status === 'A_CAMINHO' || order.status === 'CHEGOU_NO_LOCAL'
             const isDelivered = order.status === 'ENTREGUE'
             const isCancelled = order.status === 'CANCELADO'
             const isNotFound = order.status === 'NAO_ENCONTRADO'
-            const shortId = order.id.slice(-6).toUpperCase()
+            const shortId = getOrderCode(order)
+            const elapsed = getElapsedInfo(order, nowMs)
 
             return (
               <div
                 key={order.id}
                 className={`order-card ${isPending ? 'card-pending' : ''} ${
                   isDelivered ? 'card-delivered' : ''
-                } ${isCancelled || isNotFound ? 'card-incident' : ''}`}
+                } ${isCancelled || isNotFound || elapsed.isDelayed ? 'card-incident' : ''}`}
               >
                 {/* Header */}
                 <div className="order-card-header">
                   <div>
-                    <span className="order-id-label">Pedido #{shortId}</span>
-                    <span className="order-time-ago">{timeAgo(order.timeline?.criadoEm)}</span>
+                    <span className="order-id-label">Código do Pedido #{shortId}</span>
+                    <span className="order-time-ago">
+                      ⏱️ {elapsed.formatted} ({timeAgo(order.timeline?.criadoEm)})
+                    </span>
                   </div>
                   <div>{renderStatusBadge(order.status)}</div>
                 </div>
+
+                {elapsed.isDelayed && (
+                  <div className="outcome-banner banner-not-found" style={{ marginBottom: 12 }}>
+                    <span className="outcome-icon">🚨</span>
+                    <div>
+                      <strong>Pedido em atraso ({elapsed.formatted} decorridos)</strong>
+                      <p>
+                        Este pedido ultrapassou 28 minutos! O cliente e o entregador receberam
+                        alerta de atraso.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Items & Value */}
                 <div className="order-card-section order-items-box">
@@ -491,8 +567,34 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
                     <div className="preparing-notice-row">
                       <span className="preparing-pulse-icon">🍳</span>
                       <span>
-                        <strong>Em preparo na cozinha.</strong> Aguardando entregador disponível
-                        aceitar a corrida para retirar no quiosque.
+                        <strong>Em preparo na cozinha.</strong> Quando finalizar, avise o
+                        entregador que o pedido está pronto para retirada.
+                      </span>
+                      <Button
+                        variant="primary"
+                        onClick={() => void handleMarkReadyOrder(order.id)}
+                        disabled={actionLoadingId === order.id}
+                      >
+                        {actionLoadingId === order.id
+                          ? 'Atualizando...'
+                          : '✅ Pedido Pronto p/ Entregador'}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setCancelingOrder(order)}
+                        disabled={actionLoadingId === order.id}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  )}
+
+                  {isReadyForPickup && (
+                    <div className="preparing-notice-row">
+                      <span className="preparing-pulse-icon">📦</span>
+                      <span>
+                        <strong>Pedido pronto no restaurante!</strong> O entregador já foi avisado
+                        e o pedido está sendo retirado do local de entrega.
                       </span>
                       <Button
                         variant="secondary"
@@ -515,7 +617,7 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
         <div className="modal-overlay" onClick={() => setCancelingOrder(null)}>
           <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Recusar / Cancelar Pedido #{cancelingOrder.id.slice(-6).toUpperCase()}</h3>
+              <h3>Recusar / Cancelar Código do Pedido #{getOrderCode(cancelingOrder)}</h3>
               <button
                 type="button"
                 className="modal-close-btn"

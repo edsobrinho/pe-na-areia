@@ -149,17 +149,20 @@ Set-Location backend
 ### 2. Ecossistema Mobile Multi-App (Flutter 3.29+)
 
 O ecossistema mobile é desacoplado em 3 aplicativos e 1 módulo compartilhado:
+
 - **`packages/core_shared`**: Design System, Modelos de Domínio, Cliente HTTP, Repositórios e Validadores.
 - **`apps/app_cliente`**: App do Cliente (`com.penaareia.cliente`) — Catálogo, Pin do Guarda-sol, Pix e Farol Visual.
 - **`apps/app_entregador`**: App do Entregador (`com.penaareia.entregador`) — Radar Pedestre, Bússola e Telemetria GPS.
 - **`apps/app_prototipo`**: Protótipo Interativo e Showcase (`com.penaareia.prototipo`) — Multiplataforma (Web e Android).
 
 Para executar testes e análise estática em todos os projetos mobile de uma só vez:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\test-all.ps1
 ```
 
 Para compilar os APKs de produção de todos os aplicativos:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-all.ps1 -Target all
 ```
@@ -171,6 +174,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-all.ps1 -Target all
 Você pode baixar e instalar qualquer um dos aplicativos diretamente pelo navegador do seu celular conectado na mesma rede Wi-Fi, com o backend Spring Boot e MongoDB rodando no seu computador.
 
 ##### Método Rápido Automático (1 Clique / Comando)
+
 Na raiz do repositório, dê **duplo clique em `scripts\iniciar-wifi.bat`** ou execute no PowerShell:
 
 ```powershell

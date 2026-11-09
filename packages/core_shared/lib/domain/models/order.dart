@@ -52,6 +52,7 @@ class OrderTimeline {
     this.criadoEm,
     this.pagoEm,
     this.emPreparoEm,
+    this.prontoEntregaEm,
     this.aCaminhoEm,
     this.chegouNoLocalEm,
     this.entregueEm,
@@ -60,6 +61,7 @@ class OrderTimeline {
   final DateTime? criadoEm;
   final DateTime? pagoEm;
   final DateTime? emPreparoEm;
+  final DateTime? prontoEntregaEm;
   final DateTime? aCaminhoEm;
   final DateTime? chegouNoLocalEm;
   final DateTime? entregueEm;
@@ -182,5 +184,60 @@ class Order {
       if (dist != null && dist <= 60.0) return true;
     }
     return false;
+  }
+
+  /// Indica se o pedido ainda está em andamento (não finalizado).
+  bool get isActive =>
+      status != OrderStatus.entregue &&
+      status != OrderStatus.cancelado &&
+      status != OrderStatus.naoEncontrado;
+
+  /// Tempo decorrido desde a criação do pedido até a entrega ou instante atual.
+  Duration elapsedDuration([DateTime? now]) {
+    final start = timeline.criadoEm;
+    if (start == null) return Duration.zero;
+    final end = timeline.entregueEm ?? (now ?? DateTime.now());
+    final diff = end.difference(start);
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  /// Cronômetro formatado em `mm:ss` para exibição em tempo real.
+  String formatElapsed([DateTime? now]) {
+    final d = elapsedDuration(now);
+    final totalMinutes = d.inMinutes;
+    final seconds = d.inSeconds % 60;
+    return '${totalMinutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  /// Indica se o pedido em andamento ultrapassou o limite de 28 minutos.
+  bool isDelayed([DateTime? now]) =>
+      isActive && elapsedDuration(now).inMinutes >= 28;
+
+  /// Código numérico limpo do pedido (sem exibir a chave hexadecimal do banco).
+  String get codigoCurtoPedido {
+    final code = codigoEntrega?.trim();
+    if (code != null && code.isNotEmpty && code != '****') {
+      return code;
+    }
+    if (id.isEmpty) return '0000';
+    final hash = id.codeUnits.fold<int>(
+      0,
+      (acc, unit) => ((acc * 31) + unit) & 0x7fffffff,
+    );
+    return (1000 + (hash % 9000)).toString();
+  }
+
+  /// Rótulo em texto livre do veículo do entregador (nunca constante).
+  String get courierVeiculoLabel {
+    switch ((courierVeiculo ?? '').toUpperCase().trim()) {
+      case 'BICICLETA':
+      case 'BIKE':
+        return 'De bicicleta';
+      case 'A_PE':
+      case 'PE':
+        return 'A pé';
+      default:
+        return '';
+    }
   }
 }

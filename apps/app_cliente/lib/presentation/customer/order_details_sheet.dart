@@ -68,7 +68,7 @@ class OrderDetailsSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Detalhes do Pedido #${order.id.length > 6 ? order.id.substring(order.id.length - 6).toUpperCase() : order.id}',
+                        'Código do Pedido #${order.codigoCurtoPedido}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -77,10 +77,11 @@ class OrderDetailsSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        order.kioskId.isNotEmpty ? 'Quiosque Parceiro' : 'Pé na Areia',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.ink700,
+                        'Tempo decorrido: ${order.formatElapsed()} · ${order.status.customerLabel}',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: order.isDelayed() ? FontWeight.w700 : FontWeight.w500,
+                          color: order.isDelayed() ? AppColors.danger500 : AppColors.ink700,
                         ),
                       ),
                     ],
@@ -288,7 +289,12 @@ class OrderDetailsSheet extends StatelessWidget {
                         CircleAvatar(
                           radius: 20,
                           backgroundColor: AppColors.sage100,
-                          child: const Icon(Icons.person, color: AppColors.sage700),
+                          child: Icon(
+                            order.courierVeiculo == 'BICICLETA'
+                                ? Icons.pedal_bike_rounded
+                                : Icons.directions_walk_rounded,
+                            color: AppColors.sage700,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -304,7 +310,11 @@ class OrderDetailsSheet extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                order.courierVeiculo == 'A_PE' ? 'Entrega a pé na areia' : 'Courier da Orla',
+                                order.courierVeiculo == 'A_PE'
+                                    ? 'Entrega a pé na areia'
+                                    : order.courierVeiculo == 'BICICLETA'
+                                        ? 'Entrega de bicicleta na orla'
+                                        : 'Courier da Orla',
                                 style: const TextStyle(fontSize: 12, color: AppColors.ink500),
                               ),
                             ],
@@ -343,10 +353,10 @@ class OrderDetailsSheet extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: const [
-              Icon(Icons.key_rounded, size: 20, color: AppColors.apricot600),
+              Icon(Icons.pin_outlined, size: 20, color: AppColors.apricot600),
               SizedBox(width: 8),
               Text(
-                'CÓDIGO DE CONFIRMAÇÃO DE ENTREGA',
+                'CÓDIGO DO PEDIDO',
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,
@@ -576,10 +586,36 @@ class OrderDetailsSheet extends StatelessWidget {
         fg = AppColors.ink900;
         label = 'Em Preparo';
         break;
-      default:
+      case OrderStatus.prontoEntrega:
+        bg = AppColors.sage100;
+        fg = AppColors.sage700;
+        label = 'Retirando no Local';
+        break;
+      case OrderStatus.pago:
+        bg = AppColors.sage100;
+        fg = AppColors.sage700;
+        label = 'Pago';
+        break;
+      case OrderStatus.criado:
         bg = AppColors.sand100;
         fg = AppColors.ink700;
-        label = status.wireValue;
+        label = 'Criado';
+        break;
+      case OrderStatus.cancelado:
+        bg = const Color(0xFFFFE4E6);
+        fg = AppColors.danger500;
+        label = 'Cancelado';
+        break;
+      case OrderStatus.naoEncontrado:
+        bg = const Color(0xFFFFE4E6);
+        fg = AppColors.danger500;
+        label = 'Não Encontrado';
+        break;
+      case OrderStatus.desconhecido:
+        bg = AppColors.sand100;
+        fg = AppColors.ink700;
+        label = 'Em andamento';
+        break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

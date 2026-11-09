@@ -137,6 +137,11 @@ export const api = {
       method: 'PATCH',
       body: json({ status: 'EM_PREPARO' }),
     }),
+  markOrderReadyForPickup: (orderId: string) =>
+    request<KioskOrder>(`/orders/${encodeURIComponent(orderId)}/status`, {
+      method: 'PATCH',
+      body: json({ status: 'PRONTO_ENTREGA' }),
+    }),
   cancelOperatorOrder: (orderId: string, motivo: string) =>
     request<KioskOrder>(`/orders/${encodeURIComponent(orderId)}/status`, {
       method: 'PATCH',

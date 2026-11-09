@@ -25,29 +25,35 @@ O **App do Cliente** foi projetado especificamente para a realidade de consumo �
 ## 🚀 Funcionalidades Principais
 
 ### 1. Catálogo Visual de Quiosques e Produtos
+
 - **Vitrines com Fotos Reais:** Apresentação de quiosques credenciados com logomarca, foto de capa e cardápio organizado por categorias costeiras.
 - **Filtro de Embalagem Sustentável:** Opção para priorizar quiosques que utilizam copos e embalagens retornáveis/biodegradáveis.
 - **Itens em Destaque:** Visualização rápida dos itens mais pedidos na praia.
 
 ### 2. Pin Interativo na Faixa de Areia e Localização
+
 - **Google Maps Integrado:** O cliente posiciona o marcador diretamente no ponto onde está sentado na praia.
 - **Sugestão Automática de Posto de Salvamento:** O app calcula a distância euclidiana até os Postos de Salvamento oficiais da orla de Santos (Posto 1 ao 6) e sugere o posto mais próximo.
 - **Identificação do Guarda-Sol:** Campo de texto descritivo limitado a 140 caracteres (ex.: *"Guarda-sol azul e branco, duas cadeiras de alumínio ao lado da rede de futevôlei"*) e captura opcional de foto do local (`POST /uploads/location-photo`).
 
 ### 3. Pagamento 100% Antecipado via Pix
+
 - **Zero Dinheiro na Areia:** Geração instantânea de payload Pix Copia e Cola (EMV BR Code) e QR Code dinâmico.
 - **Confirmação em Tempo Real:** Atualização automática do status do pedido assim que o webhook de liquidação do Pix é processado pelo backend.
 
 ### 4. Live Tracking SSE e Alerta de 60 Metros
+
 - **Acompanhamento em Tempo Real:** Conexão contínua com a API via Server-Sent Events (`GET /orders/{id}/stream`), exibindo a distância em metros até o entregador.
 - **Alerta de Proximidade:** Quando o entregador entra no raio de **60 metros**, o app emite alerta visual e vibratório imediato (*"🏖️ Seu entregador está na areia a menos de 60m! Saia do mar e prepare seu celular"*).
 
 ### 5. 🔦 Farol Visual Inteligente de Tela Cheia (`SignalBeaconScreen`)
+
 - **Ativação por Proximidade:** Botão do Farol habilitado automaticamente quando o entregador está a menos de 60 metros ou quando o status é `CHEGOU_NO_LOCAL`.
 - **Modo Sinalizador Solar:** A tela entra em brilho máximo e alterna ciclicamente cores vibrantes de alto contraste (**Laranja Neon `#FF7A3D`**, **Amarelo Solar `#FFD600`** e **Branco Puro**), visíveis a dezenas de metros mesmo sob sol forte.
 - **Código Curto de Verificação:** Exibe em fonte gigante o número do pedido e um temporizador regressivo de 3 minutos para economia de bateria.
 
 ### 6. 💬 Canal Rápido de Comunicação na Praia
+
 - **Atalhos Rápidos de 1 Toque:** Mensagens pré-formatadas para imprevistos comuns de praia (*"🌊 A maré subiu, recuei alguns metros"*, *"🔦 Estou erguendo o Farol na tela"*).
 - **Atalho WhatsApp:** Abertura direta do aplicativo de mensagens com texto contextual já preenchido.
 
