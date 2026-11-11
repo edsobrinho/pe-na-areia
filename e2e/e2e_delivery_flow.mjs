@@ -329,10 +329,14 @@ check('item fora do cardápio é negado (404)', unknownItem.status === 404, JSON
 
 const farPin = await aparecimentoA.call('POST', '/orders', {
   ...baseOrder,
+  pontoReferenciaId: '',
   itens: [{ menuItemId: 'agua-coco', quantidade: 2 }],
-  pinCliente: { latitude: -23.9642, longitude: -46.3330 }, // ~520 m do Posto 5
+  pinCliente: { latitude: -23.9642, longitude: -46.3330 }, // Qualquer ponto do mapa sem posto pré-cadastrado
 });
-check('pin a mais de 500 m do posto é negado (422)', farPin.status === 422, JSON.stringify(farPin.data));
+check('pin livre em qualquer ponto do mapa sem posto pré-cadastrado é aceito (201)', farPin.status === 201, JSON.stringify(farPin.data));
+if (farPin.data?.id) {
+  await aparecimentoA.call('PATCH', `/orders/${farPin.data.id}/status`, { status: 'CANCELADO' });
+}
 
 const belowMinimum = await aparecimentoA.call('POST', '/orders', {
   ...baseOrder,
@@ -422,9 +426,15 @@ const order2 = order2Res.data || {};
 const cancel = await aparecimentoA.call('PATCH', `/orders/${order2.id}/status`, { status: 'CANCELADO' });
 check('cliente cancela antes de sair para entrega', cancel.status === 200 && cancel.data?.status === 'CANCELADO');
 
-console.log('== it_08 Entregador consulta disponíveis e aceita (A_CAMINHO) ==');
+console.log('== it_08 Operador libera pedido (PRONTO_ENTREGA / A_CAMINHO) e Entregador aceita ==');
+const markReady = await aparelhoOp.call('PATCH', `/orders/${orderId}/status`, { status: 'PRONTO_ENTREGA' });
+check('operador marca pedido como PRONTO_ENTREGA (200)', markReady.status === 200 && markReady.data?.status === 'PRONTO_ENTREGA', JSON.stringify(markReady.data));
+
+const opDispatch = await aparelhoOp.call('PATCH', `/orders/${orderId}/status`, { status: 'A_CAMINHO' });
+check('operador muda status do pedido para A_CAMINHO quando entregador retira no restaurante (200)', opDispatch.status === 200 && opDispatch.data?.status === 'A_CAMINHO', JSON.stringify(opDispatch.data));
+
 const courierLists = await aparecimentoB.call('GET', '/orders/available');
-check('entregador lista pedidos EM_PREPARO disponíveis', courierLists.status === 200 && Array.isArray(courierLists.data) && courierLists.data.some(o => o.id === orderId));
+check('entregador lista pedidos disponíveis no restaurante', courierLists.status === 200 && Array.isArray(courierLists.data) && courierLists.data.some(o => o.id === orderId));
 const accept = await aparecimentoB.call('PATCH', `/orders/${orderId}/status`, { status: 'A_CAMINHO' });
 check('entregador aceita e fica A_CAMINHO com courierId dele', accept.status === 200 && accept.data?.status === 'A_CAMINHO' && accept.data?.courierId === regCourier.data.userId);
 check('entregador recebe os metadados do Ponto na Praia do cliente (referenciaBarraca, contatoTelefone, fotoVisaoPostoUrl)',
@@ -460,14 +470,20 @@ console.log('== it_10 Chegada no local e confirmação de entrega validada por G
 const arrive = await aparecimentoB.call('PATCH', `/orders/${orderId}/status`, { status: 'CHEGOU_NO_LOCAL' });
 check('entregador marca CHEGOU_NO_LOCAL', arrive.status === 200 && arrive.data?.status === 'CHEGOU_NO_LOCAL');
 
+const clientViewOrder = await aparecimentoA.call('GET', `/orders/${orderId}`);
+const otpPin = clientViewOrder.data?.codigoEntrega;
+check('cliente visualiza codigoEntrega de 4 digitos', typeof otpPin === 'string' && /^\d{4}$/.test(otpPin), String(otpPin));
+
 const tooFar = await aparecimentoB.call('POST', `/orders/${orderId}/confirm-delivery`, {
   courierId: regCourier.data.userId,
+  codigoEntrega: otpPin,
   courierLocation: { lat: PIN.latitude + 0.0012, lng: PIN.longitude }, // ~135 m do pin
 });
 check('confirmação a ~135 m do pin é negada (422)', tooFar.status === 422);
 
 const confirm = await aparecimentoB.call('POST', `/orders/${orderId}/confirm-delivery`, {
   courierId: regCourier.data.userId,
+  codigoEntrega: otpPin,
   courierLocation: { lat: PIN.latitude + 0.00005, lng: PIN.longitude }, // ~5 m do pin
 });
 check('confirmação a ~5 m do pin é aceita e vira ENTREGUE', confirm.status === 200 && confirm.data?.status === 'ENTREGUE');
@@ -499,6 +515,25 @@ check('Operador lista cardápio e encontra item com foto e destaque',
 
 const deleteItem = await aparelhoOp.call('DELETE', `/kiosk/me/menu/${createItem.data.id}`);
 check('Operador remove item de teste do cardápio (204)', deleteItem.status === 204);
+
+console.log('== it_12 Limpeza automática de massa de testes regressivos no MongoDB ==');
+const cleanupScript = `
+  const e2eUsers = db.users.find({ email: /@(exemplo|example)\\.com$/i }, { _id: 1 }).toArray().map(u => u._id.toString());
+  const e2eKiosks = db.kiosks.find({ $or: [{ _id: "kiosk-santos-1" }, { nome: "Restaurante Orla do Gonzaga" }] }, { _id: 1 }).toArray().map(k => k._id.toString());
+  db.orders.deleteMany({
+    $or: [
+      { kioskId: { $in: e2eKiosks } },
+      { userId: { $in: e2eUsers } }
+    ]
+  });
+  db.kiosk_partnerships.deleteMany({ kioskId: { $in: e2eKiosks } });
+  db.kiosks.deleteMany({ _id: { $in: e2eKiosks } });
+  db.users.deleteMany({ email: /@(exemplo|example)\\.com$/i });
+  db.couriers.deleteMany({ email: /@(exemplo|example)\\.com$/i });
+  db.couriers.updateMany({ status: { $ne: "DISPONIVEL" } }, { $set: { status: "DISPONIVEL" } });
+`;
+runMongoScript(cleanupScript);
+console.log('  OK Massa de testes E2E removida do MongoDB.');
 
 console.log('\n===== RESULTADO E2E =====');
 console.log(`PASS: ${pass}  FAIL: ${fail}`);

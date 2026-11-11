@@ -85,6 +85,14 @@ public class AuthService {
         if (courier.isPresent()
                 && passwordEncoder.matches(request.password(), courier.get().getSenhaHash())) {
             Courier authenticated = courier.get();
+            if (authenticated.getStatus() == null
+                    || authenticated.getStatus() == Courier.CourierStatus.OFFLINE) {
+                authenticated.setStatus(Courier.CourierStatus.DISPONIVEL);
+                Courier saved = courierRepository.save(authenticated);
+                if (saved != null) {
+                    authenticated = saved;
+                }
+            }
             return response(authenticated.getId(), authenticated.getNome(), email, "COURIER");
         }
         throw new BusinessRuleException("Credenciais inválidas.");

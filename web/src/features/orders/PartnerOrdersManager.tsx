@@ -179,7 +179,7 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
     try {
       const updated = await api.markOrderReadyForPickup(orderId)
       setSuccess(
-        `Código do pedido #${getOrderCode(updated)} marcado como pronto para retirada pelo entregador!`,
+        `Código do pedido #${getOrderCode(updated)} liberado no balcão (Pronto para Entrega)!`,
       )
       await loadOrders(true)
     } catch (err) {
@@ -187,6 +187,27 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
         err instanceof ApiError
           ? err.message
           : 'Não foi possível marcar o pedido como pronto para entrega.',
+      )
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleDispatchOrder = async (orderId: string) => {
+    setActionLoadingId(orderId)
+    setError(null)
+    setSuccess(null)
+    try {
+      const updated = await api.dispatchOrderToCourier(orderId)
+      setSuccess(
+        `Código do pedido #${getOrderCode(updated)} marcado como A Caminho (retirado pelo entregador)!`,
+      )
+      await loadOrders(true)
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'Não foi possível alterar o status do pedido para A Caminho.',
       )
     } finally {
       setActionLoadingId(null)
@@ -567,8 +588,8 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
                     <div className="preparing-notice-row">
                       <span className="preparing-pulse-icon">🍳</span>
                       <span>
-                        <strong>Em preparo na cozinha.</strong> Quando finalizar, avise o
-                        entregador que o pedido está pronto para retirada.
+                        <strong>Em preparo na cozinha.</strong> Libere o pedido quando estiver
+                        pronto ou mude direto para A Caminho ao entregar ao entregador.
                       </span>
                       <Button
                         variant="primary"
@@ -577,7 +598,16 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
                       >
                         {actionLoadingId === order.id
                           ? 'Atualizando...'
-                          : '✅ Pedido Pronto p/ Entregador'}
+                          : '✅ Liberar p/ Entrega (Pronto)'}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => void handleDispatchOrder(order.id)}
+                        disabled={actionLoadingId === order.id}
+                      >
+                        {actionLoadingId === order.id
+                          ? 'Atualizando...'
+                          : '🚴 Entregador Retirou (A Caminho)'}
                       </Button>
                       <Button
                         variant="secondary"
@@ -593,9 +623,18 @@ export function PartnerOrdersManager({ kioskName }: PartnerOrdersManagerProps) {
                     <div className="preparing-notice-row">
                       <span className="preparing-pulse-icon">📦</span>
                       <span>
-                        <strong>Pedido pronto no restaurante!</strong> O entregador já foi avisado
-                        e o pedido está sendo retirado do local de entrega.
+                        <strong>Pedido pronto no restaurante!</strong> Assim que o entregador
+                        retirar o pedido no local, mude o status para A Caminho.
                       </span>
+                      <Button
+                        variant="primary"
+                        onClick={() => void handleDispatchOrder(order.id)}
+                        disabled={actionLoadingId === order.id}
+                      >
+                        {actionLoadingId === order.id
+                          ? 'Atualizando...'
+                          : '🚴 Entregador Retirou · Mudar p/ A Caminho'}
+                      </Button>
                       <Button
                         variant="secondary"
                         onClick={() => setCancelingOrder(order)}

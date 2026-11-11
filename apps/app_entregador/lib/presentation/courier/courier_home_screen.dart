@@ -280,7 +280,8 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
       );
 
   Widget _buildAvailableOrder(Order order) {
-    final isReadyAtRestaurant = order.status == OrderStatus.prontoEntrega;
+    final isReadyAtRestaurant = order.status == OrderStatus.prontoEntrega ||
+        order.status == OrderStatus.aCaminho;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
@@ -351,9 +352,11 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    isReadyAtRestaurant
-                        ? 'Pedido pronto no restaurante — retirar para entrega'
-                        : order.status.courierLabel,
+                    order.status == OrderStatus.aCaminho
+                        ? 'Liberado pelo restaurante — confirmar início da entrega'
+                        : isReadyAtRestaurant
+                            ? 'Pedido pronto no restaurante — retirar para entrega'
+                            : order.status.courierLabel,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

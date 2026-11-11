@@ -142,6 +142,11 @@ export const api = {
       method: 'PATCH',
       body: json({ status: 'PRONTO_ENTREGA' }),
     }),
+  dispatchOrderToCourier: (orderId: string) =>
+    request<KioskOrder>(`/orders/${encodeURIComponent(orderId)}/status`, {
+      method: 'PATCH',
+      body: json({ status: 'A_CAMINHO' }),
+    }),
   cancelOperatorOrder: (orderId: string, motivo: string) =>
     request<KioskOrder>(`/orders/${encodeURIComponent(orderId)}/status`, {
       method: 'PATCH',

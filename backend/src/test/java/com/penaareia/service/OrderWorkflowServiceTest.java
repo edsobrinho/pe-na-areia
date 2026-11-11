@@ -636,6 +636,50 @@ class OrderWorkflowServiceTest {
     }
 
     @Test
+    void kioskOperatorCanDispatchOrderToACaminhoAndCourierWithStaleEmRotaCanClaimIt() {
+        Order order = orderAtStatus(OrderStatus.PRONTO_ENTREGA);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        com.penaareia.model.User operator = new com.penaareia.model.User();
+        operator.setId("operator-1");
+        operator.setKioskId("kiosk-1");
+        when(mongoTemplate.findById("operator-1", com.penaareia.model.User.class)).thenReturn(operator);
+
+        Order dispatchedByRestaurant = service().atualizarStatus(
+                "order-1",
+                OrderStatus.A_CAMINHO,
+                "operator-1",
+                List.of(new SimpleGrantedAuthority("ROLE_KIOSK_OPERATOR")));
+
+        assertThat(dispatchedByRestaurant.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
+        assertThat(dispatchedByRestaurant.getTimeline().getACaminhoEm()).isNotNull();
+
+        Order claimedOrder = orderAtStatus(OrderStatus.A_CAMINHO);
+        claimedOrder.setCourierId("courier-1");
+        Courier staleCourier = new Courier();
+        staleCourier.setId("courier-1");
+        staleCourier.setStatus(Courier.CourierStatus.EM_ROTA);
+
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(dispatchedByRestaurant));
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(Order.class))).thenReturn(claimedOrder);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null));
+        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(staleCourier));
+
+        Order claimedByCourier = service().atualizarStatus(
+                "order-1",
+                OrderStatus.A_CAMINHO,
+                "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER")));
+
+        assertThat(claimedByCourier.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
+        assertThat(claimedByCourier.getCourierId()).isEqualTo("courier-1");
+    }
+
+    @Test
     void clientCanCancelOrderBeforePreparo() {
         Order order = orderAtStatus(OrderStatus.CRIADO);
         order.setUserId("client-1");
