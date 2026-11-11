@@ -177,7 +177,7 @@ export function MenuManager({ menuItems, onRefresh, loading, error }: MenuManage
                   )}
                   {item.returnablePackaging && (
                     <span className="eco-badge" title="Embalagem sustentável">
-                      🌱 Retornável
+                      🌱 Embalagem Sustentável
                     </span>
                   )}
                 </div>

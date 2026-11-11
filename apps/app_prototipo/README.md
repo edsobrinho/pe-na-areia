@@ -24,7 +24,7 @@ O **App Protótipo** funciona como um showroom executável completo da experiên
 
 ### 1. Mapa de Fluxo do Cliente (Banista)
 Navegação guiada pelas 5 etapas fundamentais:
-- **Quiosques & Cardápio:** Seleção de produtos, porções, água de coco fresca e açaí com opção de embalagem retornável/sustentável.
+- **Quiosques & Cardápio:** Seleção de produtos, porções, água de coco fresca e açaí com opção de Embalagem Sustentável.
 - **Localização na Areia:** Simulação do pin do guarda-sol na praia de Santos e postos de salvamento.
 - **Checkout & Pix:** Simulação da cobrança Pix com chave Copia e Cola e QR Code.
 - **Acompanhamento (Live Tracking):** Barra de progresso de status e cálculo dinâmico de distância restante.

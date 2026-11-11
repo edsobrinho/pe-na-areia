@@ -183,7 +183,7 @@ class _MenuItemDetailsSheetState extends State<MenuItemDetailsSheet> {
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Text(
-                          '♻️ Embalagem Retornável',
+                          '♻️ Embalagem Sustentável',
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,

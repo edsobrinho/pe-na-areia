@@ -36,7 +36,7 @@ Portal web B2B do ecossistema **Pé na Areia**, desenvolvido em **React 19**, **
 - **3. Produtos nas Devidas Categorias (`MenuManager` + `CategoryTabs` + `MenuItemFormDialog`)**:
   - Navegação e filtragem rápida por abas de **Categorias Costeiras** (*Água de Coco*, *Porções*, *Frutos do Mar*, *Pastéis*, *Bebidas*, *Cervejas & Drinks*, *Açaí & Gelados*, *Espetinhos*, *Lanches*, *Sobremesas*, *Combos Guarda-Sol*, *Outros*) com contador de itens por categoria.
   - Atalho contextual **`+ Novo em "<Categoria>"`** que já abre o modal pré-selecionado na categoria ativa.
-  - Upload de foto do produto, preço em BRL, marcação de **"⭐ Mais Pedido na Areia (`destaque`)"**, **"🌱 Embalagem Retornável"** e chave de disponibilidade imediata.
+  - Upload de foto do produto, preço em BRL, marcação de **"⭐ Mais Pedido na Areia (`destaque`)"**, **"🌱 Embalagem Sustentável"** e chave de disponibilidade imediata.
 - **4. Canais de Parceria & Simulador de Repasse (`PartnershipConfigPanel`)**:
   - Parametrização de comissão (`0%–30%`), taxa de entrega na areia, pagador (`CLIENT` ou `KIOSK`), pedido mínimo, tempo estimado de preparo e janela de funcionamento.
   - **Simulador de Repasse (`POST /kiosk/me/partnerships/{id}/preview`)**: Cálculo prévio de subtotal, comissão da plataforma, total do cliente e valor líquido do quiosque.

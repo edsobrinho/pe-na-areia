@@ -27,7 +27,7 @@ O **App do Cliente** foi projetado especificamente para a realidade de consumo �
 ### 1. Catálogo Visual de Quiosques e Produtos
 
 - **Vitrines com Fotos Reais:** Apresentação de quiosques credenciados com logomarca, foto de capa e cardápio organizado por categorias costeiras.
-- **Filtro de Embalagem Sustentável:** Opção para priorizar quiosques que utilizam copos e embalagens retornáveis/biodegradáveis.
+- **Filtro de Embalagem Sustentável:** Opção para priorizar quiosques que utilizam copos e embalagens sustentáveis/biodegradáveis.
 - **Itens em Destaque:** Visualização rápida dos itens mais pedidos na praia.
 
 ### 2. Pin Interativo na Faixa de Areia e Localização

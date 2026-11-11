@@ -55,7 +55,7 @@ class _KioskStorefrontScreenState extends State<KioskStorefrontScreen> {
   List<String> get _tabs {
     final cats = <String>{'Todos', 'Destaques'};
     if (_availableItems.any((i) => i.returnablePackaging)) {
-      cats.add('Retornáveis');
+      cats.add('Sustentáveis');
     }
     cats.addAll(widget.kiosk.categoriasDisponiveis);
     return cats.toList(growable: false);
@@ -71,7 +71,7 @@ class _KioskStorefrontScreenState extends State<KioskStorefrontScreen> {
       }
       if (_selectedTab == 'Todos') return true;
       if (_selectedTab == 'Destaques') return item.destaque || _featuredItems.contains(item);
-      if (_selectedTab == 'Retornáveis') return item.returnablePackaging;
+      if (_selectedTab == 'Sustentáveis') return item.returnablePackaging;
       return item.category == _selectedTab;
     }).toList(growable: false);
   }
@@ -406,7 +406,7 @@ class _KioskStorefrontScreenState extends State<KioskStorefrontScreen> {
                   Icon(Icons.recycling_rounded, size: 15, color: AppColors.sage700),
                   SizedBox(width: 6),
                   Text(
-                    'Quiosque Praia Limpa · Embalagem Retornável',
+                    'Quiosque Praia Limpa · Embalagem Sustentável',
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,

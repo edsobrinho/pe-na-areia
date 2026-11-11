@@ -19,19 +19,19 @@ void main() {
       // Manchete e subtítulo da temática de Santos
       expect(find.text('Entrega\nSustentável na\nAreia de Santos'), findsOneWidget);
       expect(
-        find.textContaining('embalagem 100% retornável direto no seu guarda-sol'),
+        find.textContaining('embalagem 100% sustentável direto no seu guarda-sol'),
         findsOneWidget,
       );
 
       // Selos do ecossistema costeiro de Santos
-      expect(find.text('ORLA DE SANTOS · POSTOS 1 AO 6'), findsOneWidget);
-      expect(find.text('Embalagem Retornável'), findsOneWidget);
+      expect(find.text('ORLA DE SANTOS'), findsOneWidget);
+      expect(find.text('Embalagem Sustentável'), findsOneWidget);
       expect(find.text('Direto na sua Canga'), findsOneWidget);
       expect(find.text('Entrega na Orla Santista'), findsOneWidget);
 
       // Botão CTA em pílula
       expect(find.text('Começar Agora'), findsOneWidget);
-      expect(find.text('Já possui conta? Entrar ou Cadastrar Quiosque'), findsOneWidget);
+      expect(find.text('Já possui conta? Entrar ou Cadastrar'), findsOneWidget);
     });
 
     testWidgets('aciona callbacks de começar e login corretamente',
@@ -59,7 +59,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(startedPressed, isTrue);
 
-      final loginFinder = find.text('Já possui conta? Entrar ou Cadastrar Quiosque');
+      final loginFinder = find.text('Já possui conta? Entrar ou Cadastrar');
       await tester.ensureVisible(loginFinder);
       await tester.tap(loginFinder);
       await tester.pumpAndSettle();

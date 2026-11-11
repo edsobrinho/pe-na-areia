@@ -45,7 +45,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   static const List<({String id, String label})> _beachCategories = [
     (id: 'ALL', label: 'Todos'),
-    (id: 'RETORNABLE', label: 'Retornáveis'),
+    (id: 'SUSTENTAVEL', label: 'Sustentáveis'),
     (id: 'FREE_DELIVERY', label: 'Entrega Grátis'),
     (id: 'Porções', label: 'Porções'),
     (id: 'Frutos do Mar', label: 'Frutos do Mar'),
@@ -414,7 +414,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         if (offer != null && !offer.isFreeDelivery) return false;
       }
       if (_selectedCategoryFilter != 'ALL') {
-        if (_selectedCategoryFilter == 'RETORNABLE') {
+        if (_selectedCategoryFilter == 'SUSTENTAVEL') {
           return kiosk.aceitaEmbalagemSustentavel;
         }
         if (_selectedCategoryFilter == 'FREE_DELIVERY') {
@@ -1099,7 +1099,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Text(
-                            'Embalagem retornável / sustentável',
+                            'Embalagem Sustentável',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -1196,7 +1196,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       fee <= 0
                           ? 'Entrega Grátis'
                           : kiosk.aceitaEmbalagemSustentavel
-                              ? 'Retornável ♻️'
+                              ? 'Embalagem Sustentável ♻️'
                               : 'Taxa R\$ ${fee.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 11.5,
@@ -1783,7 +1783,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         ),
                         if (item.returnablePackaging)
                           const Tooltip(
-                            message: 'Embalagem retornável',
+                            message: 'Embalagem Sustentável',
                             child: Icon(
                               Icons.recycling_rounded,
                               size: 16,

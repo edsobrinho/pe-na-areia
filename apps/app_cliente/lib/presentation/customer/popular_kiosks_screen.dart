@@ -250,7 +250,7 @@ class _PopularKiosksScreenState extends State<PopularKiosksScreen> {
                       fee <= 0
                           ? 'Entrega Grátis'
                           : kiosk.aceitaEmbalagemSustentavel
-                              ? 'Retornável ♻️'
+                              ? 'Embalagem Sustentável ♻️'
                               : 'Taxa R\$ ${fee.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 11.5,

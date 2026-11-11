@@ -177,7 +177,7 @@ export function MenuItemFormDialog({
               checked={returnablePackaging}
               onChange={(event) => setReturnablePackaging(event.target.checked)}
             />
-            <span>🌱 Possui embalagem retornável / sustentável</span>
+            <span>🌱 Possui Embalagem Sustentável</span>
           </label>
 
           <label className="checkbox-line">

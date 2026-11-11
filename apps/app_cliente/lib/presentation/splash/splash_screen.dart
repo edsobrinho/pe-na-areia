@@ -131,7 +131,7 @@ class SplashScreen extends StatelessWidget {
                           const SizedBox(height: 12),
                           Text(
                             'Peça de quiosques e restaurantes parceiros com embalagem 100% '
-                            'retornável direto no seu guarda-sol ou canga na orla santista.',
+                            'sustentável direto no seu guarda-sol ou canga na orla santista.',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.88),
                               fontSize: 14.5,
@@ -197,9 +197,9 @@ class SplashScreen extends StatelessWidget {
                             _buildFeatureRow(
                               icon: Icons.replay_circle_filled_rounded,
                               iconColor: const Color(0xFF86EFAC),
-                              title: 'Embalagem Retornável',
+                              title: 'Embalagem Sustentável',
                               description:
-                                  'Zero lixo e sem descartáveis. Vasilhames recolhidos pelo courier.',
+                                  'Zero plástico na areia. Embalagens biodegradáveis e ecológicas.',
                             ),
                             const Divider(color: Colors.white12, height: 20),
                             _buildFeatureRow(

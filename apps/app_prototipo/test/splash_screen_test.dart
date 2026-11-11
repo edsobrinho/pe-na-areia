@@ -19,13 +19,13 @@ void main() {
       // Manchete e subtítulo da temática de Santos
       expect(find.text('Entrega\nSustentável na\nAreia de Santos'), findsOneWidget);
       expect(
-        find.textContaining('embalagem 100% retornável direto no seu guarda-sol'),
+        find.textContaining('embalagem 100% sustentável direto no seu guarda-sol'),
         findsOneWidget,
       );
 
       // Selos do ecossistema costeiro de Santos
       expect(find.text('ORLA DE SANTOS · POSTOS 1 AO 6'), findsOneWidget);
-      expect(find.text('Embalagem Retornável'), findsOneWidget);
+      expect(find.text('Embalagem Sustentável'), findsOneWidget);
       expect(find.text('Direto na sua Canga'), findsOneWidget);
       expect(find.text('Entrega na Orla Santista'), findsOneWidget);
 

@@ -107,7 +107,7 @@ export function StorefrontIdentityForm({ kiosk, onSave }: StorefrontIdentityForm
               checked={aceitaEmbalagemSustentavel}
               onChange={(e) => setAceitaEmbalagemSustentavel(e.target.checked)}
             />
-            <span>♻️ Trabalha com Embalagem Sustentável / Retornável</span>
+            <span>♻️ Trabalha com Embalagem Sustentável</span>
           </label>
           <label className="check-pill">
             <input

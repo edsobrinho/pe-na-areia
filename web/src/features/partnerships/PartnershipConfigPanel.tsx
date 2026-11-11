@@ -268,7 +268,7 @@ export function PartnershipConfigPanel({
                   })
                 }
               />
-              <span>Somente produtos com embalagem retornável</span>
+              <span>Somente produtos com Embalagem Sustentável</span>
             </label>
           </fieldset>
         </div>

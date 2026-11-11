@@ -203,7 +203,7 @@ class OrderDetailsSheet extends StatelessWidget {
                             Icon(Icons.eco_rounded, size: 16, color: AppColors.sage600),
                             SizedBox(width: 6),
                             Text(
-                              'Embalagem Sustentável / Retornável ♻️',
+                              'Embalagem Sustentável ♻️',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,

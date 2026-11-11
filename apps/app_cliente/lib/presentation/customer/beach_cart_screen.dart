@@ -219,7 +219,7 @@ class _BeachCartScreenState extends State<BeachCartScreen> {
                                 const SizedBox(width: 12),
                                 const Expanded(
                                   child: Text(
-                                    'Preferir embalagem retornável / sustentável',
+                                    'Preferir Embalagem Sustentável',
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
