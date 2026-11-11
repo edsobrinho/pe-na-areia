@@ -62,7 +62,7 @@ class OrderServiceTest {
     private void stubFluxoValido(KioskPartnership configuration) {
         when(userRepository.findById(Fixtures.USER_ID)).thenReturn(Optional.of(Fixtures.usuarioAtivo()));
         when(kioskRepository.findById(Fixtures.KIOSK_ID)).thenReturn(Optional.of(Fixtures.kioskAtivo()));
-        when(referencePointRepository.findById(Fixtures.POSTO_ID)).thenReturn(Optional.of(Fixtures.postoAtivo()));
+        lenient().when(referencePointRepository.findById(Fixtures.POSTO_ID)).thenReturn(Optional.of(Fixtures.postoAtivo()));
         lenient().when(partnershipService.activeConfiguration(Fixtures.KIOSK_ID, "p1")).thenReturn(configuration);
         lenient().when(partnershipService.isWithinAcceptanceWindow(configuration)).thenReturn(true);
         lenient().when(partnershipService.isEligible(
@@ -226,15 +226,19 @@ class OrderServiceTest {
     }
 
     @Test
-    void pinMaisDeQuinhentosMetrosDoPostoEhRejeitado() {
+    void aceitaPinEmQualquerPontoDoMapaSemRestricaoDePostoOuDistancia() {
         stubFluxoValido();
+        stubSave();
         CreateOrderRequest request = Fixtures.requestValido();
+        request.setPontoReferenciaId(null);
         request.setPinCliente(Fixtures.pin(-23.97, -46.30));
 
-        assertThatThrownBy(() -> service.criarPedido(request))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("500 m");
-        verify(orderRepository, never()).save(any());
+        Order pedido = service.criarPedido(request);
+
+        assertThat(pedido.getPinCliente().getY()).isEqualTo(-23.97);
+        assertThat(pedido.getPinCliente().getX()).isEqualTo(-46.30);
+        assertThat(pedido.getPontoReferenciaId()).isNull();
+        verify(orderRepository).save(any(Order.class));
     }
 
     @Test
@@ -279,18 +283,6 @@ class OrderServiceTest {
     }
 
     @Test
-    void postoInexistenteLanca404SemSalvar() {
-        when(userRepository.findById(Fixtures.USER_ID)).thenReturn(Optional.of(Fixtures.usuarioAtivo()));
-        when(kioskRepository.findById(Fixtures.KIOSK_ID)).thenReturn(Optional.of(Fixtures.kioskAtivo()));
-        when(referencePointRepository.findById(Fixtures.POSTO_ID)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.criarPedido(Fixtures.requestValido()))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Posto de referencia");
-        verify(orderRepository, never()).save(any());
-    }
-
-    @Test
     void itemForaDoCardapioLanca404SemSalvar() {
         stubFluxoValido();
         CreateOrderRequest request = Fixtures.requestValido();
@@ -322,18 +314,6 @@ class OrderServiceTest {
         assertThatThrownBy(() -> service.criarPedido(Fixtures.requestValido()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("Quiosque inativo");
-        verify(orderRepository, never()).save(any());
-    }
-
-    @Test
-    void postoInativoLanca422SemSalvar() {
-        when(userRepository.findById(Fixtures.USER_ID)).thenReturn(Optional.of(Fixtures.usuarioAtivo()));
-        when(kioskRepository.findById(Fixtures.KIOSK_ID)).thenReturn(Optional.of(Fixtures.kioskAtivo()));
-        when(referencePointRepository.findById(Fixtures.POSTO_ID)).thenReturn(Optional.of(Fixtures.postoInativo()));
-
-        assertThatThrownBy(() -> service.criarPedido(Fixtures.requestValido()))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("Posto de referencia inativo");
         verify(orderRepository, never()).save(any());
     }
 

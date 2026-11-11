@@ -197,7 +197,6 @@ class OrderLifecycleE2ETest {
         // Mock de busca de entidades para criação do pedido
         when(userRepository.findById("client-ednilson")).thenReturn(Optional.of(cliente));
         when(kioskRepository.findById("kiosk-burgman")).thenReturn(Optional.of(quiosque));
-        when(referencePointRepository.findById("posto-5")).thenReturn(Optional.of(posto5));
         when(partnershipService.activeConfiguration("kiosk-burgman", "pe-na-areia-app")).thenReturn(partnershipConfig);
         when(partnershipService.isWithinAcceptanceWindow(partnershipConfig)).thenReturn(true);
         when(partnershipService.isEligible(eq(partnershipConfig), any(Kiosk.MenuItem.class))).thenReturn(true);
@@ -342,26 +341,30 @@ class OrderLifecycleE2ETest {
     }
 
     @Test
-    @DisplayName("E2E: Validação do Raio de 500m - Rejeita pedido se o pin estiver fora da praia/posto")
-    void rejeitaCriacaoSePinEstiverAcimaDe500MetrosDoPosto() {
+    @DisplayName("E2E: Pin Livre no Mapa - Permite pedido em qualquer coordenada sem posto pré-cadastrado")
+    void permiteCriacaoEmQualquerPontoDoMapaSemPostoCadastrado() {
         when(userRepository.findById("client-ednilson")).thenReturn(Optional.of(cliente));
         when(kioskRepository.findById("kiosk-burgman")).thenReturn(Optional.of(quiosque));
-        when(referencePointRepository.findById("posto-5")).thenReturn(Optional.of(posto5));
+        when(partnershipService.activeConfiguration("kiosk-burgman", "pe-na-areia-app")).thenReturn(partnershipConfig);
+        when(partnershipService.isWithinAcceptanceWindow(partnershipConfig)).thenReturn(true);
+        when(partnershipService.isEligible(eq(partnershipConfig), any(Kiosk.MenuItem.class))).thenReturn(true);
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CreateOrderRequest request = new CreateOrderRequest();
         request.setUserId("client-ednilson");
         request.setKioskId("kiosk-burgman");
         request.setPartnershipId("pe-na-areia-app");
-        request.setPontoReferenciaId("posto-5");
+        request.setPontoReferenciaId(null);
+        request.setDescricaoLocal("Guarda-sol amarelo perto da rede");
         request.setFormaPagamento(PaymentMethod.PIX);
         request.setItens(List.of(item("item-isca-peixe", 1)));
-
-        // Pin em São Paulo / fora de Santos (> 50 km de distância do Posto 5)
         request.setPinCliente(pin(-23.5505, -46.6333));
 
-        assertThatThrownBy(() -> orderService.criarPedido(request))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessage("O pin deve estar a no máximo 500 m do posto de referência.");
+        Order pedido = orderService.criarPedido(request);
+
+        assertThat(pedido.getPinCliente().getY()).isEqualTo(-23.5505);
+        assertThat(pedido.getPinCliente().getX()).isEqualTo(-46.6333);
+        assertThat(pedido.getPontoReferenciaId()).isNull();
     }
 
     @Test

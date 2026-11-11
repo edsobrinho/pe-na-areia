@@ -2,23 +2,21 @@ import 'package:flutter/foundation.dart';
 
 import 'package:core_shared/core_shared.dart';
 
-/// Estado da tela de selecao de localizacao (pin no mapa).
+/// Estado da tela de selecao de localizacao (pin livre no mapa).
 ///
 /// Responsabilidades:
-/// - posicao do pin (posicao do dispositivo ou fallback de Santos) e
-///   protecao contra respostas antigas quando o pin se move rapido;
-/// - sugestao do posto de referencia mais proximo, com distancia calculada;
+/// - posicao livre do pin em qualquer ponto do mapa (posicao do dispositivo ou
+///   fallback de Santos) sem depender de postos de entrega pre-cadastrados;
 /// - descricao do local (ate 140 caracteres) e foto opcional;
 /// - confirmacao: faz upload da foto (se houver) e devolve um
-///   [OrderLocation] completo para o fluxo de checkout.
+///   [OrderLocation] baseado exclusivamente na geolocalizacao, descricao e foto.
 class LocationSelectionController extends ChangeNotifier {
   LocationSelectionController({
-    required ReferencePointRepository referencePointRepository,
+    ReferencePointRepository? referencePointRepository,
     required UploadRepository uploadRepository,
     required LocationService locationService,
     GeoPoint fallbackPosition = santosFallbackPosition,
-  })  : _referencePointRepository = referencePointRepository,
-        _uploadRepository = uploadRepository,
+  })  : _uploadRepository = uploadRepository,
         _locationService = locationService,
         _fallbackPosition = fallbackPosition,
         _pin = fallbackPosition;
@@ -30,27 +28,21 @@ class LocationSelectionController extends ChangeNotifier {
   /// Limite de caracteres da descricao do local (contrato com o backend).
   static const int maxDescricaoLength = OrderLocation.maxDescricaoLength;
 
-  final ReferencePointRepository _referencePointRepository;
   final UploadRepository _uploadRepository;
   final LocationService _locationService;
   final GeoPoint _fallbackPosition;
 
   GeoPoint _pin;
-  List<ReferencePoint> _postosProximos = const [];
-  ReferencePoint? _postoSelecionado;
-  double? _distanciaSelecionadaMeters;
   String _descricao = '';
   Uint8List? _fotoBytes;
   String? _fotoFilename;
 
   bool _isInitializing = false;
-  bool _isLoadingPostos = false;
   bool _isConfirming = false;
   bool _usingFallbackLocation = false;
   String? _locationMessage;
   String? _errorMessage;
 
-  int _nearbyRequestSeq = 0;
   bool _initialized = false;
   bool _pinMovedByUser = false;
   bool _disposed = false;
@@ -59,13 +51,6 @@ class LocationSelectionController extends ChangeNotifier {
 
   UploadRepository get uploadRepository => _uploadRepository;
 
-  List<ReferencePoint> get postosProximos => _postosProximos;
-
-  ReferencePoint? get postoSelecionado => _postoSelecionado;
-
-  /// Distancia em metros entre o pin e o posto selecionado.
-  double? get distanciaSelecionadaMeters => _distanciaSelecionadaMeters;
-
   String get descricao => _descricao;
 
   Uint8List? get fotoBytes => _fotoBytes;
@@ -73,8 +58,6 @@ class LocationSelectionController extends ChangeNotifier {
   bool get temFoto => _fotoBytes != null;
 
   bool get isInitializing => _isInitializing;
-
-  bool get isLoadingPostos => _isLoadingPostos;
 
   bool get isConfirming => _isConfirming;
 
@@ -87,8 +70,8 @@ class LocationSelectionController extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
-  /// Carrega a posicao do dispositivo (com fallback) e a primeira lista de
-  /// postos proximos. Idempotente: so executa uma vez por instancia.
+  /// Carrega a posicao do dispositivo (com fallback) sem buscar postos.
+  /// Idempotente: so executa uma vez por instancia.
   Future<void> initialize() async {
     if (_initialized) {
       return;
@@ -101,63 +84,19 @@ class LocationSelectionController extends ChangeNotifier {
 
     _isInitializing = false;
     _notify();
-    await refreshPostosProximos();
   }
 
   /// Tenta centralizar o pin na posicao atual do dispositivo (botao "minha
-  /// localizacao") e recarrega os postos proximos.
+  /// localizacao").
   Future<void> recenterOnDeviceLocation() async {
     await _atualizarComLocalizacaoDoDispositivo(force: true);
-    await refreshPostosProximos();
   }
 
-  /// Move o pin (toque no mapa ou fim do arrasto) e re-sugere o posto mais
-  /// proximo. Respostas de requisicoes antigas sao descartadas.
+  /// Move o pin livremente para qualquer ponto do mapa (toque, arrasto ou mira).
   Future<void> movePin(GeoPoint position) async {
     _pinMovedByUser = true;
     _pin = position;
-    _notify();
-    await refreshPostosProximos();
-  }
-
-  /// Recarrega a sugestao de postos proximos ao pin atual.
-  Future<void> refreshPostosProximos() async {
-    final sequencia = ++_nearbyRequestSeq;
-    _isLoadingPostos = true;
     _errorMessage = null;
-    _notify();
-
-    try {
-      final postos = await _referencePointRepository.fetchNearby(
-        lat: _pin.latitude,
-        lng: _pin.longitude,
-      );
-      if (_disposed || sequencia != _nearbyRequestSeq) {
-        // Resposta antiga (o pin ja se moveu de novo): descartar.
-        return;
-      }
-      _postosProximos = _ordenarPorDistancia(postos);
-      _postoSelecionado = _postosProximos.isEmpty ? null : _postosProximos.first;
-      _distanciaSelecionadaMeters = _postoSelecionado == null
-          ? null
-          : distanceMeters(_pin, _geoPointDoPosto(_postoSelecionado!));
-    } on ApiException {
-      if (_disposed || sequencia != _nearbyRequestSeq) {
-        return;
-      }
-      _errorMessage = 'Nao foi possivel carregar os postos de referencia.';
-    } finally {
-      if (!_disposed && sequencia == _nearbyRequestSeq) {
-        _isLoadingPostos = false;
-        _notify();
-      }
-    }
-  }
-
-  /// Seleciona um posto manualmente (toque em um chip da lista).
-  void selecionarPosto(ReferencePoint posto) {
-    _postoSelecionado = posto;
-    _distanciaSelecionadaMeters = distanceMeters(_pin, _geoPointDoPosto(posto));
     _notify();
   }
 
@@ -187,17 +126,22 @@ class LocationSelectionController extends ChangeNotifier {
     _notify();
   }
 
-  /// Regra do botao "Confirmar localizacao": exige posto selecionado e
-  /// descricao nao vazia de ate 140 caracteres, e nao permite duplo envio.
+  /// Regra do botao "Confirmar localizacao": exige apenas descricao nao vazia
+  /// de ate 140 caracteres (sem necessidade de posto pre-cadastrado).
   bool get podeConfirmar =>
-      _postoSelecionado != null &&
       _descricao.trim().isNotEmpty &&
       _descricao.length <= maxDescricaoLength &&
       !_isConfirming;
 
+  /// Confirma apenas a coordenada do pin (usado pelo seletor de mapa Full Screen).
+  OrderLocation confirmarApenasPin() => OrderLocation(
+        latitude: _pin.latitude,
+        longitude: _pin.longitude,
+        descricaoLocal: _descricao.trim(),
+      );
+
   /// Confirma a localizacao: envia a foto do local para o backend (quando
-  /// houver) e devolve um [OrderLocation] completo. Em falha, devolve `null`
-  /// e expoe [errorMessage].
+  /// houver) e devolve um [OrderLocation] completo baseado na geolocalizacao.
   Future<OrderLocation?> confirmarLocalizacao() async {
     if (!podeConfirmar) {
       return null;
@@ -219,7 +163,6 @@ class LocationSelectionController extends ChangeNotifier {
       return OrderLocation(
         latitude: _pin.latitude,
         longitude: _pin.longitude,
-        pontoReferenciaId: _postoSelecionado!.id,
         descricaoLocal: _descricao.trim(),
         fotoLocalUrl: fotoUrl,
       );
@@ -251,8 +194,6 @@ class LocationSelectionController extends ChangeNotifier {
       if (_disposed) {
         return;
       }
-      // Protecao contra resposta antiga: se o usuario ja moveu o pin
-      // manualmente, a posicao do dispositivo nao sobrescreve a escolha dele.
       if (force || !_pinMovedByUser) {
         _pin = position;
       }
@@ -276,18 +217,6 @@ class LocationSelectionController extends ChangeNotifier {
     }
     _notify();
   }
-
-  List<ReferencePoint> _ordenarPorDistancia(List<ReferencePoint> postos) {
-    final ordenados = List<ReferencePoint>.of(postos);
-    ordenados.sort(
-      (a, b) => distanceMeters(_pin, _geoPointDoPosto(a))
-          .compareTo(distanceMeters(_pin, _geoPointDoPosto(b))),
-    );
-    return List.unmodifiable(ordenados);
-  }
-
-  GeoPoint _geoPointDoPosto(ReferencePoint posto) =>
-      GeoPoint(latitude: posto.latitude, longitude: posto.longitude);
 
   void _notify() {
     if (!_disposed) {

@@ -67,6 +67,7 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
   String? _fotoOutroUrl;
   bool _uploadingPhoto = false;
   String? _error;
+  GoogleMapController? _miniMapController;
 
   @override
   void initState() {
@@ -94,6 +95,11 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
       _selectedTag = initLoc.etiquetaLocal!;
     }
 
+    if (initLoc != null) {
+      _locationController.movePin(
+        GeoPoint(latitude: initLoc.latitude, longitude: initLoc.longitude),
+      );
+    }
     _locationController.initialize();
   }
 
@@ -117,6 +123,8 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
       MaterialPageRoute(
         builder: (_) => LocationSelectionScreen(
           controller: widget.controllerFactory(),
+          initialPin: _locationController.pin,
+          onlyPinPicker: true,
         ),
       ),
     );
@@ -134,6 +142,12 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
       GeoPoint(
         latitude: result.latitude,
         longitude: result.longitude,
+      ),
+    );
+    await _miniMapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(
+        LatLng(result.latitude, result.longitude),
+        18,
       ),
     );
   }
@@ -194,22 +208,6 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
 
   void _confirmSpot() {
     setState(() => _error = null);
-    final posto = _locationController.postoSelecionado;
-    final postoId = posto?.id ?? widget.initialLocation?.pontoReferenciaId ?? '';
-    if (postoId.isEmpty) {
-      setState(() {
-        _error = 'Selecione ou aguarde a identificação do Posto de Salvamento mais próximo.';
-      });
-      return;
-    }
-
-    final dist = _locationController.distanciaSelecionadaMeters;
-    if (dist != null && dist > 500) {
-      setState(() {
-        _error = 'O ponto de entrega está a ${dist.round()} m do posto. O raio máximo permitido é 500 m. Aproxime seu pin ou clique em "Alinhar pin com a areia do ${posto?.nome ?? "posto"}".';
-      });
-      return;
-    }
 
     final barracaText = _semGuardaSol
         ? 'Sem guarda-sol (na faixa de areia)'
@@ -259,7 +257,6 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
     final location = OrderLocation(
       latitude: pin.latitude,
       longitude: pin.longitude,
-      pontoReferenciaId: postoId,
       descricaoLocal: descricaoFinal,
       fotoLocalUrl: _fotoGuardaSolUrl,
       referenciaBarraca: barracaText,
@@ -277,8 +274,6 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
   @override
   Widget build(BuildContext context) {
     final pin = _locationController.pin;
-    final posto = _locationController.postoSelecionado;
-    final distPosto = _locationController.distanciaSelecionadaMeters;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -296,7 +291,7 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildMiniMapHeader(pin, posto, distPosto),
+          _buildMiniMapHeader(pin),
           const SizedBox(height: 16),
           _buildBeachIdentificationSection(),
           const SizedBox(height: 20),
@@ -360,12 +355,8 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
     );
   }
 
-  Widget _buildMiniMapHeader(
-    dynamic pin,
-    ReferencePoint? posto,
-    double? distPosto,
-  ) {
-    final target = LatLng(pin.latitude as double, pin.longitude as double);
+  Widget _buildMiniMapHeader(GeoPoint pin) {
+    final target = LatLng(pin.latitude, pin.longitude);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -376,27 +367,80 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 155,
+            height: 175,
             child: Stack(
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(14),
                   ),
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: target,
-                      zoom: 16,
-                    ),
-                    markers: {
-                      Marker(
-                        markerId: const MarkerId('pin-ponto-praia'),
-                        position: target,
+                  child: GoogleMapsChecker.isReady
+                      ? GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: target,
+                            zoom: 17.5,
+                          ),
+                          onMapCreated: (c) => _miniMapController = c,
+                          onTap: (_) => _openPinAdjuster(),
+                          markers: {
+                            Marker(
+                              markerId: const MarkerId('pin-ponto-praia'),
+                              position: target,
+                            ),
+                          },
+                          myLocationButtonEnabled: false,
+                          zoomControlsEnabled: false,
+                          liteModeEnabled: false,
+                        )
+                      : Container(
+                          color: AppColors.sage100,
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.location_on_rounded,
+                            size: 40,
+                            color: AppColors.apricot500,
+                          ),
+                        ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: _openPinAdjuster,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface.withValues(alpha: 0.94),
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: AppTheme.softCardShadow,
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.fullscreen_rounded,
+                              size: 18,
+                              color: AppColors.ink,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Tela cheia',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    },
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    liteModeEnabled: true,
+                    ),
                   ),
                 ),
                 Center(
@@ -409,8 +453,8 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
                         visualDensity: VisualDensity.compact,
                       ),
                       onPressed: _openPinAdjuster,
-                      icon: const Icon(Icons.edit_location_alt_outlined, size: 16),
-                      label: const Text('Ajustar local no mapa'),
+                      icon: const Icon(Icons.zoom_out_map_rounded, size: 16),
+                      label: const Text('Abrir mapa em tela cheia e dar zoom'),
                     ),
                   ),
                 ),
@@ -421,17 +465,14 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                const Icon(Icons.waves, color: AppColors.ocean700, size: 20),
+                const Icon(Icons.my_location_rounded, color: AppColors.ocean700, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    posto != null
-                        ? '${posto.nome} · ${posto.trecho}, Orla de Santos/SP'
-                            '${distPosto != null ? ' (${distPosto.round()} m)' : ''}'
-                        : 'Orla de Santos/SP · Pin (${target.latitude.toStringAsFixed(4)}, ${target.longitude.toStringAsFixed(4)})',
+                    'Geolocalização fixada: ${target.latitude.toStringAsFixed(5)}, ${target.longitude.toStringAsFixed(5)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: 14,
+                      fontSize: 13.5,
                       color: AppColors.ink,
                     ),
                   ),
@@ -439,56 +480,6 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
               ],
             ),
           ),
-          if (distPosto != null && distPosto > 500)
-            Container(
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.coral100,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.coral500.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.warning_amber_rounded,
-                          color: AppColors.coral600, size: 20),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Pin a ${distPosto.round()} m do posto (limite máx: 500 m).',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: AppColors.ocean900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (posto != null) ...[
-                    const SizedBox(height: 6),
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        foregroundColor: AppColors.ocean800,
-                      ),
-                      onPressed: () {
-                        _locationController.movePin(GeoPoint(
-                          latitude: posto.latitude,
-                          longitude: posto.longitude,
-                        ));
-                      },
-                      icon: const Icon(Icons.near_me, size: 16),
-                      label: Text('Alinhar pin com a areia do ${posto.nome}'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -580,8 +571,8 @@ class _BeachSpotFormScreenState extends State<BeachSpotFormScreen> {
               Expanded(
                 child: _buildPhotoSlotCard(
                   index: 1,
-                  label: 'Visão do Posto',
-                  icon: Icons.tour_outlined,
+                  label: 'Arredores / Praia',
+                  icon: Icons.landscape_outlined,
                   imageUrl: _fotoVisaoPostoUrl,
                 ),
               ),

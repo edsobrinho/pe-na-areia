@@ -34,7 +34,8 @@ abstract final class OrderLocationMapper {
           'latitude': localizacao.latitude,
           'longitude': localizacao.longitude,
         },
-        'pontoReferenciaId': localizacao.pontoReferenciaId,
+        if (localizacao.pontoReferenciaId.isNotEmpty)
+          'pontoReferenciaId': localizacao.pontoReferenciaId,
         'descricaoLocal': localizacao.descricaoLocal,
         if (localizacao.fotoLocalUrl != null)
           'fotoLocalUrl': localizacao.fotoLocalUrl,

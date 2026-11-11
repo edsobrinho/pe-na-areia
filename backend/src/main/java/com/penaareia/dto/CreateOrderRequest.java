@@ -39,7 +39,6 @@ public class CreateOrderRequest {
     @Valid
     private PinClienteRequest pinCliente;
 
-    @NotBlank(message = "Selecione o posto de referencia mais proximo")
     private String pontoReferenciaId;
 
     /** Opcional - ate 140 caracteres */

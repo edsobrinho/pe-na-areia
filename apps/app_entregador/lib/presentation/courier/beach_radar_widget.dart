@@ -40,8 +40,8 @@ class BeachRadarWidget extends StatelessWidget {
         courierLng: cLng,
         pinLat: pin.latitude,
         pinLng: pin.longitude,
-        referenceLabel: pin.pontoReferenciaId.isNotEmpty
-            ? 'Posto ${pin.pontoReferenciaId}'
+        referenceLabel: pin.referenciaBarraca?.isNotEmpty == true
+            ? pin.referenciaBarraca
             : null,
       );
     }

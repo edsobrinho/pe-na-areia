@@ -89,25 +89,11 @@ public class OrderService {
         if (!kiosk.isAtivo()) {
             throw new BusinessRuleException("Quiosque inativo: " + request.getKioskId());
         }
-        ReferencePoint posto = referencePointRepository.findById(request.getPontoReferenciaId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Posto de referencia nao encontrado: " + request.getPontoReferenciaId()));
-        if (!posto.isAtivo()) {
-            throw new BusinessRuleException("Posto de referencia inativo: " + request.getPontoReferenciaId());
-        }
         if (request.getItens() == null || request.getItens().isEmpty()) {
             throw new InvalidRequestException("O pedido precisa ter ao menos um item");
         }
         if (request.getPinCliente() == null) {
             throw new InvalidRequestException("O pin do cliente e obrigatorio");
-        }
-        double distanceToReference = distanceMeters(
-                request.getPinCliente().getLatitude(),
-                request.getPinCliente().getLongitude(),
-                posto.getLocalizacao().getY(),
-                posto.getLocalizacao().getX());
-        if (distanceToReference > MAX_DISTANCE_TO_REFERENCE_METERS) {
-            throw new BusinessRuleException("O pin deve estar a no máximo 500 m do posto de referência.");
         }
 
         KioskPartnership configuration = partnershipService.activeConfiguration(
@@ -185,7 +171,9 @@ public class OrderService {
         order.setPinCliente(new GeoJsonPoint(
                 request.getPinCliente().getLongitude(),
                 request.getPinCliente().getLatitude()));
-        order.setPontoReferenciaId(posto.getId());
+        if (request.getPontoReferenciaId() != null && !request.getPontoReferenciaId().isBlank()) {
+            order.setPontoReferenciaId(request.getPontoReferenciaId().trim());
+        }
         order.setDescricaoLocal(request.getDescricaoLocal());
         order.setFotoLocalUrl(request.getFotoLocalUrl());
         order.setReferenciaBarraca(request.getReferenciaBarraca());

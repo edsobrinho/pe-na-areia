@@ -6,7 +6,7 @@ class OrderLocation {
   const OrderLocation({
     required this.latitude,
     required this.longitude,
-    required this.pontoReferenciaId,
+    this.pontoReferenciaId = '',
     required this.descricaoLocal,
     this.fotoLocalUrl,
     this.referenciaBarraca,

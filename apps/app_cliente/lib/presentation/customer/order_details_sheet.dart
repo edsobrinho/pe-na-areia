@@ -237,12 +237,14 @@ class OrderDetailsSheet extends StatelessWidget {
                           children: [
                             const Icon(Icons.location_on_rounded, size: 18, color: AppColors.apricot500),
                             const SizedBox(width: 6),
-                            Text(
-                              order.localizacao!.pontoReferenciaId.toUpperCase().replaceAll('-', ' '),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: AppColors.ink900,
+                            Expanded(
+                              child: Text(
+                                '${order.localizacao!.etiquetaAmigavel} (${order.localizacao!.latitude.toStringAsFixed(5)}, ${order.localizacao!.longitude.toStringAsFixed(5)})',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: AppColors.ink900,
+                                ),
                               ),
                             ),
                           ],
