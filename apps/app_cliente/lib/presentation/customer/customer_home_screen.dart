@@ -24,6 +24,7 @@ class CustomerHomeScreen extends StatefulWidget {
     required this.catalogRepository,
     required this.orderRepository,
     required this.locationSelectionController,
+    this.initialOrder,
   });
 
   final AuthSession session;
@@ -31,6 +32,7 @@ class CustomerHomeScreen extends StatefulWidget {
   final CatalogRepository catalogRepository;
   final OrderRepository orderRepository;
   final LocationSelectionController Function() locationSelectionController;
+  final Order? initialOrder;
 
   @override
   State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
@@ -84,6 +86,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Order? _order;
   int _catalogRequestId = 0;
   Timer? _orderTimer;
+  Timer? _liveTrackingTimer;
+  GoogleMapController? _mapController;
 
   int get _totalCartUnits =>
       _quantities.values.fold<int>(0, (sum, qty) => sum + qty);
@@ -91,7 +95,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialOrder != null) {
+      _order = widget.initialOrder;
+      _currentTabIndex = 1; // Seleciona automaticamente a aba de Acompanhamento do Pedido
+    }
     _loadCatalog();
+    _startOrderLiveTracking();
     _orderTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _order != null && _order!.isActive) {
         setState(() {});
@@ -102,7 +111,67 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void dispose() {
     _orderTimer?.cancel();
+    _liveTrackingTimer?.cancel();
+    _mapController?.dispose();
     super.dispose();
+  }
+
+  void _startOrderLiveTracking() {
+    _liveTrackingTimer?.cancel();
+    _liveTrackingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && _order != null && _order!.isActive && !_refreshingOrder) {
+        _refreshOrder();
+      }
+    });
+  }
+
+  void _updateMapCamera() {
+    final order = _order;
+    if (order == null || _mapController == null) return;
+    final location = order.localizacao;
+    final courier = order.localizacaoEntregador;
+    if (location == null || courier == null) return;
+
+    final south = location.latitude < courier.latitude
+        ? location.latitude
+        : courier.latitude;
+    final north = location.latitude > courier.latitude
+        ? location.latitude
+        : courier.latitude;
+    final west = location.longitude < courier.longitude
+        ? location.longitude
+        : courier.longitude;
+    final east = location.longitude > courier.longitude
+        ? location.longitude
+        : courier.longitude;
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(south, west),
+      northeast: LatLng(north, east),
+    );
+
+    try {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 50),
+      );
+    } catch (_) {
+      // Tolera caso a view ainda não tenha dimensões calculadas
+    }
+  }
+
+  void _openChat(Order order) {
+    OrderChatBottomSheet.show(
+      context,
+      order: order,
+      orderRepository: widget.orderRepository,
+      currentUserRole: 'CLIENT',
+      onOrderUpdated: (updated) {
+        if (mounted) {
+          setState(() => _order = updated);
+          _updateMapCamera();
+        }
+      },
+    );
   }
 
   Future<void> _loadCatalog({Partnership? selectedPartnership}) async {
@@ -325,6 +394,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         _quantities.clear();
         _currentTabIndex = 1;
       });
+      _startOrderLiveTracking();
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } finally {
@@ -344,6 +414,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       if (mounted) {
         final wasDelivered = _order?.status == OrderStatus.entregue;
         setState(() => _order = latest);
+        _updateMapCamera();
         if (!wasDelivered && latest.status == OrderStatus.entregue && latest.avaliacao == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) _openReviewDialog(latest);
@@ -2112,7 +2183,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   Row(
                     children: [
                       Text(
-                        'CÓDIGO DO PEDIDO #${order.codigoCurtoPedido}',
+                        'PEDIDO ${order.codigoFormatado}',
                         style: const TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
@@ -2261,6 +2332,23 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               ],
               if (isCourierOnRoute) ...[
                 const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => _openChat(order),
+                  icon: const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    size: 18,
+                    color: AppColors.sage700,
+                  ),
+                  label: Text(
+                    'CHAT COM O ENTREGADOR${order.mensagens.isNotEmpty ? " (${order.mensagens.length})" : ""}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.sage700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 _buildClientQuickMessages(order),
               ],
               if (order.codigoEntrega != null &&
@@ -2283,7 +2371,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'CÓDIGO DO PEDIDO',
+                              'PIN DE ENTREGA (4 DÍGITOS)',
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.bold,
@@ -2292,12 +2380,21 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                               ),
                             ),
                             Text(
-                              order.codigoEntrega!,
+                              'PIN DE ENTREGA: ${order.codigoEntrega!}',
                               style: const TextStyle(
-                                fontSize: 22,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w900,
                                 color: AppColors.apricot700,
-                                letterSpacing: 2,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Fale este código ao entregador no momento da entrega',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.ink700,
                               ),
                             ),
                           ],
@@ -2598,26 +2695,45 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         : null;
 
     if (!GoogleMapsChecker.isReady) {
+      final dist = order.distanciaEntregadorMetros;
+      final isNearby = dist != null && dist <= 60.0;
+      final etaMinutes = dist != null ? (dist / 75.0).ceil() : null;
+      final compassInstruction = (courier != null)
+          ? BeachCompass.formatRadarInstruction(
+              courierLat: courier.latitude,
+              courierLng: courier.longitude,
+              pinLat: location.latitude,
+              pinLng: location.longitude,
+            )
+          : null;
+
       return Container(
-        height: 160,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surfaceSoft,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.line),
+          border: Border.all(
+            color: isNearby ? AppColors.sage500 : AppColors.line,
+            width: isNearby ? 1.5 : 1.0,
+          ),
+          boxShadow: AppTheme.softCardShadow,
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.apricot100,
+                    color: isNearby ? AppColors.sage100 : AppColors.apricot100,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.beach_access_rounded, color: AppColors.apricot600, size: 22),
+                  child: Icon(
+                    Icons.beach_access_rounded,
+                    color: isNearby ? AppColors.sage700 : AppColors.apricot600,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -2626,20 +2742,124 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     children: [
                       const Text(
                         'Ponto na Areia (Santos - SP)',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.ink800),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.ink800,
+                        ),
                       ),
                       Text(
-                        location.descricaoLocal.isEmpty ? 'Localização do guarda-sol' : location.descricaoLocal,
-                        style: const TextStyle(fontSize: 12, color: AppColors.ink500),
+                        location.descricaoLocal.isEmpty
+                            ? 'Localização do guarda-sol'
+                            : location.descricaoLocal,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.ink500,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
+                if (isNearby)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.sage100,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      '≤ 60m (Próximo)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.sage700,
+                      ),
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(height: 12),
+            if (dist != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isNearby ? AppColors.sage100 : AppColors.apricot100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.directions_walk_rounded,
+                          size: 16,
+                          color: isNearby
+                              ? AppColors.sage700
+                              : AppColors.apricot700,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Distância: ${dist.round()}m',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isNearby
+                                ? AppColors.sage700
+                                : AppColors.apricot700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (etaMinutes != null)
+                      Text(
+                        'Chegada em ~$etaMinutes min',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isNearby
+                              ? AppColors.sage700
+                              : AppColors.apricot700,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            if (compassInstruction != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.line),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.explore_outlined,
+                        size: 16, color: AppColors.sage600),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        compassInstruction,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -2652,9 +2872,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 children: [
                   Text(
                     'GPS: ${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppColors.ink700),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      color: AppColors.ink700,
+                    ),
                   ),
-                  const Text('Orla da Praia', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.sage700)),
+                  const Text(
+                    'Orla da Praia',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.sage700,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -2669,6 +2900,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         borderRadius: BorderRadius.circular(18),
         child: GoogleMap(
           initialCameraPosition: CameraPosition(target: position, zoom: 16),
+          onMapCreated: (ctrl) {
+            _mapController = ctrl;
+            _updateMapCamera();
+          },
           markers: {
             Marker(
               markerId: const MarkerId('destino-pedido'),
@@ -2687,7 +2922,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 markerId: const MarkerId('entregador-pedido'),
                 position: courierLatLng,
                 icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueOrange,
+                  BitmapDescriptor.hueCyan,
                 ),
                 infoWindow: const InfoWindow(title: 'Entregador na praia'),
               ),

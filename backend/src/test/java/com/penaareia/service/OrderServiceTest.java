@@ -51,6 +51,8 @@ class OrderServiceTest {
     private PartnershipService partnershipService;
     @Mock
     private ReferencePointRepository referencePointRepository;
+    @Mock
+    private OrderSequenceService orderSequenceService;
 
     @InjectMocks
     private OrderService service;
@@ -60,6 +62,8 @@ class OrderServiceTest {
     }
 
     private void stubFluxoValido(KioskPartnership configuration) {
+        lenient().when(orderSequenceService.gerarProximaSequencia())
+                .thenReturn(new OrderSequenceService.DailySequence("#0042", 42));
         when(userRepository.findById(Fixtures.USER_ID)).thenReturn(Optional.of(Fixtures.usuarioAtivo()));
         when(kioskRepository.findById(Fixtures.KIOSK_ID)).thenReturn(Optional.of(Fixtures.kioskAtivo()));
         lenient().when(referencePointRepository.findById(Fixtures.POSTO_ID)).thenReturn(Optional.of(Fixtures.postoAtivo()));
@@ -118,6 +122,8 @@ class OrderServiceTest {
 
         assertThat(pedido.isEmbalagemSustentavel()).isTrue();
         assertThat(pedido.getDescricaoLocal()).isEqualTo("Guarda-sol listrado azul");
+        assertThat(pedido.getCodigoPedido()).isEqualTo("#0042");
+        assertThat(pedido.getNumeroPedidoDiario()).isEqualTo(42);
         assertThat(pedido.isPago()).isFalse();
         assertThat(pedido.getStatus()).isEqualTo(
                 com.penaareia.model.OrderStatus.CRIADO);

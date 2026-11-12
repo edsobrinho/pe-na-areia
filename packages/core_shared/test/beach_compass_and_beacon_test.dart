@@ -228,6 +228,7 @@ void main() {
         formaPagamento: PaymentMethod.pix,
         status: OrderStatus.prontoEntrega,
         courierVeiculo: 'BICICLETA',
+        codigoPedido: '#4829',
         codigoEntrega: '4829',
         timeline: OrderTimeline(criadoEm: createdAt),
       );

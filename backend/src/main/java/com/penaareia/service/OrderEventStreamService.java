@@ -2,6 +2,7 @@ package com.penaareia.service;
 
 import com.penaareia.dto.OrderResponse;
 import com.penaareia.model.Order;
+import com.penaareia.model.OrderStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -16,23 +17,34 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class OrderEventStreamService {
 
     private static final long SSE_TIMEOUT_MS = 10 * 60 * 1000L;
-    private final Map<String, List<SseEmitter>> emittersByOrder = new ConcurrentHashMap<>();
+    private final Map<String, List<OrderSubscriber>> emittersByOrder = new ConcurrentHashMap<>();
+
+    private record OrderSubscriber(SseEmitter emitter, boolean hidePin) {
+    }
 
     public SseEmitter subscribe(Order initialOrder) {
+        return subscribe(initialOrder, false);
+    }
+
+    public SseEmitter subscribe(Order initialOrder, boolean hidePin) {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         String orderId = initialOrder.getId();
-        List<SseEmitter> list = emittersByOrder.computeIfAbsent(orderId, k -> new CopyOnWriteArrayList<>());
-        list.add(emitter);
+        List<OrderSubscriber> list = emittersByOrder.computeIfAbsent(orderId, k -> new CopyOnWriteArrayList<>());
+        OrderSubscriber subscriber = new OrderSubscriber(emitter, hidePin);
+        list.add(subscriber);
 
-        Runnable cleanup = () -> list.remove(emitter);
+        Runnable cleanup = () -> list.remove(subscriber);
         emitter.onCompletion(cleanup);
         emitter.onTimeout(cleanup);
         emitter.onError(e -> cleanup.run());
 
         try {
+            OrderResponse payload = hidePin && initialOrder.getStatus() != OrderStatus.ENTREGUE
+                    ? OrderResponse.fromEntityForCourier(initialOrder, null)
+                    : OrderResponse.fromEntity(initialOrder);
             emitter.send(SseEmitter.event()
                     .name("order-update")
-                    .data(OrderResponse.fromEntity(initialOrder), MediaType.APPLICATION_JSON));
+                    .data(payload, MediaType.APPLICATION_JSON));
         } catch (IOException ignored) {
             cleanup.run();
         }
@@ -43,20 +55,24 @@ public class OrderEventStreamService {
         if (updatedOrder == null || updatedOrder.getId() == null) {
             return;
         }
-        List<SseEmitter> list = emittersByOrder.get(updatedOrder.getId());
+        List<OrderSubscriber> list = emittersByOrder.get(updatedOrder.getId());
         if (list == null || list.isEmpty()) {
             return;
         }
-        OrderResponse payload = OrderResponse.fromEntity(updatedOrder);
-        for (SseEmitter emitter : list) {
+        OrderResponse fullPayload = OrderResponse.fromEntity(updatedOrder);
+        OrderResponse courierPayload = updatedOrder.getStatus() != OrderStatus.ENTREGUE
+                ? OrderResponse.fromEntityForCourier(updatedOrder, null)
+                : fullPayload;
+
+        for (OrderSubscriber subscriber : list) {
             try {
-                emitter.send(SseEmitter.event()
+                OrderResponse payload = subscriber.hidePin() ? courierPayload : fullPayload;
+                subscriber.emitter().send(SseEmitter.event()
                         .name("order-update")
                         .data(payload, MediaType.APPLICATION_JSON));
             } catch (IOException e) {
-                list.remove(emitter);
+                list.remove(subscriber);
             }
         }
     }
 }
-

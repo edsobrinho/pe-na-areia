@@ -171,7 +171,9 @@ public class OrderController {
     public SseEmitter acompanharEmTempoReal(@PathVariable String id, Authentication authentication) {
         Order order = orderService.buscarPorId(id);
         validarAcessoAoPedido(order, authentication);
-        return streamService.subscribe(order);
+        boolean isCourier = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_COURIER".equals(a.getAuthority()));
+        return streamService.subscribe(order, isCourier);
     }
 
     private void validarAcessoAoPedido(Order order, Authentication authentication) {
@@ -209,8 +211,27 @@ public class OrderController {
     public OrderResponse atualizarStatus(@PathVariable String id,
                                          @Valid @RequestBody StatusUpdateRequest request,
                                          Authentication authentication) {
-        return OrderResponse.fromEntity(workflowService.atualizarStatus(
-                id, request.status(), authentication.getName(), authentication.getAuthorities(), request.motivo()));
+        Order order = workflowService.atualizarStatus(
+                id, request.status(), authentication.getName(), authentication.getAuthorities(), request.motivo());
+        boolean isCourier = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_COURIER".equals(a.getAuthority()));
+        if (isCourier && order.getStatus() != OrderStatus.ENTREGUE) {
+            return OrderResponse.fromEntityForCourier(order, null);
+        }
+        return OrderResponse.fromEntity(order);
+    }
+
+    @PatchMapping("/courier/location")
+    @Operation(summary = "Atualiza a coordenada GPS do entregador para todos os pedidos ativos em rota")
+    public List<OrderResponse> atualizarLocalizacaoEntregadorAgregada(
+            @Valid @RequestBody CourierLocationUpdateRequest request,
+            Authentication authentication) {
+        requireRole(authentication, "ROLE_COURIER");
+        List<Order> orders = workflowService.atualizarLocalizacaoEntregadorAgregada(
+                request.latitude(), request.longitude(), authentication.getName());
+        return orders.stream()
+                .map(order -> OrderResponse.fromEntityForCourier(order, null))
+                .toList();
     }
 
     @PatchMapping("/{id}/courier-location")
@@ -220,8 +241,8 @@ public class OrderController {
             @Valid @RequestBody CourierLocationUpdateRequest request,
             Authentication authentication) {
         requireRole(authentication, "ROLE_COURIER");
-        return OrderResponse.fromEntity(workflowService.atualizarLocalizacaoEntregador(
-                id, request.latitude(), request.longitude(), authentication.getName()));
+        return OrderResponse.fromEntityForCourier(workflowService.atualizarLocalizacaoEntregador(
+                id, request.latitude(), request.longitude(), authentication.getName()), null);
     }
 
     @PostMapping("/{id}/messages")
@@ -229,8 +250,14 @@ public class OrderController {
     public OrderResponse enviarMensagem(@PathVariable String id,
                                         @Valid @RequestBody OrderMessageRequest request,
                                         Authentication authentication) {
-        return OrderResponse.fromEntity(workflowService.enviarMensagemRapida(
-                id, authentication.getName(), authentication.getAuthorities(), request.texto()));
+        Order order = workflowService.enviarMensagemRapida(
+                id, authentication.getName(), authentication.getAuthorities(), request.texto());
+        boolean isCourier = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_COURIER".equals(a.getAuthority()));
+        if (isCourier && order.getStatus() != OrderStatus.ENTREGUE) {
+            return OrderResponse.fromEntityForCourier(order, null);
+        }
+        return OrderResponse.fromEntity(order);
     }
 
     @GetMapping("/{id}/messages")
@@ -252,8 +279,8 @@ public class OrderController {
                                           @Valid @RequestBody ConfirmDeliveryRequest request,
                                           Authentication authentication) {
         requireRole(authentication, "ROLE_COURIER");
-        return OrderResponse.fromEntity(workflowService.confirmarEntrega(
-                id, request, authentication.getName()));
+        return OrderResponse.fromEntityForCourier(workflowService.confirmarEntrega(
+                id, request, authentication.getName()), null);
     }
 
     @PostMapping("/{id}/review")

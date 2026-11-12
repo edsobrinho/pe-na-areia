@@ -4,6 +4,7 @@ import com.penaareia.dto.ConfirmDeliveryRequest;
 import com.penaareia.dto.OrderCursor;
 import com.penaareia.dto.OrderCursorSlice;
 import com.penaareia.model.Courier;
+import com.penaareia.model.Kiosk;
 import com.penaareia.model.Order;
 import com.penaareia.model.OrderStatus;
 import com.penaareia.repository.CourierRepository;
@@ -34,6 +35,8 @@ public class OrderWorkflowService {
 
     private static final int MAX_PAGE_SIZE = 100;
     private static final double PROXIMITY_ALERT_RADIUS_METERS = 60.0;
+    private static final int MAX_CONCURRENT_ORDERS = 5;
+    private static final double MAX_KIOSK_BATCH_DISTANCE_METERS = 1000.0;
     private static final Sort ORDER_PAGE_SORT = Sort.by(
             Sort.Order.desc("timeline.criadoEm"),
             Sort.Order.desc("id"));
@@ -132,6 +135,39 @@ public class OrderWorkflowService {
                 throw new BusinessRuleException("Este pedido já foi aceito por outro entregador.");
             }
             if (newStatus == OrderStatus.A_CAMINHO) {
+                // Validação de loteamento de até 5 pedidos ativos simultâneos por entregador
+                List<Order> activeOrders = mongoTemplate.find(
+                        Query.query(Criteria.where("courierId").is(callerId)
+                                .and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL)
+                                .and("id").ne(orderId)),
+                        Order.class);
+                if (activeOrders.size() >= MAX_CONCURRENT_ORDERS) {
+                    throw new BusinessRuleException(
+                            "Limite máximo de 5 pedidos ativos simultâneos atingido para este entregador.");
+                }
+
+                // Validação de quiosques próximos (mesmo quiosque ou quiosques vizinhos em até 1000m)
+                if (!activeOrders.isEmpty() && order.getKioskId() != null) {
+                    Kiosk newKiosk = mongoTemplate.findById(order.getKioskId(), Kiosk.class);
+                    if (newKiosk == null) {
+                        throw new ResourceNotFoundException("Quiosque do pedido não encontrado.");
+                    }
+                    for (Order active : activeOrders) {
+                        if (active.getKioskId() != null && !active.getKioskId().equals(order.getKioskId())) {
+                            Kiosk activeKiosk = mongoTemplate.findById(active.getKioskId(), Kiosk.class);
+                            if (activeKiosk != null && activeKiosk.getLocalizacao() != null && newKiosk.getLocalizacao() != null) {
+                                double dist = distanceMeters(
+                                        newKiosk.getLocalizacao().getY(), newKiosk.getLocalizacao().getX(),
+                                        activeKiosk.getLocalizacao().getY(), activeKiosk.getLocalizacao().getX());
+                                if (dist > MAX_KIOSK_BATCH_DISTANCE_METERS) {
+                                    throw new BusinessRuleException(
+                                            "Coleta múltipla permitida apenas para pedidos do mesmo quiosque ou quiosques vizinhos na praia (máximo 1 km).");
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Instant now = Instant.now();
                 Update claimUpdate = new Update()
                         .set("courierId", callerId)
@@ -186,13 +222,20 @@ public class OrderWorkflowService {
             if (!isClient && !isOwnerKiosk && !isAssignedCourier && !adminRole) {
                 throw new BusinessRuleException("Você não tem autorização para cancelar este pedido.");
             }
-            // Libera o entregador se já estava em rota
+            // Libera o entregador se não houver outros pedidos ativos em rota
             if (order.getCourierId() != null) {
-                mongoTemplate.updateFirst(
-                        Query.query(Criteria.where("id").is(order.getCourierId())
-                                .and("status").is(Courier.CourierStatus.EM_ROTA)),
-                        new Update().set("status", Courier.CourierStatus.DISPONIVEL),
-                        Courier.class);
+                long remaining = mongoTemplate.count(
+                        Query.query(Criteria.where("courierId").is(order.getCourierId())
+                                .and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL)
+                                .and("id").ne(orderId)),
+                        Order.class);
+                if (remaining == 0) {
+                    mongoTemplate.updateFirst(
+                            Query.query(Criteria.where("id").is(order.getCourierId())
+                                    .and("status").is(Courier.CourierStatus.EM_ROTA)),
+                            new Update().set("status", Courier.CourierStatus.DISPONIVEL),
+                            Courier.class);
+                }
             }
         } else if (newStatus == OrderStatus.NAO_ENCONTRADO) {
             boolean isAssignedCourier = courierRole && callerId.equals(order.getCourierId());
@@ -200,11 +243,18 @@ public class OrderWorkflowService {
                 throw new BusinessRuleException("Somente o entregador em rota ou o quiosque pode reportar cliente não encontrado.");
             }
             if (order.getCourierId() != null) {
-                mongoTemplate.updateFirst(
-                        Query.query(Criteria.where("id").is(order.getCourierId())
-                                .and("status").is(Courier.CourierStatus.EM_ROTA)),
-                        new Update().set("status", Courier.CourierStatus.DISPONIVEL),
-                        Courier.class);
+                long remaining = mongoTemplate.count(
+                        Query.query(Criteria.where("courierId").is(order.getCourierId())
+                                .and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL)
+                                .and("id").ne(orderId)),
+                        Order.class);
+                if (remaining == 0) {
+                    mongoTemplate.updateFirst(
+                            Query.query(Criteria.where("id").is(order.getCourierId())
+                                    .and("status").is(Courier.CourierStatus.EM_ROTA)),
+                            new Update().set("status", Courier.CourierStatus.DISPONIVEL),
+                            Courier.class);
+                }
             }
         } else {
             if (!clientRole || !order.getUserId().equals(callerId)) {
@@ -274,15 +324,53 @@ public class OrderWorkflowService {
     }
 
     @Transactional
+    public List<Order> atualizarLocalizacaoEntregadorAgregada(double latitude, double longitude, String courierId) {
+        GeoJsonPoint courierPoint = new GeoJsonPoint(longitude, latitude);
+        mongoTemplate.updateFirst(
+                Query.query(Criteria.where("id").is(courierId)),
+                new Update().set("localizacaoAtual", courierPoint),
+                Courier.class);
+
+        List<Order> activeOrders = mongoTemplate.find(
+                Query.query(Criteria.where("courierId").is(courierId)
+                        .and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL)),
+                Order.class);
+
+        Instant now = Instant.now();
+        List<Order> updatedOrders = new ArrayList<>();
+        for (Order order : activeOrders) {
+            order.setLocalizacaoEntregador(courierPoint);
+            order.setAtualizadoEntregadorEm(now);
+
+            if (order.getPinCliente() != null && !order.isAlertaProximidadeEnviado()) {
+                double distance = distanceMeters(
+                        order.getPinCliente().getY(),
+                        order.getPinCliente().getX(),
+                        latitude,
+                        longitude);
+                if (distance <= PROXIMITY_ALERT_RADIUS_METERS) {
+                    order.setAlertaProximidadeEnviado(true);
+                    notificationService.notificarProximidadeAreia(order, distance);
+                }
+            }
+            Order saved = orderRepository.save(order);
+            streamService.publish(saved);
+            updatedOrders.add(saved);
+        }
+        return updatedOrders;
+    }
+
+    @Transactional
     public Order enviarMensagemRapida(String orderId,
                                       String callerId,
                                       Collection<? extends GrantedAuthority> authorities,
                                       String texto) {
         Order order = findOrder(orderId);
-        if (order.getStatus() != OrderStatus.A_CAMINHO
+        if (order.getStatus() != OrderStatus.PRONTO_ENTREGA
+                && order.getStatus() != OrderStatus.A_CAMINHO
                 && order.getStatus() != OrderStatus.CHEGOU_NO_LOCAL) {
             throw new BusinessRuleException(
-                    "O canal de mensagens rápidas só fica disponível enquanto o entregador está a caminho.");
+                    "Chat expirado: a comunicação só é permitida quando o pedido estiver pronto para entrega ou em rota.");
         }
         boolean isOrderClient = callerId.equals(order.getUserId());
         boolean isOrderCourier = callerId.equals(order.getCourierId());
@@ -356,26 +444,40 @@ public class OrderWorkflowService {
         if (deliveredOrder == null) {
             throw new BusinessRuleException("Este pedido já foi confirmado ou não pertence a este entregador.");
         }
-        long courierUpdated = mongoTemplate.updateFirst(
-                Query.query(Criteria.where("id").is(courierId)
-                        .and("status").is(Courier.CourierStatus.EM_ROTA)),
-                new Update()
-                        .set("localizacaoAtual", new GeoJsonPoint(location.lng(), location.lat()))
-                        .set("status", Courier.CourierStatus.DISPONIVEL),
-                Courier.class).getModifiedCount();
-        if (courierUpdated != 1) {
-            Courier courier = courierRepository.findById(courierId)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Entregador não encontrado: " + courierId));
-            if (courier.getStatus() == null
-                    || courier.getStatus() == Courier.CourierStatus.OFFLINE) {
-                throw new BusinessRuleException("O entregador não está em rota.");
+
+        long remaining = mongoTemplate.count(
+                Query.query(Criteria.where("courierId").is(courierId)
+                        .and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL)
+                        .and("id").ne(orderId)),
+                Order.class);
+        GeoJsonPoint courierPoint = new GeoJsonPoint(location.lng(), location.lat());
+        if (remaining == 0) {
+            long courierUpdated = mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("id").is(courierId)
+                            .and("status").is(Courier.CourierStatus.EM_ROTA)),
+                    new Update()
+                            .set("localizacaoAtual", courierPoint)
+                            .set("status", Courier.CourierStatus.DISPONIVEL),
+                    Courier.class).getModifiedCount();
+            if (courierUpdated != 1) {
+                Courier courier = courierRepository.findById(courierId)
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Entregador não encontrado: " + courierId));
+                if (courier.getStatus() == null
+                        || courier.getStatus() == Courier.CourierStatus.OFFLINE) {
+                    throw new BusinessRuleException("O entregador não está em rota.");
+                }
+                mongoTemplate.updateFirst(
+                        Query.query(Criteria.where("id").is(courierId)),
+                        new Update()
+                                .set("localizacaoAtual", courierPoint)
+                                .set("status", Courier.CourierStatus.DISPONIVEL),
+                        Courier.class);
             }
+        } else {
             mongoTemplate.updateFirst(
                     Query.query(Criteria.where("id").is(courierId)),
-                    new Update()
-                            .set("localizacaoAtual", new GeoJsonPoint(location.lng(), location.lat()))
-                            .set("status", Courier.CourierStatus.DISPONIVEL),
+                    new Update().set("localizacaoAtual", courierPoint),
                     Courier.class);
         }
         streamService.publish(deliveredOrder);
@@ -392,9 +494,8 @@ public class OrderWorkflowService {
     }
 
     public OrderCursorSlice listarEmRota(String courierId, int size, String cursorValue) {
-        Criteria criteria = new Criteria().andOperator(
-                Criteria.where("courierId").is(courierId),
-                Criteria.where("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL));
+        Criteria criteria = Criteria.where("courierId").is(courierId)
+                .and("status").in(OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL);
         OrderCursorSlice slice = listar(Query.query(criteria), size, cursorValue);
         if (slice.orders().isEmpty() && (cursorValue == null || cursorValue.isBlank())) {
             mongoTemplate.updateFirst(

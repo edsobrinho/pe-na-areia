@@ -72,6 +72,10 @@ public class Order {
     // --- Canal Rapido de Mensagens (A_CAMINHO / CHEGOU_NO_LOCAL) ---
     private List<OrderMessage> mensagens = new ArrayList<>();
 
+    // --- Identificador Sequencial Diario (#0001 a #9999) ---
+    private String codigoPedido;
+    private Integer numeroPedidoDiario;
+
     // --- Codigo de Confirmacao de Entrega (4 digitos numericos para validar na areia) ---
     private String codigoEntrega;
 

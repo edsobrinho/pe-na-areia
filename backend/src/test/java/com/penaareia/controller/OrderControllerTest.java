@@ -27,10 +27,12 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -59,6 +61,8 @@ class OrderControllerTest {
     private OrderWorkflowService workflowService;
     @MockBean
     private JwtService jwtService;
+    @MockBean
+    private com.penaareia.service.OrderEventStreamService streamService;
 
     private String jsonValido() throws Exception {
         return objectMapper.writeValueAsString(Fixtures.requestValido());
@@ -419,5 +423,179 @@ class OrderControllerTest {
         mockMvc.perform(get("/orders/ord-1"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.mensagem").value("Você não tem acesso a este pedido."));
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void atualizarStatusMascaraPinParaCourierERetornaCodigoPedido() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setStatus(com.penaareia.model.OrderStatus.A_CAMINHO);
+        order.setCodigoEntrega("4321");
+        order.setCodigoPedido("#0015");
+        order.setNumeroPedidoDiario(15);
+
+        when(workflowService.atualizarStatus(eq("o1"), eq(com.penaareia.model.OrderStatus.A_CAMINHO), eq("courier-1"), any(), any()))
+                .thenReturn(order);
+
+        mockMvc.perform(patch("/orders/o1/status")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"A_CAMINHO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.codigoPedido").value("#0015"))
+                .andExpect(jsonPath("$.numeroPedidoDiario").value(15))
+                .andExpect(jsonPath("$.chatAtivo").value(true))
+                .andExpect(jsonPath("$.codigoEntrega").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void atualizarLocalizacaoEntregadorMascaraPin() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setStatus(com.penaareia.model.OrderStatus.A_CAMINHO);
+        order.setCodigoEntrega("4321");
+        order.setCodigoPedido("#0015");
+
+        when(workflowService.atualizarLocalizacaoEntregador(eq("o1"), eq(-23.968), eq(-46.331), eq("courier-1")))
+                .thenReturn(order);
+
+        mockMvc.perform(patch("/orders/o1/courier-location")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"latitude\": -23.968, \"longitude\": -46.331}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.codigoPedido").value("#0015"))
+                .andExpect(jsonPath("$.codigoEntrega").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void atualizarLocalizacaoEntregadorAgregadaRetornaListaSanitizada() throws Exception {
+        com.penaareia.model.Order order1 = Fixtures.orderEntity();
+        order1.setId("o1");
+        order1.setStatus(com.penaareia.model.OrderStatus.A_CAMINHO);
+        order1.setCodigoEntrega("4321");
+        order1.setCodigoPedido("#0015");
+
+        when(workflowService.atualizarLocalizacaoEntregadorAgregada(eq(-23.968), eq(-46.331), eq("courier-1")))
+                .thenReturn(List.of(order1));
+
+        mockMvc.perform(patch("/orders/courier/location")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"latitude\": -23.968, \"longitude\": -46.331}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].codigoPedido").value("#0015"))
+                .andExpect(jsonPath("$[0].codigoEntrega").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void enviarMensagemMascaraPinParaCourier() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setStatus(com.penaareia.model.OrderStatus.A_CAMINHO);
+        order.setCodigoEntrega("4321");
+        order.setCodigoPedido("#0015");
+
+        when(workflowService.enviarMensagemRapida(eq("o1"), eq("courier-1"), any(), eq("Estou chegando!")))
+                .thenReturn(order);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/orders/o1/messages")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"texto\": \"Estou chegando!\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.codigoPedido").value("#0015"))
+                .andExpect(jsonPath("$.codigoEntrega").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(username = "u1", roles = "CLIENT")
+    void enviarMensagemRetornaChatAtivoParaCliente() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setStatus(com.penaareia.model.OrderStatus.A_CAMINHO);
+        order.setCodigoEntrega("4321");
+        order.setCodigoPedido("#0015");
+
+        when(workflowService.enviarMensagemRapida(eq("o1"), eq("u1"), any(), eq("Estou no quiosque!")))
+                .thenReturn(order);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/orders/o1/messages")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"texto\": \"Estou no quiosque!\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.codigoPedido").value("#0015"))
+                .andExpect(jsonPath("$.codigoEntrega").value("4321"))
+                .andExpect(jsonPath("$.chatAtivo").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void confirmarEntregaComSucesso() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setStatus(com.penaareia.model.OrderStatus.ENTREGUE);
+        order.setCodigoEntrega("4321");
+        order.setCodigoPedido("#0015");
+
+        when(workflowService.confirmarEntrega(eq("o1"), any(), eq("courier-1")))
+                .thenReturn(order);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/orders/o1/confirm-delivery")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"courierId\": \"courier-1\", \"courierLocation\": {\"lat\": -23.968, \"lng\": -46.331}, \"codigoEntrega\": \"4321\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.codigoPedido").value("#0015"))
+                .andExpect(jsonPath("$.status").value("ENTREGUE"));
+    }
+
+    @Test
+    @WithMockUser(username = "u1", roles = "CLIENT")
+    void listarMensagensRetornaHistorico() throws Exception {
+        when(workflowService.listarMensagens("o1", "u1"))
+                .thenReturn(List.of(new com.penaareia.model.Order.OrderMessage("u1", "CLIENT", "Oi", java.time.Instant.now())));
+
+        mockMvc.perform(get("/orders/o1/messages"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].texto").value("Oi"));
+    }
+
+    @Test
+    @WithMockUser(username = "u1", roles = "CLIENT")
+    void acompanharEmTempoRealClienteRecebeStream() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setUserId("u1");
+        when(orderService.buscarPorId("o1")).thenReturn(order);
+        when(streamService.subscribe(order, false)).thenReturn(new org.springframework.web.servlet.mvc.method.annotation.SseEmitter());
+
+        mockMvc.perform(get("/orders/o1/stream"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "courier-1", roles = "COURIER")
+    void acompanharEmTempoRealCourierRecebeStreamComPinOculto() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setCourierId("courier-1");
+        when(orderService.buscarPorId("o1")).thenReturn(order);
+        when(streamService.subscribe(order, true)).thenReturn(new org.springframework.web.servlet.mvc.method.annotation.SseEmitter());
+
+        mockMvc.perform(get("/orders/o1/stream"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "admin-1", roles = "ADMIN")
+    void buscarPedidoAdminTemAcesso() throws Exception {
+        com.penaareia.model.Order order = Fixtures.orderEntity();
+        order.setUserId("outro-cliente");
+        when(orderService.buscarPorId("o1")).thenReturn(order);
+
+        mockMvc.perform(get("/orders/o1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("o1"));
     }
 }

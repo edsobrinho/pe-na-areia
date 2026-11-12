@@ -3,6 +3,7 @@ package com.penaareia.service;
 import com.penaareia.dto.ConfirmDeliveryRequest;
 import com.penaareia.dto.OrderCursor;
 import com.penaareia.model.Courier;
+import com.penaareia.model.Kiosk;
 import com.penaareia.model.Order;
 import com.penaareia.model.OrderStatus;
 import com.penaareia.repository.CourierRepository;
@@ -550,7 +551,7 @@ class OrderWorkflowServiceTest {
                 List.of(new SimpleGrantedAuthority("ROLE_CLIENT")),
                 "Olá!"))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("só fica disponível enquanto o entregador está a caminho");
+                .hasMessageContaining("Chat expirado");
     }
 
     @Test
@@ -714,6 +715,493 @@ class OrderWorkflowServiceTest {
 
         assertThat(updated.getStatus()).isEqualTo(OrderStatus.CANCELADO);
         verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
+    @Test
+    void courierCanAcceptUpToFiveOrdersConcurrently() {
+        Order order = orderAtStatus(OrderStatus.PRONTO_ENTREGA);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        Order active1 = orderAtStatus(OrderStatus.A_CAMINHO); active1.setKioskId("kiosk-1");
+        Order active2 = orderAtStatus(OrderStatus.A_CAMINHO); active2.setKioskId("kiosk-1");
+        Order active3 = orderAtStatus(OrderStatus.A_CAMINHO); active3.setKioskId("kiosk-1");
+        Order active4 = orderAtStatus(OrderStatus.A_CAMINHO); active4.setKioskId("kiosk-1");
+        when(mongoTemplate.find(any(Query.class), eq(Order.class)))
+                .thenReturn(List.of(active1, active2, active3, active4));
+
+        Kiosk kiosk1 = new Kiosk();
+        kiosk1.setId("kiosk-1");
+        kiosk1.setLocalizacao(new GeoJsonPoint(-46.33, -23.97));
+        when(mongoTemplate.findById("kiosk-1", Kiosk.class)).thenReturn(kiosk1);
+
+        Order claimed = orderAtStatus(OrderStatus.A_CAMINHO);
+        claimed.setCourierId("courier-1");
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Order.class)))
+                .thenReturn(claimed);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
+
+        Order result = service().atualizarStatus("order-1", OrderStatus.A_CAMINHO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER")));
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
+    }
+
+    @Test
+    void courierCannotAcceptSixthActiveOrder() {
+        Order order = orderAtStatus(OrderStatus.PRONTO_ENTREGA);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        Order a1 = orderAtStatus(OrderStatus.A_CAMINHO);
+        Order a2 = orderAtStatus(OrderStatus.A_CAMINHO);
+        Order a3 = orderAtStatus(OrderStatus.A_CAMINHO);
+        Order a4 = orderAtStatus(OrderStatus.A_CAMINHO);
+        Order a5 = orderAtStatus(OrderStatus.A_CAMINHO);
+        when(mongoTemplate.find(any(Query.class), eq(Order.class)))
+                .thenReturn(List.of(a1, a2, a3, a4, a5));
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1", OrderStatus.A_CAMINHO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Limite máximo de 5 pedidos ativos simultâneos atingido");
+    }
+
+    @Test
+    void courierCanAcceptOrdersFromDifferentKiosksWithinOneKm() {
+        Order order = orderAtStatus(OrderStatus.PRONTO_ENTREGA);
+        order.setKioskId("kiosk-2");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        Order a1 = orderAtStatus(OrderStatus.A_CAMINHO);
+        a1.setKioskId("kiosk-1");
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of(a1));
+
+        // Santos beach: -23.9680, -46.3315 vs -23.9690, -46.3325 (approx 150m apart)
+        Kiosk k1 = new Kiosk();
+        k1.setId("kiosk-1");
+        k1.setLocalizacao(new GeoJsonPoint(-46.3315, -23.9680));
+        Kiosk k2 = new Kiosk();
+        k2.setId("kiosk-2");
+        k2.setLocalizacao(new GeoJsonPoint(-46.3325, -23.9690));
+
+        when(mongoTemplate.findById("kiosk-2", Kiosk.class)).thenReturn(k2);
+        when(mongoTemplate.findById("kiosk-1", Kiosk.class)).thenReturn(k1);
+
+        Order claimed = orderAtStatus(OrderStatus.A_CAMINHO);
+        claimed.setCourierId("courier-1");
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Order.class)))
+                .thenReturn(claimed);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
+
+        Order result = service().atualizarStatus("order-1", OrderStatus.A_CAMINHO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER")));
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
+    }
+
+    @Test
+    void courierCannotAcceptOrdersFromKiosksFartherThanOneKm() {
+        Order order = orderAtStatus(OrderStatus.PRONTO_ENTREGA);
+        order.setKioskId("kiosk-far");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        Order a1 = orderAtStatus(OrderStatus.A_CAMINHO);
+        a1.setKioskId("kiosk-1");
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of(a1));
+
+        // Point 1: Ponta da Praia (-23.9870, -46.3050), Point 2: José Menino (-23.9680, -46.3500) -> > 4km
+        Kiosk kFar = new Kiosk();
+        kFar.setId("kiosk-far");
+        kFar.setLocalizacao(new GeoJsonPoint(-46.3500, -23.9680));
+        Kiosk k1 = new Kiosk();
+        k1.setId("kiosk-1");
+        k1.setLocalizacao(new GeoJsonPoint(-46.3050, -23.9870));
+
+        when(mongoTemplate.findById("kiosk-far", Kiosk.class)).thenReturn(kFar);
+        when(mongoTemplate.findById("kiosk-1", Kiosk.class)).thenReturn(k1);
+
+        assertThatThrownBy(() -> service().atualizarStatus(
+                "order-1", OrderStatus.A_CAMINHO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("máximo 1 km");
+    }
+
+    @Test
+    void confirmDeliveryLeavesCourierEmRotaIfOtherOrdersRemain() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setCourierId("courier-1");
+        order.setCodigoEntrega("1234");
+        order.setPinCliente(new GeoJsonPoint(-46.3315, -23.9680));
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        Order delivered = orderAtStatus(OrderStatus.ENTREGUE);
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Order.class)))
+                .thenReturn(delivered);
+
+        // 2 remaining active orders
+        when(mongoTemplate.count(any(Query.class), eq(Order.class))).thenReturn(2L);
+
+        ConfirmDeliveryRequest req = new ConfirmDeliveryRequest(
+                "courier-1",
+                new ConfirmDeliveryRequest.CourierLocation(-23.9680, -46.3315),
+                "1234");
+
+        Order result = service().confirmarEntrega("order-1", req, "courier-1");
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.ENTREGUE);
+
+        ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+        verify(mongoTemplate).updateFirst(any(Query.class), updateCaptor.capture(), eq(Courier.class));
+        assertThat(updateCaptor.getValue().getUpdateObject().get("$set").toString()).doesNotContain("DISPONIVEL");
+    }
+
+    @Test
+    void confirmDeliveryTransitionsCourierToDisponivelWhenLastOrderDelivered() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setCourierId("courier-1");
+        order.setCodigoEntrega("1234");
+        order.setPinCliente(new GeoJsonPoint(-46.3315, -23.9680));
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        Order delivered = orderAtStatus(OrderStatus.ENTREGUE);
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Order.class)))
+                .thenReturn(delivered);
+
+        // 0 remaining active orders
+        when(mongoTemplate.count(any(Query.class), eq(Order.class))).thenReturn(0L);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
+
+        ConfirmDeliveryRequest req = new ConfirmDeliveryRequest(
+                "courier-1",
+                new ConfirmDeliveryRequest.CourierLocation(-23.9680, -46.3315),
+                "1234");
+
+        Order result = service().confirmarEntrega("order-1", req, "courier-1");
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.ENTREGUE);
+
+        ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+        verify(mongoTemplate).updateFirst(any(Query.class), updateCaptor.capture(), eq(Courier.class));
+        assertThat(updateCaptor.getValue().getUpdateObject().get("$set").toString()).contains("DISPONIVEL");
+    }
+
+    @Test
+    void canSendQuickMessageInProntoEntregaAndACaminhoAndChegouNoLocal() {
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        for (OrderStatus st : List.of(OrderStatus.PRONTO_ENTREGA, OrderStatus.A_CAMINHO, OrderStatus.CHEGOU_NO_LOCAL)) {
+            Order order = orderAtStatus(st);
+            order.setUserId("client-1");
+            order.setCourierId("courier-1");
+            when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+            Order res = service().enviarMensagemRapida("order-1", "client-1",
+                    List.of(new SimpleGrantedAuthority("ROLE_CLIENT")), "Mensagem em " + st);
+            assertThat(res.getMensagens()).isNotEmpty();
+        }
+    }
+
+    @Test
+    void cannotSendQuickMessageInTerminalStatuses() {
+        for (OrderStatus st : List.of(OrderStatus.ENTREGUE, OrderStatus.CANCELADO, OrderStatus.NAO_ENCONTRADO)) {
+            Order order = orderAtStatus(st);
+            order.setUserId("client-1");
+            order.setCourierId("courier-1");
+            when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+            assertThatThrownBy(() -> service().enviarMensagemRapida("order-1", "client-1",
+                    List.of(new SimpleGrantedAuthority("ROLE_CLIENT")), "Tentando falar"))
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessageContaining("Chat expirado");
+        }
+    }
+
+    @Test
+    void atualizarLocalizacaoEntregadorAgregadaUpdatesAllActiveOrdersAndAlertsProximity() {
+        Order o1 = orderAtStatus(OrderStatus.A_CAMINHO);
+        o1.setId("order-1");
+        o1.setPinCliente(new GeoJsonPoint(-46.3315, -23.9680));
+        o1.setAlertaProximidadeEnviado(false);
+
+        Order o2 = orderAtStatus(OrderStatus.CHEGOU_NO_LOCAL);
+        o2.setId("order-2");
+        o2.setPinCliente(new GeoJsonPoint(-46.3500, -23.9800)); // Far away, > 60m
+
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of(o1, o2));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // Courier ping right at order-1 client's pin (-23.9680, -46.3315)
+        List<Order> updated = service().atualizarLocalizacaoEntregadorAgregada(-23.9680, -46.3315, "courier-1");
+
+        assertThat(updated).hasSize(2);
+        assertThat(updated.get(0).getLocalizacaoEntregador().getY()).isEqualTo(-23.9680);
+        assertThat(updated.get(0).isAlertaProximidadeEnviado()).isTrue();
+        assertThat(updated.get(1).isAlertaProximidadeEnviado()).isFalse();
+
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
+    @Test
+    void kioskOwnerCanTransitionEmPreparoToProntoEntrega() {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        com.penaareia.model.User operator = new com.penaareia.model.User();
+        operator.setId("operator-1");
+        operator.setKioskId("kiosk-1");
+        when(mongoTemplate.findById("operator-1", com.penaareia.model.User.class)).thenReturn(operator);
+
+        Order res = service().atualizarStatus("order-1", OrderStatus.PRONTO_ENTREGA, "operator-1",
+                List.of(new SimpleGrantedAuthority("ROLE_KIOSK_OPERATOR")));
+        assertThat(res.getStatus()).isEqualTo(OrderStatus.PRONTO_ENTREGA);
+    }
+
+    @Test
+    void adminCanTransitionToProntoEntregaAndACaminho() {
+        Order order = orderAtStatus(OrderStatus.EM_PREPARO);
+        order.setKioskId("kiosk-1");
+        order.setCourierId("courier-1");
+        order.setTimeline(null);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order res = service().atualizarStatus("order-1", OrderStatus.A_CAMINHO, "admin-1",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        assertThat(res.getStatus()).isEqualTo(OrderStatus.A_CAMINHO);
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
+    @Test
+    void unauthorizedUserCannotTransitionToEmPreparo() {
+        Order order = orderAtStatus(OrderStatus.PAGO);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus("order-1", OrderStatus.EM_PREPARO, "stranger",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Somente o quiosque");
+    }
+
+    @Test
+    void unauthorizedUserCannotCancelOrder() {
+        Order order = orderAtStatus(OrderStatus.CRIADO);
+        order.setUserId("client-1");
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus("order-1", OrderStatus.CANCELADO, "stranger",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não tem autorização");
+    }
+
+    @Test
+    void kioskOwnerCanCancelOrder() {
+        Order order = orderAtStatus(OrderStatus.PAGO);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        com.penaareia.model.User operator = new com.penaareia.model.User();
+        operator.setId("operator-1");
+        operator.setKioskId("kiosk-1");
+        when(mongoTemplate.findById("operator-1", com.penaareia.model.User.class)).thenReturn(operator);
+
+        Order res = service().atualizarStatus("order-1", OrderStatus.CANCELADO, "operator-1",
+                List.of(new SimpleGrantedAuthority("ROLE_KIOSK_OPERATOR")), "Sem estoque");
+        assertThat(res.getStatus()).isEqualTo(OrderStatus.CANCELADO);
+        assertThat(res.getMotivoCancelamento()).isEqualTo("Sem estoque");
+    }
+
+    @Test
+    void adminCanCancelOrder() {
+        Order order = orderAtStatus(OrderStatus.PAGO);
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Order resAdmin = service().atualizarStatus("order-1", OrderStatus.CANCELADO, "admin-1",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")), " ");
+        assertThat(resAdmin.getStatus()).isEqualTo(OrderStatus.CANCELADO);
+    }
+
+    @Test
+    void naoEncontradoAuthorizationAndTransitions() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setCourierId("courier-1");
+        order.setKioskId("kiosk-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> service().atualizarStatus("order-1", OrderStatus.NAO_ENCONTRADO, "stranger",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Somente o entregador em rota ou o quiosque");
+
+        when(mongoTemplate.count(any(Query.class), eq(Order.class))).thenReturn(0L);
+        Order res = service().atualizarStatus("order-1", OrderStatus.NAO_ENCONTRADO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER")), "Cliente não atende");
+        assertThat(res.getStatus()).isEqualTo(OrderStatus.NAO_ENCONTRADO);
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+    }
+
+    @Test
+    void clientCannotTransitionToEntregueDirectly() {
+        Order order = orderAtStatus(OrderStatus.CHEGOU_NO_LOCAL);
+        order.setUserId("client-1");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus("order-1", OrderStatus.ENTREGUE, "client-1",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("A entrega deve ser confirmada com geolocalização");
+
+        assertThatThrownBy(() -> service().atualizarStatus("order-1", OrderStatus.ENTREGUE, "stranger",
+                List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Somente o cliente deste pedido");
+    }
+
+    @Test
+    void courierCannotClaimAlreadyClaimedOrderByAnotherCourier() {
+        Order order = orderAtStatus(OrderStatus.PRONTO_ENTREGA);
+        order.setCourierId("other-courier");
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service().atualizarStatus("order-1", OrderStatus.A_CAMINHO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("já foi aceito por outro entregador");
+    }
+
+    @Test
+    void courierClaimFailsIfConcurrentlyClaimed() {
+        Order order = orderAtStatus(OrderStatus.PRONTO_ENTREGA);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of());
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Order.class)))
+                .thenReturn(null);
+
+        assertThatThrownBy(() -> service().atualizarStatus("order-1", OrderStatus.A_CAMINHO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("já foi aceito por outro entregador");
+    }
+
+    @Test
+    void courierClaimHandlesOfflineStatus() {
+        Order order = orderAtStatus(OrderStatus.PRONTO_ENTREGA);
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of());
+
+        Order claimed = orderAtStatus(OrderStatus.A_CAMINHO);
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Order.class)))
+                .thenReturn(claimed);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null));
+
+        Courier offlineCourier = new Courier();
+        offlineCourier.setStatus(Courier.CourierStatus.OFFLINE);
+        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(offlineCourier));
+
+        assertThatThrownBy(() -> service().atualizarStatus("order-1", OrderStatus.A_CAMINHO, "courier-1",
+                List.of(new SimpleGrantedAuthority("ROLE_COURIER"))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("precisa estar disponível");
+    }
+
+    @Test
+    void confirmDeliveryHandlesNullCodeAndFallbackCourierExceptions() {
+        Order order = orderAtStatus(OrderStatus.A_CAMINHO);
+        order.setCourierId("courier-1");
+        order.setCodigoEntrega(null);
+        order.setPinCliente(new GeoJsonPoint(-46.3315, -23.9680));
+        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
+
+        Order delivered = orderAtStatus(OrderStatus.ENTREGUE);
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(Order.class)))
+                .thenReturn(delivered);
+        when(mongoTemplate.count(any(Query.class), eq(Order.class))).thenReturn(0L);
+        when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Courier.class)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null));
+
+        Courier offlineCourier = new Courier();
+        offlineCourier.setStatus(Courier.CourierStatus.OFFLINE);
+        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(offlineCourier));
+
+        ConfirmDeliveryRequest req = new ConfirmDeliveryRequest(
+                "courier-1",
+                new ConfirmDeliveryRequest.CourierLocation(-23.9680, -46.3315),
+                null);
+
+        assertThatThrownBy(() -> service().confirmarEntrega("order-1", req, "courier-1"))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("não está em rota");
+    }
+
+    @Test
+    void listarEmRotaBranchesCoverage() {
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of());
+        service().listarEmRota("courier-1", 10, null);
+        verify(mongoTemplate).updateFirst(any(Query.class), any(Update.class), eq(Courier.class));
+
+        String validCursor = OrderCursor.encode(orderAtStatus(OrderStatus.A_CAMINHO));
+        service().listarEmRota("courier-1", 10, validCursor);
+    }
+
+    @Test
+    void listarPedidosDoQuiosqueAllFilters() {
+        Order o1 = new Order();
+        o1.setId("o1");
+        o1.setKioskId("k1");
+        o1.setStatus(OrderStatus.PAGO);
+
+        Order o2 = new Order();
+        o2.setId("o2");
+        o2.setKioskId("k1");
+        o2.setCourierId("courier-1");
+        o2.setStatus(OrderStatus.A_CAMINHO);
+
+        when(mongoTemplate.find(any(Query.class), eq(Order.class))).thenReturn(List.of(o1, o2));
+        when(courierRepository.findById("courier-1")).thenReturn(Optional.of(new Courier()));
+
+        assertThat(service().listarPedidosDoQuiosque("k1", "ALL")).hasSize(2);
+        assertThat(service().listarPedidosDoQuiosque("k1", "PENDING")).hasSize(2);
+        assertThat(service().listarPedidosDoQuiosque("k1", "PREPARING")).hasSize(2);
+        assertThat(service().listarPedidosDoQuiosque("k1", "IN_ROUTE")).hasSize(2);
+        assertThat(service().listarPedidosDoQuiosque("k1", "COMPLETED")).hasSize(2);
+        assertThat(service().listarPedidosDoQuiosque("k1", "PAGO")).hasSize(2);
+        assertThat(service().listarPedidosDoQuiosque("k1", "INVALID_FILTER")).hasSize(2);
+    }
+
+    @Test
+    void orderResponseAndConstructorBranches() {
+        OrderWorkflowService fullService = new OrderWorkflowService(
+                orderRepository, courierRepository, mongoTemplate, 60.0,
+                new NotificationService(), new OrderEventStreamService());
+        assertThat(fullService).isNotNull();
+
+        Order order = new Order();
+        order.setStatus(OrderStatus.ENTREGUE);
+        order.setMensagens(null);
+
+        Courier courierWithVehicle = new Courier();
+        courierWithVehicle.setVeiculo(Courier.VehicleType.BICICLETA);
+        var resp1 = com.penaareia.dto.OrderResponse.fromEntityWithCourier(order, courierWithVehicle);
+        assertThat(resp1.getCourierVeiculo()).isEqualTo("BICICLETA");
+        assertThat(resp1.isChatAtivo()).isFalse();
+
+        Courier courierNoVehicle = new Courier();
+        var resp2 = com.penaareia.dto.OrderResponse.fromEntityWithCourier(order, courierNoVehicle);
+        assertThat(resp2.getCourierVeiculo()).isNull();
+
+        var respNullCourier = com.penaareia.dto.OrderResponse.fromEntityWithCourier(order, null);
+        assertThat(respNullCourier.getCourierNome()).isNull();
     }
 
     private static Order orderAtStatus(OrderStatus status) {

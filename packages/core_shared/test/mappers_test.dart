@@ -327,6 +327,38 @@ void main() {
       expect(order.localizacao, isNull);
       expect(order.status, OrderStatus.criado);
       expect(order.timeline.criadoEm, isNull);
+      expect(order.codigoPedido, isNull);
+      expect(order.numeroPedidoDiario, isNull);
+    });
+
+    test('mapeia codigoPedido e numeroPedidoDiario e serializa no toJson', () {
+      final order = OrderMapper.fromJson(const {
+        'id': 'pedido-0042',
+        'userId': 'u1',
+        'kioskId': 'k1',
+        'codigoPedido': '#0042',
+        'numeroPedidoDiario': 42,
+        'codigoEntrega': '8421',
+      });
+      expect(order.codigoPedido, '#0042');
+      expect(order.numeroPedidoDiario, 42);
+      expect(order.codigoEntrega, '8421');
+
+      final json = OrderMapper.toJson(order);
+      expect(json['codigoPedido'], '#0042');
+      expect(json['numeroPedidoDiario'], 42);
+      expect(json['codigoEntrega'], '8421');
+
+      // Suporte legado a codigoSequencialDiario
+      final orderLegado = OrderMapper.fromJson(const {
+        'id': 'pedido-0005',
+        'userId': 'u1',
+        'kioskId': 'k1',
+        'codigoSequencialDiario': '#0005',
+        'numeroPedidoDiario': 5,
+      });
+      expect(orderLegado.codigoPedido, '#0005');
+      expect(orderLegado.numeroPedidoDiario, 5);
     });
 
     test('status desconhecido cai no fallback sem quebrar', () {

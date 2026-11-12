@@ -155,6 +155,82 @@ void main() {
       expect(order.timeline.criadoEm, isNull);
       expect(order.timeline.entregueEm, isNull);
     });
+
+    test('codigoCurtoPedido remove cerquilha e NUNCA utiliza codigoEntrega', () {
+      const orderWithCode = Order(
+        id: 'o1',
+        userId: 'u1',
+        kioskId: 'k1',
+        valorTotal: 20.0,
+        formaPagamento: PaymentMethod.pix,
+        codigoPedido: '#0042',
+        codigoEntrega: '9999',
+      );
+      expect(orderWithCode.codigoCurtoPedido, '0042');
+      expect(orderWithCode.codigoFormatado, '#0042');
+      expect(orderWithCode.codigoCurtoPedido, isNot(contains('9999')));
+
+      // Normalização caso codigoPedido venha sem cerquilha
+      const orderWithoutHash = Order(
+        id: 'o2',
+        userId: 'u1',
+        kioskId: 'k1',
+        valorTotal: 20.0,
+        formaPagamento: PaymentMethod.pix,
+        codigoPedido: '0042',
+      );
+      expect(orderWithoutHash.codigoCurtoPedido, '0042');
+      expect(orderWithoutHash.codigoFormatado, '#0042');
+
+      const orderFallback = Order(
+        id: 'pedido-xyz-123',
+        userId: 'u1',
+        kioskId: 'k1',
+        valorTotal: 20.0,
+        formaPagamento: PaymentMethod.pix,
+        codigoEntrega: '1234',
+      );
+      // Fallback determinístico derivado do hash do id; NUNCA deve ser '1234'
+      expect(orderFallback.codigoCurtoPedido, isNot('1234'));
+      expect(orderFallback.codigoFormatado, '#${orderFallback.codigoCurtoPedido}');
+    });
+
+    test('isChatActive e isChatExpired refletem ciclo de vida do pedido', () {
+      const orderPronto = Order(
+        id: 'o1',
+        userId: 'u1',
+        kioskId: 'k1',
+        valorTotal: 20.0,
+        formaPagamento: PaymentMethod.pix,
+        status: OrderStatus.prontoEntrega,
+      );
+      expect(orderPronto.isChatActive, isTrue);
+      expect(orderPronto.isChatExpired, isFalse);
+
+      final orderACaminho = orderPronto.copyWith(status: OrderStatus.aCaminho);
+      expect(orderACaminho.isChatActive, isTrue);
+      expect(orderACaminho.isChatExpired, isFalse);
+
+      final orderChegou = orderPronto.copyWith(status: OrderStatus.chegouNoLocal);
+      expect(orderChegou.isChatActive, isTrue);
+      expect(orderChegou.isChatExpired, isFalse);
+
+      final orderEntregue = orderPronto.copyWith(status: OrderStatus.entregue);
+      expect(orderEntregue.isChatActive, isFalse);
+      expect(orderEntregue.isChatExpired, isTrue);
+
+      final orderCancelado = orderPronto.copyWith(status: OrderStatus.cancelado);
+      expect(orderCancelado.isChatActive, isFalse);
+      expect(orderCancelado.isChatExpired, isTrue);
+
+      final orderNaoEncontrado = orderPronto.copyWith(status: OrderStatus.naoEncontrado);
+      expect(orderNaoEncontrado.isChatActive, isFalse);
+      expect(orderNaoEncontrado.isChatExpired, isTrue);
+
+      final orderCriado = orderPronto.copyWith(status: OrderStatus.criado);
+      expect(orderCriado.isChatActive, isFalse);
+      expect(orderCriado.isChatExpired, isFalse);
+    });
   });
 
   group('distanceMeters', () {

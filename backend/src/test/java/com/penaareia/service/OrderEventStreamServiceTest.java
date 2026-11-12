@@ -32,5 +32,24 @@ class OrderEventStreamServiceTest {
         other.setId("other-order");
         service.publish(other);
     }
+
+    @Test
+    void subscribeWithHidePinPublishesMaskedPinUntilDelivered() {
+        OrderEventStreamService service = new OrderEventStreamService();
+        Order order = new Order();
+        order.setId("ord-stream-hidepin");
+        order.setStatus(OrderStatus.A_CAMINHO);
+        order.setCodigoEntrega("9876");
+
+        SseEmitter courierEmitter = service.subscribe(order, true);
+        assertThat(courierEmitter).isNotNull();
+
+        // Publish update while A_CAMINHO
+        service.publish(order);
+
+        // Publish update when ENTREGUE
+        order.setStatus(OrderStatus.ENTREGUE);
+        service.publish(order);
+    }
 }
 

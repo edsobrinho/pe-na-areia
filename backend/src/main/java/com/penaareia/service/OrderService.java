@@ -39,6 +39,7 @@ public class OrderService {
     private final PartnershipService partnershipService;
     private final PixPaymentGateway pixPaymentGateway;
     private final OrderEventStreamService streamService;
+    private final OrderSequenceService orderSequenceService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OrderService(OrderRepository orderRepository,
@@ -48,7 +49,19 @@ public class OrderService {
                         PartnershipPricingService pricingService,
                         PartnershipService partnershipService) {
         this(orderRepository, userRepository, kioskRepository, referencePointRepository,
-                pricingService, partnershipService, new PixPaymentGateway(), new OrderEventStreamService());
+                pricingService, partnershipService, new PixPaymentGateway(), new OrderEventStreamService(), null);
+    }
+
+    public OrderService(OrderRepository orderRepository,
+                        UserRepository userRepository,
+                        KioskRepository kioskRepository,
+                        ReferencePointRepository referencePointRepository,
+                        PartnershipPricingService pricingService,
+                        PartnershipService partnershipService,
+                        PixPaymentGateway pixPaymentGateway,
+                        OrderEventStreamService streamService) {
+        this(orderRepository, userRepository, kioskRepository, referencePointRepository,
+                pricingService, partnershipService, pixPaymentGateway, streamService, null);
     }
 
     @Autowired
@@ -59,7 +72,8 @@ public class OrderService {
                         PartnershipPricingService pricingService,
                         PartnershipService partnershipService,
                         PixPaymentGateway pixPaymentGateway,
-                        OrderEventStreamService streamService) {
+                        OrderEventStreamService streamService,
+                        @Autowired(required = false) OrderSequenceService orderSequenceService) {
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.kioskRepository = kioskRepository;
@@ -68,6 +82,7 @@ public class OrderService {
         this.partnershipService = partnershipService;
         this.pixPaymentGateway = pixPaymentGateway != null ? pixPaymentGateway : new PixPaymentGateway();
         this.streamService = streamService != null ? streamService : new OrderEventStreamService();
+        this.orderSequenceService = orderSequenceService;
     }
 
     /**
@@ -187,6 +202,16 @@ public class OrderService {
                 ? request.getContatoTelefone().trim()
                 : usuario.getTelefone());
         order.setEtiquetaLocal(request.getEtiquetaLocal());
+
+        // Identificador sequencial diário do pedido desvinculado do PIN de confirmação
+        if (orderSequenceService != null) {
+            OrderSequenceService.DailySequence sequence = orderSequenceService.gerarProximaSequencia();
+            order.setCodigoPedido(sequence.codigoFormatado());
+            order.setNumeroPedidoDiario(sequence.numeroDiario());
+        } else {
+            order.setCodigoPedido("#0001");
+            order.setNumeroPedidoDiario(1);
+        }
 
         // Codigo de confirmacao de entrega de 4 digitos numericos para validacao verbal na areia
         String codigoEntrega = String.format("%04d", secureRandom.nextInt(10000));

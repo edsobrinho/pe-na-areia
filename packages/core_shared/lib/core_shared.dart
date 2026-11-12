@@ -47,3 +47,6 @@ export 'forms/validators.dart';
 // Platform & Map Utils
 export 'utils/maps_checker/google_maps_checker.dart';
 
+// Presentation & Widgets
+export 'presentation/chat/order_chat_sheet.dart';
+

@@ -113,6 +113,8 @@ class Order {
     this.courierVeiculo,
     this.codigoEntrega,
     this.avaliacao,
+    this.codigoPedido,
+    this.numeroPedidoDiario,
   });
 
   final String id;
@@ -157,6 +159,12 @@ class Order {
 
   /// Avaliação do cliente (1 a 5 estrelas) após a conclusão.
   final OrderReview? avaliacao;
+
+  /// Código sequencial diário do pedido formatado (ex.: "#0001" a "#9999").
+  final String? codigoPedido;
+
+  /// Número sequencial diário do pedido (ex.: 1 a 9999).
+  final int? numeroPedidoDiario;
 
   String get descricaoLocal => localizacao?.descricaoLocal ?? '';
   String get fotoLocalUrl => localizacao?.fotoLocalUrl ?? '';
@@ -214,10 +222,10 @@ class Order {
       isActive && elapsedDuration(now).inMinutes >= 28;
 
   /// Código numérico limpo do pedido (sem exibir a chave hexadecimal do banco).
+  /// NUNCA inspeciona ou retorna o [codigoEntrega].
   String get codigoCurtoPedido {
-    final code = codigoEntrega?.trim();
-    if (code != null && code.isNotEmpty && code != '****') {
-      return code;
+    if (codigoPedido != null && codigoPedido!.trim().isNotEmpty) {
+      return codigoPedido!.replaceAll('#', '').trim();
     }
     if (id.isEmpty) return '0000';
     final hash = id.codeUnits.fold<int>(
@@ -226,6 +234,88 @@ class Order {
     );
     return (1000 + (hash % 9000)).toString();
   }
+
+  /// Código sequencial formatado para exibição nas telas (ex.: "#0001").
+  String get codigoFormatado => (codigoPedido != null && codigoPedido!.trim().isNotEmpty)
+      ? (codigoPedido!.startsWith('#') ? codigoPedido! : '#${codigoPedido!.trim()}')
+      : '#$codigoCurtoPedido';
+
+  /// Indica se o chat em tempo real está ativo para troca de mensagens.
+  bool get isChatActive =>
+      status == OrderStatus.prontoEntrega ||
+      status == OrderStatus.aCaminho ||
+      status == OrderStatus.chegouNoLocal;
+
+  /// Indica se a sessão de chat está expirada (pedido finalizado ou cancelado).
+  bool get isChatExpired =>
+      status == OrderStatus.entregue ||
+      status == OrderStatus.cancelado ||
+      status == OrderStatus.naoEncontrado;
+
+  /// Cria uma cópia com campos atualizados.
+  Order copyWith({
+    String? id,
+    String? userId,
+    String? kioskId,
+    String? partnershipId,
+    String? courierId,
+    String? courierNome,
+    String? courierTelefone,
+    String? courierVeiculo,
+    List<OrderItem>? itens,
+    double? valorTotal,
+    bool? embalagemSustentavel,
+    PaymentMethod? formaPagamento,
+    bool? pago,
+    String? pixTxId,
+    String? pixCopiaECola,
+    String? pixQrCodeBase64,
+    DateTime? pixExpiracao,
+    OrderLocation? localizacao,
+    GeoPoint? localizacaoEntregador,
+    DateTime? atualizadoEntregadorEm,
+    bool? alertaProximidadeEnviado,
+    List<OrderMessage>? mensagens,
+    OrderStatus? status,
+    OrderTimeline? timeline,
+    String? codigoEntrega,
+    OrderReview? avaliacao,
+    String? codigoPedido,
+    int? numeroPedidoDiario,
+  }) =>
+      Order(
+        id: id ?? this.id,
+        userId: userId ?? this.userId,
+        kioskId: kioskId ?? this.kioskId,
+        partnershipId: partnershipId ?? this.partnershipId,
+        courierId: courierId ?? this.courierId,
+        courierNome: courierNome ?? this.courierNome,
+        courierTelefone: courierTelefone ?? this.courierTelefone,
+        courierVeiculo: courierVeiculo ?? this.courierVeiculo,
+        itens: itens ?? this.itens,
+        valorTotal: valorTotal ?? this.valorTotal,
+        embalagemSustentavel: embalagemSustentavel ?? this.embalagemSustentavel,
+        formaPagamento: formaPagamento ?? this.formaPagamento,
+        pago: pago ?? this.pago,
+        pixTxId: pixTxId ?? this.pixTxId,
+        pixCopiaECola: pixCopiaECola ?? this.pixCopiaECola,
+        pixQrCodeBase64: pixQrCodeBase64 ?? this.pixQrCodeBase64,
+        pixExpiracao: pixExpiracao ?? this.pixExpiracao,
+        localizacao: localizacao ?? this.localizacao,
+        localizacaoEntregador:
+            localizacaoEntregador ?? this.localizacaoEntregador,
+        atualizadoEntregadorEm:
+            atualizadoEntregadorEm ?? this.atualizadoEntregadorEm,
+        alertaProximidadeEnviado:
+            alertaProximidadeEnviado ?? this.alertaProximidadeEnviado,
+        mensagens: mensagens ?? this.mensagens,
+        status: status ?? this.status,
+        timeline: timeline ?? this.timeline,
+        codigoEntrega: codigoEntrega ?? this.codigoEntrega,
+        avaliacao: avaliacao ?? this.avaliacao,
+        codigoPedido: codigoPedido ?? this.codigoPedido,
+        numeroPedidoDiario: numeroPedidoDiario ?? this.numeroPedidoDiario,
+      );
 
   /// Rótulo em texto livre do veículo do entregador (nunca constante).
   String get courierVeiculoLabel {

@@ -68,7 +68,7 @@ class OrderDetailsSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Código do Pedido #${order.codigoCurtoPedido}',
+                        'Pedido ${order.codigoFormatado}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -358,7 +358,7 @@ class OrderDetailsSheet extends StatelessWidget {
               Icon(Icons.pin_outlined, size: 20, color: AppColors.apricot600),
               SizedBox(width: 8),
               Text(
-                'CÓDIGO DO PEDIDO',
+                'PIN DE CONFIRMAÇÃO DE ENTREGA (4 DÍGITOS)',
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,

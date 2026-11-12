@@ -11,7 +11,11 @@ import 'google_maps_checker_stub.dart'
 class GoogleMapsChecker {
   const GoogleMapsChecker._();
 
+  @visibleForTesting
+  static bool? debugOverrideIsReady;
+
   static bool get isReady {
+    if (debugOverrideIsReady != null) return debugOverrideIsReady!;
     if (!kIsWeb) return true;
     return checkGoogleMapsWeb();
   }

@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../app/routes.dart';
 import 'package:core_shared/core_shared.dart';
 import 'beach_radar_widget.dart';
+import 'delivery_pin_dialog.dart';
 
 /// App Mobile do Entregador / Runner de Praia unificado ao Design System
 /// "Brisa Minimalista — Sage & Apricot" (Tela 05 `Order Details`).
@@ -34,6 +35,7 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
 
   List<Order> _available = const [];
   List<Order> _active = const [];
+  int _focusedOrderIndex = 0;
   bool _loading = true;
   String? _error;
   double? _courierLat;
@@ -110,6 +112,9 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
       setState(() {
         _available = results[0];
         _active = results[1];
+        if (_focusedOrderIndex >= _active.length) {
+          _focusedOrderIndex = _active.isEmpty ? 0 : _active.length - 1;
+        }
       });
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -119,6 +124,17 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
   }
 
   Future<void> _accept(Order order) async {
+    if (_active.length >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Limite máximo de 5 pedidos ativos simultâneos atingido para este entregador.',
+          ),
+          backgroundColor: AppColors.danger500,
+        ),
+      );
+      return;
+    }
     await _runAction(() => widget.orderRepository.updateStatus(
           order.id,
           OrderStatus.aCaminho,
@@ -141,27 +157,54 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
   }
 
   Future<void> _confirmDelivery(Order order) async {
-    try {
-      final courierId = order.courierId;
-      if (courierId == null || courierId.isEmpty) {
-        throw const FormatException(
-          'O pedido não está associado a um entregador autenticado.',
-        );
+    final courierId = order.courierId;
+    if (courierId == null || courierId.isEmpty) {
+      if (mounted) {
+        setState(() => _error =
+            'O pedido não está associado a um entregador autenticado.');
       }
-      final position = await widget.locationService.getCurrentPosition();
-      await _runAction(() => widget.orderRepository.confirmDelivery(
-            orderId: order.id,
-            courierId: courierId,
-            latitude: position.latitude,
-            longitude: position.longitude,
-          ));
-    } on LocationServiceException catch (error) {
-      if (mounted) setState(() => _error = error.message);
-    } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error.message);
-    } on FormatException catch (error) {
-      if (mounted) setState(() => _error = error.message);
+      return;
     }
+
+    final confirmed = await DeliveryPinConfirmationDialog.show(
+      context,
+      order: order,
+      courierId: courierId,
+      orderRepository: widget.orderRepository,
+      locationService: widget.locationService,
+    );
+
+    if (confirmed == true && mounted) {
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Entrega do pedido ${order.codigoFormatado} confirmada com sucesso!',
+          ),
+          backgroundColor: AppColors.sage600,
+        ),
+      );
+    }
+  }
+
+  void _openChat(Order order) {
+    OrderChatBottomSheet.show(
+      context,
+      order: order,
+      orderRepository: widget.orderRepository,
+      currentUserRole: 'COURIER',
+      onOrderUpdated: (updated) {
+        setState(() {
+          final idx = _active.indexWhere((o) => o.id == updated.id);
+          if (idx != -1) {
+            final copy = List<Order>.from(_active);
+            copy[idx] = updated;
+            _active = copy;
+          }
+        });
+      },
+    );
   }
 
   Future<void> _runAction(Future<Order> Function() action) async {
@@ -244,8 +287,15 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                     const SizedBox(height: 10),
                     if (_active.isEmpty)
                       _buildEmptyCard('Você não tem entregas em rota.')
-                    else
-                      ..._active.map(_buildActiveOrder),
+                    else ...[
+                      if (_active.length > 1) ...[
+                        _buildActiveOrdersCarousel(),
+                        const SizedBox(height: 12),
+                      ],
+                      _buildActiveOrder(
+                        _active[_focusedOrderIndex.clamp(0, _active.length - 1)],
+                      ),
+                    ],
                     const SizedBox(height: 22),
                     const Text(
                       'PEDIDOS PRONTOS NOS QUIOSQUES',
@@ -257,6 +307,10 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    if (_active.length >= 5) ...[
+                      _buildMaxActiveOrdersBanner(),
+                      const SizedBox(height: 10),
+                    ],
                     if (_available.isEmpty)
                       _buildEmptyCard('Nenhum pedido disponível no momento.')
                     else
@@ -264,6 +318,108 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                   ],
                 ),
               ),
+      );
+
+  Widget _buildMaxActiveOrdersBanner() => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.apricot100,
+          borderRadius: BorderRadius.circular(14),
+          border:
+              Border.all(color: AppColors.apricot500.withValues(alpha: 0.5)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.inventory_2_outlined,
+                color: AppColors.apricot700, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Capacidade máxima atingida: 5 pedidos ativos em rota. Conclua uma entrega para aceitar novos pedidos.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildActiveOrdersCarousel() => SizedBox(
+        height: 72,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _active.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final order = _active[index];
+            final isSelected = index == _focusedOrderIndex;
+            final dist = order.distanciaEntregadorMetros;
+            final distText = dist != null ? '${dist.round()}m' : '';
+
+            return InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => setState(() => _focusedOrderIndex = index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.sage100 : AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? AppColors.sage600 : AppColors.line,
+                    width: isSelected ? 2 : 1,
+                  ),
+                  boxShadow: isSelected ? AppTheme.softCardShadow : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          order.codigoFormatado,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color:
+                                isSelected ? AppColors.sage700 : AppColors.ink,
+                          ),
+                        ),
+                        if (distText.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            distText,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.apricot600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      order.status.courierLabel,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isSelected ? AppColors.sage700 : AppColors.ink500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       );
 
   Widget _buildEmptyCard(String message) => Container(
@@ -282,6 +438,10 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
   Widget _buildAvailableOrder(Order order) {
     final isReadyAtRestaurant = order.status == OrderStatus.prontoEntrega ||
         order.status == OrderStatus.aCaminho;
+    final isNeighborOrSameKiosk =
+        _active.any((a) => a.kioskId == order.kioskId);
+    final isAtMaxLimit = _active.length >= 5;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
@@ -307,7 +467,7 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
               Row(
                 children: [
                   Text(
-                    'CÓDIGO DO PEDIDO #${order.codigoCurtoPedido}',
+                    'CÓDIGO DO PEDIDO ${order.codigoFormatado}',
                     style: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
@@ -329,6 +489,34 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
               ),
             ],
           ),
+          if (isNeighborOrSameKiosk) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.sage100,
+                borderRadius: BorderRadius.circular(8),
+                border:
+                    Border.all(color: AppColors.sage500.withValues(alpha: 0.5)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.storefront_rounded,
+                      size: 14, color: AppColors.sage700),
+                  SizedBox(width: 6),
+                  Text(
+                    'QUIOSQUE VIZINHO (Próximo das suas entregas)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.sage700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -385,11 +573,13 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
           ],
           const SizedBox(height: 14),
           FilledButton(
-            onPressed: _loading ? null : () => _accept(order),
+            onPressed: (_loading || isAtMaxLimit) ? null : () => _accept(order),
             child: Text(
-              isReadyAtRestaurant
-                  ? 'RETIRAR NO RESTAURANTE E INICIAR ENTREGA'
-                  : 'ACEITAR ENTREGA',
+              isAtMaxLimit
+                  ? 'LIMITE DE 5 PEDIDOS ATINGIDO'
+                  : isReadyAtRestaurant
+                      ? 'RETIRAR NO RESTAURANTE E INICIAR ENTREGA'
+                      : 'ACEITAR ENTREGA',
             ),
           ),
         ],
@@ -420,7 +610,7 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
                 Row(
                   children: [
                     Text(
-                      'CÓDIGO DO PEDIDO #${order.codigoCurtoPedido}',
+                      'CÓDIGO DO PEDIDO ${order.codigoFormatado}',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -469,6 +659,23 @@ class _CourierHomeScreenState extends State<CourierHomeScreen> {
             if (order.localizacao != null) _buildDestinationMap(order),
             const SizedBox(height: 12),
             _buildQuickContactSection(order),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => _openChat(order),
+              icon: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 18,
+                color: AppColors.sage700,
+              ),
+              label: Text(
+                'CHAT COM O CLIENTE${order.mensagens.isNotEmpty ? " (${order.mensagens.length})" : ""}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.sage700,
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             if (order.status == OrderStatus.aCaminho)
               OutlinedButton(

@@ -62,6 +62,13 @@ public class OrderResponse {
     /** Avaliacao de 1 a 5 estrelas feita pelo cliente */
     private Order.OrderReview avaliacao;
 
+    /** Identificador sequencial diario do pedido (#0001 a #9999) */
+    private String codigoPedido;
+    private Integer numeroPedidoDiario;
+
+    /** Indica se a sessao de chat em tempo real esta ativa */
+    private boolean chatAtivo;
+
     public static OrderResponse fromEntity(Order order) {
         return fromEntityWithCourier(order, null);
     }
@@ -71,6 +78,9 @@ public class OrderResponse {
         if (courier != null && courier.getVeiculo() != null) {
             veiculoStr = courier.getVeiculo().name();
         }
+        boolean chatAtivo = order.getStatus() == OrderStatus.PRONTO_ENTREGA
+                || order.getStatus() == OrderStatus.A_CAMINHO
+                || order.getStatus() == OrderStatus.CHEGOU_NO_LOCAL;
         return new OrderResponse(
                 order.getId(),
                 order.getUserId(),
@@ -109,7 +119,10 @@ public class OrderResponse {
                 veiculoStr,
                 order.getTimeline(),
                 order.getCodigoEntrega(),
-                order.getAvaliacao()
+                order.getAvaliacao(),
+                order.getCodigoPedido(),
+                order.getNumeroPedidoDiario(),
+                chatAtivo
         );
     }
 

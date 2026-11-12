@@ -49,7 +49,35 @@ abstract final class OrderMapper {
         courierVeiculo: json['courierVeiculo'] as String?,
         codigoEntrega: json['codigoEntrega'] as String?,
         avaliacao: _reviewFromJson(json['avaliacao'] as Map<String, dynamic>?),
+        codigoPedido: json['codigoPedido'] as String? ??
+            json['codigoSequencialDiario'] as String?,
+        numeroPedidoDiario: (json['numeroPedidoDiario'] as num?)?.toInt(),
       );
+
+  /// Serialização de [Order] em Map<String, dynamic>.
+  static Map<String, dynamic> toJson(Order order) => {
+        'id': order.id,
+        'userId': order.userId,
+        'kioskId': order.kioskId,
+        'partnershipId': order.partnershipId,
+        'courierId': order.courierId,
+        'valorTotal': order.valorTotal,
+        'embalagemSustentavel': order.embalagemSustentavel,
+        'formaPagamento': order.formaPagamento.wireValue,
+        'pago': order.pago,
+        'pixTxId': order.pixTxId,
+        'pixCopiaECola': order.pixCopiaECola,
+        'pixQrCodeBase64': order.pixQrCodeBase64,
+        'pixExpiracao': order.pixExpiracao?.toIso8601String(),
+        'alertaProximidadeEnviado': order.alertaProximidadeEnviado,
+        'status': order.status.wireValue,
+        'courierNome': order.courierNome,
+        'courierTelefone': order.courierTelefone,
+        'courierVeiculo': order.courierVeiculo,
+        'codigoEntrega': order.codigoEntrega,
+        'codigoPedido': order.codigoPedido,
+        'numeroPedidoDiario': order.numeroPedidoDiario,
+      };
 
   /// Corpo JSON de `POST /orders`, conforme contrato compartilhado com o backend.
   static Map<String, dynamic> toCreateOrderJson({
